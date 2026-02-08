@@ -11,7 +11,7 @@ interface Stats {
 
 // Simple flat icons as SVG components
 const IconCheck = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>;
-const IconAlert = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" cy="12" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+const IconAlert = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
 const IconActivity = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
 const IconZap = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
 
@@ -30,42 +30,57 @@ export function DemoFlow() {
 
     const isInconsistent = stats.events > stats.bookings || stats.events > stats.users;
 
+    const safeFetch = async (url: string) => {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) return [];
+            const data = await res.json();
+            return data['hydra:member'] || (Array.isArray(data) ? data : []);
+        } catch (e) {
+            console.error(`Error fetching ${url}:`, e);
+            return [];
+        }
+    };
+
     const refreshStats = async () => {
         try {
+            // Fetch stats and basic status
             const res = await fetch('/api/demo/stats');
-            const data = await res.json();
-            setStats(data);
+            if (res.ok) setStats(await res.json());
             
             const statusRes = await fetch('/api/demo/status');
-            const statusData = await statusRes.json();
-            setProjectionsEnabled(statusData.projectionsEnabled);
-            setUserProjectionsEnabled(statusData.userProjectionsEnabled);
-            setBookingProjectionsEnabled(statusData.bookingProjectionsEnabled);
+            if (statusRes.ok) {
+                const statusData = await statusRes.json();
+                setProjectionsEnabled(statusData.projectionsEnabled);
+                setUserProjectionsEnabled(statusData.userProjectionsEnabled);
+                setBookingProjectionsEnabled(statusData.bookingProjectionsEnabled);
+            }
 
-            const [evRes, usrRes, bkRes, cpRes] = await Promise.all([
-                fetch('/api/event-store?order[occurredOn]=desc'),
-                fetch('/api/users'),
-                fetch('/api/bookings?order[createdAt]=desc'),
-                fetch('/api/checkpoints')
-            ]);
-            
-            const [evData, usrData, bkData, cpData] = await Promise.all([
-                evRes.json(), usrRes.json(), bkRes.json(), cpRes.json()
+            // Fetch detailed datasets (no pagination, newest first where possible)
+            // Note: Users don't have createdAt, but id (UUID v7) is sortable
+            const [ev, usr, bk, cp] = await Promise.all([
+                safeFetch('/api/event-store'), // MongoStore findEvents already sorts desc
+                safeFetch('/api/users'), 
+                safeFetch('/api/bookings?order[createdAt]=desc'),
+                safeFetch('/api/checkpoints')
             ]);
 
-            setEvents(evData['hydra:member'] || []);
-            setUsers(usrData['hydra:member'] || []);
-            setBookings(bkData['hydra:member'] || []);
-            setCheckpoints(cpData['hydra:member'] || []);
+            // Ensure users are also descending by ID (time-ordered)
+            const sortedUsr = [...usr].sort((a, b) => b.id.localeCompare(a.id));
+
+            setEvents(ev);
+            setUsers(sortedUsr);
+            setBookings(bk);
+            setCheckpoints(cp);
 
         } catch (e) {
-            console.error("Fetch error", e);
+            console.error("Refresh loop error", e);
         }
     };
 
     useEffect(() => {
         refreshStats();
-        const interval = setInterval(refreshStats, 3000);
+        const interval = setInterval(refreshStats, 2000);
         return () => clearInterval(interval);
     }, []);
 
@@ -90,7 +105,7 @@ export function DemoFlow() {
         const name = `Demo ${Math.floor(Math.random() * 1000)}`;
         const email = `client${Math.floor(Math.random() * 1000)}@test.com`;
         try {
-            await fetch('/api/booking-wizard', {
+            const res = await fetch('/api/booking-wizard', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -101,7 +116,7 @@ export function DemoFlow() {
                     clientEmail: email
                 }),
             });
-            setMessage(`Fact recorded for ${name}`);
+            if (res.ok) setMessage(`Fact recorded for ${name}`);
             await refreshStats();
         } catch (e) {
             setMessage('Error creating entry');
@@ -138,23 +153,30 @@ export function DemoFlow() {
         }
     };
 
-    const DataList = ({ title, items, columns, emptyMsg }: any) => (
+    const DataList = ({ title, items, columns, emptyMsg, badge }: any) => (
         <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-            <div style={{ padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontSize: '13px', fontWeight: 600, color: '#374151' }}>{title}</div>
-            <div style={{ padding: '0', maxHeight: '250px', overflowY: 'auto' }}>
+            <div style={{ padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontSize: '13px', fontWeight: 600, color: '#374151', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {title}
+                {badge !== undefined && (
+                    <span style={{ backgroundColor: '#eef2ff', color: '#6366f1', padding: '2px 8px', borderRadius: '10px', fontSize: '10px' }}>{badge}</span>
+                )}
+            </div>
+            <div style={{ padding: '0', maxHeight: '350px', overflowY: 'auto' }}>
                 {items.length === 0 ? (
                     <div style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '12px' }}>{emptyMsg}</div>
                 ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                         <tbody>
                             {items.map((item: any, i: number) => (
-                                <tr key={i} style={{ borderBottom: i === items.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
+                                <tr key={i} style={{ borderBottom: i === items.length - 1 ? 'none' : '1px solid #f3f4f6', backgroundColor: i === 0 ? '#f0f9ff' : 'transparent' }}>
                                     {columns.map((col: string, j: number) => (
                                         <td key={j} style={{ padding: '10px 16px', color: '#4b5563' }}>
                                             {col.includes('Id') || col === 'id' ? (
-                                                <code style={{ color: '#6366f1' }}>...{String(item[col] || '').slice(-6)}</code>
+                                                <code style={{ color: '#6366f1', fontWeight: 600 }}>...{String(item[col] || '').slice(-6)}</code>
                                             ) : col === 'payload' ? (
-                                                JSON.stringify(item[col]).slice(0, 20) + '...'
+                                                <span title={JSON.stringify(item[col])}>{JSON.stringify(item[col]).slice(0, 30)}...</span>
+                                            ) : col === 'createdAt' || col === 'occurredOn' ? (
+                                                new Date(item[col]).toLocaleTimeString()
                                             ) : item[col]}
                                         </td>
                                     ))}
@@ -181,8 +203,8 @@ export function DemoFlow() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '32px', alignItems: 'start' }}>
                 
+                {/* INTERACTION ZONE */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    {/* INFRASTRUCTURE */}
                     <div style={{ backgroundColor: '#fff', padding: '32px', borderRadius: '24px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                         <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
                             <IconZap /> 1. Infrastructure Links
@@ -211,25 +233,18 @@ export function DemoFlow() {
                         </div>
                     </div>
 
-                    {/* ACTIONS */}
                     <div style={{ backgroundColor: '#fff', padding: '32px', borderRadius: '24px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                         <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <IconActivity /> 2. Actions
+                            <IconActivity /> 2. Fact Generator
                         </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-                            <button onClick={submitRandomBooking} disabled={loading} style={{ width: '100%', padding: '16px', fontSize: '15px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600 }}>
-                                + Emite Nuevo Evento
-                            </button>
-                            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6', textAlign: 'center' }}>
-                                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: '4px' }}>Automatic Snapshotting</div>
-                                <div style={{ fontSize: '13px', color: '#4b5563' }}>Every <strong>5 events</strong> (from .env)</div>
-                            </div>
-                        </div>
+                        <button onClick={submitRandomBooking} disabled={loading} style={{ width: '100%', marginTop: '16px', padding: '16px', fontSize: '15px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600 }}>
+                            + Emite Nuevo Evento
+                        </button>
                         {message && <div style={{ marginTop: '16px', fontSize: '13px', color: '#6366f1', textAlign: 'center', fontWeight: 500 }}>{message}</div>}
                     </div>
                 </div>
 
-                {/* STATUS */}
+                {/* STATUS ZONE */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '24px' }}>
                         <div style={{ backgroundColor: '#fff', padding: '32px', borderRadius: '24px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', textAlign: 'center' }}>
@@ -269,12 +284,12 @@ export function DemoFlow() {
                     {/* LIVE TABLES */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                            <DataList title="Latest Events (Store)" items={events} columns={['eventType', 'aggregateId']} emptyMsg="Empty store." />
-                            <DataList title="Active Checkpoints" items={checkpoints} columns={['projectionName', 'lastEventId']} emptyMsg="No checkpoints." />
+                            <DataList title="Latest Events (Store)" items={events} columns={['eventType', 'aggregateId']} emptyMsg="Empty store." badge={events.length} />
+                            <DataList title="Active Checkpoints" items={checkpoints} columns={['projectionName', 'lastEventId']} emptyMsg="No checkpoints." badge={checkpoints.length} />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                            <DataList title="Users (Projection)" items={users} columns={['name', 'email']} emptyMsg="Empty projection." />
-                            <DataList title="Bookings (Projection)" items={bookings} columns={['id', 'createdAt']} emptyMsg="Empty projection." />
+                            <DataList title="Users (Projection)" items={users} columns={['name', 'email']} emptyMsg="Empty projection." badge={users.length} />
+                            <DataList title="Bookings (Projection)" items={bookings} columns={['id', 'createdAt']} emptyMsg="Empty projection." badge={bookings.length} />
                         </div>
                     </div>
                 </div>

@@ -17,7 +17,7 @@ use Symfony\Component\Uid\Uuid;
 #[ApiResource(
     operations: [
         new Get(uriTemplate: '/snapshots/{id}', provider: MongoStoreProvider::class),
-        new GetCollection(uriTemplate: '/snapshots', provider: MongoStoreProvider::class)
+        new GetCollection(uriTemplate: '/snapshots', provider: MongoStoreProvider::class, paginationEnabled: false)
     ],
     normalizationContext: ['groups' => ['snapshot:read']]
 )]

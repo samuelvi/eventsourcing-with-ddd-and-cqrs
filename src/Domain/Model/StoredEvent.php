@@ -18,7 +18,7 @@ use Symfony\Component\Uid\Uuid;
     shortName: 'EventStore',
     operations: [
         new Get(uriTemplate: '/event-store/{id}', provider: MongoStoreProvider::class),
-        new GetCollection(uriTemplate: '/event-store', provider: MongoStoreProvider::class)
+        new GetCollection(uriTemplate: '/event-store', provider: MongoStoreProvider::class, paginationEnabled: false)
     ],
     normalizationContext: ['groups' => ['event:read']]
 )]

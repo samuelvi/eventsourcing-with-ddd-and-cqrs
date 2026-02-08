@@ -17,7 +17,7 @@ use Symfony\Component\Uid\Uuid;
 #[ApiResource(
     operations: [
         new Get(uriTemplate: '/checkpoints/{projectionName}', provider: MongoStoreProvider::class),
-        new GetCollection(uriTemplate: '/checkpoints', provider: MongoStoreProvider::class)
+        new GetCollection(uriTemplate: '/checkpoints', provider: MongoStoreProvider::class, paginationEnabled: false)
     ],
     normalizationContext: ['groups' => ['checkpoint:read']]
 )]

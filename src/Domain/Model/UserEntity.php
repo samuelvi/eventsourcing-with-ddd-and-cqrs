@@ -22,7 +22,7 @@ use Symfony\Component\Validator\Constraints as Assert;
     shortName: 'User',
     operations: [
         new Get(uriTemplate: '/users/{id}', provider: UserProvider::class),
-        new GetCollection(uriTemplate: '/users', provider: UserProvider::class)
+        new GetCollection(uriTemplate: '/users', provider: UserProvider::class, paginationEnabled: false)
     ],
     normalizationContext: ['groups' => ['user:read']],
     denormalizationContext: ['groups' => ['user:write']]

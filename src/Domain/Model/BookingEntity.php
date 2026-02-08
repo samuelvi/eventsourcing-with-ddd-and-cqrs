@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Model;
 
+use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
@@ -16,10 +18,11 @@ use Symfony\Component\Uid\Uuid;
 #[ApiResource(
     operations: [
         new Get(uriTemplate: '/bookings/{id}'),
-        new GetCollection(uriTemplate: '/bookings')
+        new GetCollection(uriTemplate: '/bookings', paginationEnabled: false)
     ],
     normalizationContext: ['groups' => ['booking:read']]
 )]
+#[ApiFilter(OrderFilter::class, properties: ['createdAt'])]
 class BookingEntity
 {
     #[ORM\Id]

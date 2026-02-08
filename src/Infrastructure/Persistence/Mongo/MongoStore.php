@@ -24,7 +24,7 @@ final readonly class MongoStore
 
     public function findEvents(): array
     {
-        $cursor = $this->mongoClient->getDatabase()->selectCollection('events')->find([], ['sort' => ['occurredOn' => 1]]);
+        $cursor = $this->mongoClient->getDatabase()->selectCollection('events')->find([], ['sort' => ['occurredOn' => -1]]);
         $events = [];
         foreach ($cursor as $doc) {
             $events[] = StoredEvent::fromArray(json_decode(json_encode($doc), true));

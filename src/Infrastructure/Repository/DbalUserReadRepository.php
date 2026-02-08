@@ -15,7 +15,7 @@ final readonly class DbalUserReadRepository implements UserReadRepositoryInterfa
 
     public function findAllForList(): array
     {
-        $sql = 'SELECT id, name, email FROM users ORDER BY name ASC';
+        $sql = 'SELECT id, name, email FROM users ORDER BY id DESC';
         return $this->entityManager->query($sql);
     }
 

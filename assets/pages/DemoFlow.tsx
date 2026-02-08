@@ -13,17 +13,23 @@ export function DemoFlow() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 
+    const isInconsistent = stats.events > stats.bookings;
+
     const refreshStats = async () => {
-        const res = await fetch('/api/demo/stats');
-        setStats(await res.json());
-        const statusRes = await fetch('/api/demo/status');
-        const statusData = await statusRes.json();
-        setProjectionsEnabled(statusData.projectionsEnabled);
+        try {
+            const res = await fetch('/api/demo/stats');
+            setStats(await res.json());
+            const statusRes = await fetch('/api/demo/status');
+            const statusData = await statusRes.json();
+            setProjectionsEnabled(statusData.projectionsEnabled);
+        } catch (e) {
+            console.error("Fetch error", e);
+        }
     };
 
     useEffect(() => {
         refreshStats();
-        const interval = setInterval(refreshStats, 3000);
+        const interval = setInterval(refreshStats, 2000);
         return () => clearInterval(interval);
     }, []);
 
@@ -40,7 +46,7 @@ export function DemoFlow() {
         const email = `demo${Math.floor(Math.random() * 1000)}@example.com`;
         
         try {
-            await fetch('/api/booking-wizard', {
+            const res = await fetch('/api/booking-wizard', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -51,7 +57,9 @@ export function DemoFlow() {
                     clientEmail: email
                 }),
             });
-            setMessage(`✅ Created booking for ${name}`);
+            if (res.ok) {
+                setMessage(`✅ Event stored for ${name}`);
+            }
             await refreshStats();
         } catch (e) {
             setMessage('❌ Error creating booking');
@@ -61,114 +69,127 @@ export function DemoFlow() {
 
     const runRebuild = async () => {
         setLoading(true);
-        setMessage('🔄 Rebuilding projections...');
+        setMessage('🔄 Replaying history...');
         await fetch('/api/demo/rebuild', { method: 'POST' });
         await refreshStats();
-        setMessage('✨ Projections repaired successfully!');
+        setMessage('✨ System state restored!');
         setLoading(false);
     };
 
     const runReset = async () => {
-        if (!confirm('Are you sure you want to reset the entire database to fixtures?')) return;
+        if (!confirm('Clear all data and restart demo?')) return;
         setLoading(true);
-        setMessage('♻️ Resetting system...');
         await fetch('/api/demo/reset', { method: 'POST' });
+        setMessage('🌟 Fresh start.');
         await refreshStats();
-        setMessage('🌟 System reset to initial state.');
         setLoading(false);
     };
 
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
-                <button 
-                    onClick={runReset}
-                    disabled={loading}
-                    style={{ padding: '5px 15px', fontSize: '12px', cursor: 'pointer', backgroundColor: '#f8f9fa', border: '1px solid #ccc', borderRadius: '4px' }}
-                >
-                    ♻️ Reset to Initial State
+        <div style={{ maxWidth: '900px', margin: '0 auto', fontFamily: 'system-ui, sans-serif', padding: '20px', backgroundColor: '#f0f2f5', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h1 style={{ margin: 0 }}>🎭 TED Talk: The Power of Event Sourcing</h1>
+                <button onClick={runReset} disabled={loading} style={{ padding: '8px 16px', cursor: 'pointer', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '6px' }}>
+                    ♻️ Full Reset
                 </button>
             </div>
-            
-            <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '20px' }}>
-                <h2 style={{ marginTop: 0 }}>Step 1: Configuration ⚙️</h2>
-                <p>Simulate a failure in the communication between the Event Store and the Projections.</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+
+            {/* STEP 1: SIMULATE BREAKAGE */}
+            <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
+                <h2 style={{ marginTop: 0, color: '#333' }}>1. Simular Rotura de Infraestructura ⚡</h2>
+                <p style={{ color: '#666' }}>Apaga los proyectores para simular un fallo en el microservicio de lectura.</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <button 
                         onClick={toggleProjections}
                         disabled={loading}
                         style={{
-                            padding: '10px 20px',
-                            minWidth: '200px',
+                            padding: '15px 30px',
+                            fontSize: '18px',
                             backgroundColor: projectionsEnabled ? '#28a745' : '#dc3545',
                             color: 'white',
                             border: 'none',
-                            borderRadius: '20px',
+                            borderRadius: '50px',
                             cursor: 'pointer',
-                            fontWeight: 'bold'
+                            fontWeight: 'bold',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                            transition: 'all 0.3s'
                         }}
                     >
-                        Projections: {projectionsEnabled ? 'RUNNING ✅' : 'STOPPED ❌'}
+                        PROJECTORS: {projectionsEnabled ? 'ACTIVE ✅' : 'BROKEN ❌'}
                     </button>
-                    <span>{projectionsEnabled ? 'System is healthy.' : "SIMULATING FAILURE: Events are stored, but Read Models won't update."}</span>
+                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: projectionsEnabled ? '#28a745' : '#dc3545' }}>
+                        {projectionsEnabled ? 'Estás en modo normal.' : '¡PROYECCIONES DESACTIVADAS! Los datos no llegarán a la UI.'}
+                    </div>
                 </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
-                    <h3>Step 2: Generate Traffic 🚀</h3>
+                {/* STEP 2: TRAFFIC */}
+                <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                    <h2 style={{ marginTop: 0 }}>2. Generar Tráfico 🚀</h2>
                     <button 
                         onClick={submitRandomBooking}
                         disabled={loading}
-                        style={{ padding: '12px', width: '100%', cursor: 'pointer', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}
+                        style={{ padding: '20px', width: '100%', fontSize: '18px', cursor: 'pointer', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}
                     >
-                        Create Random Booking
+                        + Crear Reserva Aleatoria
                     </button>
-                    {message && <p style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>{message}</p>}
+                    <p style={{ minHeight: '24px', marginTop: '15px', color: '#007bff', fontWeight: 'bold' }}>{message}</p>
                 </div>
 
-                <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff' }}>
-                    <h3>Step 3: Monitor State 📊</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* STEP 3: MONITOR */}
+                <div style={{ backgroundColor: '#212529', color: '#00ff00', padding: '25px', borderRadius: '10px', fontFamily: 'monospace', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                    <h2 style={{ marginTop: 0, color: 'white', fontFamily: 'sans-serif' }}>3. Estado del Sistema 📊</h2>
+                    <div style={{ fontSize: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <strong>Event Store (Truth):</strong>
-                            <span style={{ fontSize: '18px', color: '#007bff' }}>{stats.events} events</span>
+                            <span>&gt; EVENT_STORE:</span>
+                            <span style={{ color: 'white' }}>{stats.events} events</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #eee', paddingTop: '5px' }}>
-                            <strong>Users Projection:</strong>
-                            <span style={{ fontSize: '18px', color: stats.events > stats.bookings ? '#dc3545' : '#28a745' }}>{stats.users} records</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #444', paddingTop: '10px' }}>
+                            <span>&gt; READ_MODELS:</span>
+                            <span style={{ color: isInconsistent ? '#ff4d4d' : '#00ff00' }}>{stats.bookings} records</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #eee', paddingTop: '5px' }}>
-                            <strong>Bookings Projection:</strong>
-                            <span style={{ fontSize: '18px', color: stats.events > stats.bookings ? '#dc3545' : '#28a745' }}>{stats.bookings} records</span>
+                        <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '14px', color: isInconsistent ? '#ff4d4d' : '#888' }}>
+                            {isInconsistent ? 'STATUS: INCONSISTENT ⚠️' : 'STATUS: SYNCED OK'}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {stats.events > stats.bookings && (
-                <div style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '20px', borderRadius: '8px', border: '1px solid #ffeeba', textAlign: 'center' }}>
-                    <h3>⚠️ INCONSISTENCY DETECTED!</h3>
-                    <p>The system has more events than projections. Information is safe in the Store, but missing from the UI.</p>
-                    <p><strong>Fix it by replaying the history:</strong></p>
-                    <button 
-                        onClick={runRebuild}
-                        disabled={loading}
-                        style={{
-                            padding: '15px 30px',
-                            backgroundColor: '#ffc107',
-                            color: '#212529',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '18px',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        🛠️ Repair Projections (Replay History)
-                    </button>
-                </div>
-            )}
+            {/* STEP 4: REPAIR (The Magic) */}
+            <div style={{ 
+                backgroundColor: isInconsistent ? '#fff3cd' : '#e9ecef', 
+                padding: '30px', 
+                borderRadius: '10px', 
+                border: isInconsistent ? '3px solid #ffc107' : '1px solid #ccc', 
+                textAlign: 'center',
+                opacity: isInconsistent ? 1 : 0.6
+            }}>
+                <h2 style={{ marginTop: 0 }}>4. La Autocuración (Self-Healing) ✨</h2>
+                <p style={{ fontSize: '18px' }}>
+                    {isInconsistent 
+                        ? 'Se ha detectado una pérdida de consistencia. El Event Store tiene la verdad, pero la UI está desactualizada.' 
+                        : 'El sistema está sano. Si hubiera un fallo, podrías reconstruirlo todo aquí.'}
+                </p>
+                <button 
+                    onClick={runRebuild}
+                    disabled={loading || !isInconsistent}
+                    style={{
+                        padding: '20px 40px',
+                        backgroundColor: isInconsistent ? '#ffc107' : '#6c757d',
+                        color: '#212529',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: isInconsistent ? 'pointer' : 'not-allowed',
+                        fontSize: '22px',
+                        fontWeight: 'bold',
+                        boxShadow: isInconsistent ? '0 6px 12px rgba(0,0,0,0.2)' : 'none',
+                        transition: 'all 0.3s'
+                    }}
+                >
+                    🛠️ REPAIR & REPLAY HISTORY
+                </button>
+            </div>
         </div>
     );
 }

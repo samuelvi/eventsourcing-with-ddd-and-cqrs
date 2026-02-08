@@ -1,21 +1,17 @@
-# Event Sourcing: The Architecture of Truth
+# Event Sourcing
 
-Esta guía técnica explora los fundamentos y la implementación de una arquitectura basada en eventos, utilizando este proyecto como referencia práctica.
+## ¿Qué es Event Sourcing?
 
----
-
-## ■ ¿Qué es Event Sourcing?
+> **Es un patrón de diseño donde el estado de una aplicación se guarda como una secuencia de eventos inmutables, en lugar de almacenar solo el estado final, lo que permite reconstruir el estado en cualquier momento.**
 
 En la mayoría de los sistemas tradicionales, la base de datos solo almacena el **estado actual**. Si un usuario cambia su dirección de "Calle A" a "Calle B", el valor antiguo se sobrescribe y se pierde para siempre.
 
-**Event Sourcing** propone un paradigma diferente:
-> **El estado de la aplicación no se guarda; se deriva.**
 
 En lugar de almacenar "cómo están las cosas ahora", almacenamos **"todo lo que ha sucedido"** para llegar hasta aquí. La base de datos se convierte en un libro de historia inmutable (un *Ledger* contable) donde solo se permite añadir nuevas páginas, nunca borrar ni modificar las anteriores.
 
 ---
 
-## ■ Anatomía de una Transacción (Core Flow)
+## Anatomía de una Transacción (Core Flow)
 
 A continuación, detallamos el flujo técnico completo cuando se pulsa **"Generate New Event"**, indicando archivos y lógica clave.
 
@@ -57,7 +53,7 @@ A continuación, detallamos el flujo técnico completo cuando se pulsa **"Genera
 
 ---
 
-## ■ Gestión de Fallos (Resilience Strategy)
+## Gestión de Fallos (Resilience Strategy)
 
 ### ◇ Fallo en la Escritura (MongoDB)
 Si la base de datos de eventos falla, el Handler lanza una excepción y la petición del usuario devuelve un error. **Nada se ha guardado.** El sistema mantiene la integridad total.
@@ -72,7 +68,7 @@ Si falla la base de datos relacional:
 
 ---
 
-## ■ ¿Por qué usarlo? (Beneficios Estructurales)
+## ¿Por qué usarlo? (Beneficios Estructurales)
 
 *   **Auditoría Nativa**: La propia base de datos *es* la auditoría total.
 *   **Análisis Temporal**: Permite reconstruir el estado del sistema en cualquier punto del tiempo.
@@ -80,7 +76,7 @@ Si falla la base de datos relacional:
 
 ---
 
-## ■ Implementación Híbrida
+## Implementación Híbrida
 
 | Capa | Tecnología | Rol |
 | :--- | :--- | :--- |
@@ -89,7 +85,7 @@ Si falla la base de datos relacional:
 
 ---
 
-## ■ Preparado para la Asincronía (Async-Ready)
+## Preparado para la Asincronía (Async-Ready)
 
 Aunque en esta demo el procesamiento es síncrono para facilitar la visualización inmediata, la arquitectura está diseñada para escalar:
 
@@ -99,5 +95,5 @@ Aunque en esta demo el procesamiento es síncrono para facilitar la visualizaci�
 
 ---
 
-## ■ Optimización: Snapshots
+## Optimización: Snapshots
 Para sistemas con millones de eventos, implementamos **Snapshots** en MongoDB. Guardamos una "foto" del estado cada $N$ eventos para que la reconstrucción no tenga que leer toda la historia desde el inicio, sino solo desde la última foto.

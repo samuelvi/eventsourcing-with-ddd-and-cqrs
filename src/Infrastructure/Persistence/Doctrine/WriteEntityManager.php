@@ -27,14 +27,6 @@ final readonly class WriteEntityManager
         $this->entityManager->flush();
     }
 
-    /**
-     * Use sparingly, only when strict consistency is needed for business logic checks.
-     */
-    public function find(string $className, mixed $id): ?object
-    {
-        return $this->entityManager->find($className, $id);
-    }
-
     public function getRepository(string $className): \Doctrine\Persistence\ObjectRepository
     {
         return $this->entityManager->getRepository($className);

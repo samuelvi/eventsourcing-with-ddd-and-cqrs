@@ -8,4 +8,5 @@ interface ProductReadRepositoryInterface
 {
     public function findAllForList(): array;
     public function findById(int $id): ?array;
+    public function countAll(): int;
 }

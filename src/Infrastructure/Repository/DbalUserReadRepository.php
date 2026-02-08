@@ -24,4 +24,16 @@ final readonly class DbalUserReadRepository implements UserReadRepositoryInterfa
         $sql = 'SELECT * FROM users WHERE id = :id';
         return $this->entityManager->fetchOne($sql, ['id' => $id]);
     }
+
+    public function countAll(): int
+    {
+        $sql = 'SELECT COUNT(*) FROM users';
+        return (int) $this->entityManager->fetchOne($sql)['count'];
+    }
+
+    public function existsByEmail(string $email): bool
+    {
+        $sql = 'SELECT 1 FROM users WHERE email = :email LIMIT 1';
+        return (bool) $this->entityManager->fetchOne($sql, ['email' => $email]);
+    }
 }

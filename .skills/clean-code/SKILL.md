@@ -105,3 +105,16 @@ Use named constants.
 const STATUS_PENDING = 'pending';
 if ($order->status === STATUS_PENDING) { ... }
 ```
+
+## Architecture Mandates
+
+### 1. No EntityManager in Controllers
+**Strict Rule:** Controllers MUST NOT have any type of `EntityManager` (Doctrine, Read, Write, etc.) injected.
+- **Why:** Controllers should only handle HTTP concerns. DB logic belongs in Repositories or Application Services.
+- **Correct approach:** Inject a Repository for queries or an Application Service for complex logic.
+
+### 2. Named Constructors
+Use static factory methods instead of public constructors whenever possible to increase semantic clarity.
+
+### 3. Explicit Queries
+Follow the `doctrine-strict` skill: avoid magic methods like `find()` or `findBy()`. Use explicit QueryBuilder or DBAL calls in Repositories.

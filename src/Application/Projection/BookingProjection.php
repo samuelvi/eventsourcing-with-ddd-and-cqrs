@@ -8,7 +8,7 @@ use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\BookingEntity;
 use App\Domain\Model\ProjectionCheckpoint;
 use App\Domain\Repository\BookingWriteRepositoryInterface;
-use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
+use App\Domain\Repository\BookingReadRepositoryInterface;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
@@ -18,8 +18,8 @@ use Symfony\Contracts\Cache\CacheInterface;
 final readonly class BookingProjection
 {
     public function __construct(
-        private BookingWriteRepositoryInterface $bookingRepository,
-        private ReadEntityManager $readEntityManager,
+        private BookingWriteRepositoryInterface $bookingWriteRepository,
+        private BookingReadRepositoryInterface $bookingReadRepository,
         private MongoStore $mongoStore,
         private CacheInterface $cache,
     ) {}
@@ -33,12 +33,7 @@ final readonly class BookingProjection
         }
 
         // Idempotency check: Does this booking exist?
-        $exists = $this->readEntityManager->fetchOne(
-            'SELECT id FROM bookings WHERE id = :id',
-            ['id' => $event->bookingId]
-        );
-
-        if (!$exists) {
+        if (!$this->bookingReadRepository->exists($event->bookingId)) {
             $data = [
                 'pax' => $event->pax,
                 'budget' => $event->budget,
@@ -52,13 +47,13 @@ final readonly class BookingProjection
                 $event->occurredOn
             );
 
-            $this->bookingRepository->save($booking);
+            $this->bookingWriteRepository->save($booking);
         }
 
         // Update Checkpoint in Mongo
         $checkpoint = $this->mongoStore->findCheckpoint('booking_projection');
         if (!$checkpoint) {
-            $checkpoint = new ProjectionCheckpoint('booking_projection');
+            $checkpoint = ProjectionCheckpoint::create('booking_projection');
         }
         $checkpoint->update(Uuid::fromString($event->bookingId));
         $this->mongoStore->saveCheckpoint($checkpoint);

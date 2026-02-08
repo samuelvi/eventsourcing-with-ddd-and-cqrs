@@ -20,7 +20,7 @@ final class BookingWizardController extends AbstractController
         #[MapRequestPayload] BookingWizardDto $dto,
         MessageBusInterface $commandBus
     ): Response {
-        $commandBus->dispatch(new SubmitBookingWizardCommand(
+        $commandBus->dispatch(SubmitBookingWizardCommand::create(
             id: $dto->bookingId,
             pax: $dto->pax,
             budget: $dto->budget,

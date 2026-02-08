@@ -8,8 +8,8 @@ use App\Application\Command\SubmitBookingWizardCommand;
 use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\StoredEvent;
 use App\Domain\Model\Snapshot;
-use App\Infrastructure\Persistence\Doctrine\WriteEntityManager;
-use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
+use App\Domain\Repository\BookingReadRepositoryInterface;
+use App\Domain\Repository\UserReadRepositoryInterface;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -22,8 +22,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 final readonly class SubmitBookingWizardHandler
 {
     public function __construct(
-        private WriteEntityManager $entityManager,
-        private ReadEntityManager $readEntityManager,
+        private UserReadRepositoryInterface $userRepository,
+        private BookingReadRepositoryInterface $bookingRepository,
         private MongoStore $mongoStore,
         private MessageBusInterface $eventBus,
         private LockFactory $lockFactory,
@@ -52,7 +52,7 @@ final readonly class SubmitBookingWizardHandler
             $occurredOn = new \DateTimeImmutable();
 
             // 1. Create the Domain Event
-            $event = new BookingWizardCompleted(
+            $event = BookingWizardCompleted::occur(
                 bookingId: $aggregateId->toRfc4122(),
                 pax: $command->pax,
                 budget: $command->budget,
@@ -62,7 +62,7 @@ final readonly class SubmitBookingWizardHandler
             );
 
             // 2. Persist to Event Store (Mongo)
-            $storedEvent = new StoredEvent(
+            $storedEvent = StoredEvent::commit(
                 aggregateId: $aggregateId,
                 eventType: BookingWizardCompleted::class,
                 payload: [
@@ -73,7 +73,7 @@ final readonly class SubmitBookingWizardHandler
                     'clientEmail' => $command->clientEmail,
                     'occurredOn' => $occurredOn->format(\DateTimeInterface::ATOM)
                 ],
-                id: Uuid::v7()
+                occurredOn: $occurredOn
             );
 
             $this->mongoStore->saveEvent($storedEvent);
@@ -81,11 +81,10 @@ final readonly class SubmitBookingWizardHandler
             // --- AUTOMATIC SNAPSHOT LOGIC ---
             $eventCount = $this->mongoStore->countEvents();
             if ($eventCount > 0 && $eventCount % $this->snapshotThreshold === 0) {
-                $userCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM users')['count'];
-                $bookingCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM bookings')['count'];
+                $userCount = $this->userRepository->countAll();
+                $bookingCount = $this->bookingRepository->countAll();
 
-                $snapshot = new Snapshot(
-                    Uuid::v7(), 
+                $snapshot = Snapshot::take(
                     $aggregateId,
                     $eventCount,
                     ['users' => $userCount, 'bookings' => $bookingCount, 'auto' => true]

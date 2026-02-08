@@ -6,11 +6,21 @@ namespace App\Application\Command;
 
 final readonly class SubmitBookingWizardCommand
 {
-    public function __construct(
+    private function __construct(
         public string $id,
         public int $pax,
         public float $budget,
         public string $clientName,
         public string $clientEmail,
     ) {}
+
+    public static function create(
+        string $id,
+        int $pax,
+        float $budget,
+        string $clientName,
+        string $clientEmail
+    ): self {
+        return new self($id, $pax, $budget, $clientName, $clientEmail);
+    }
 }

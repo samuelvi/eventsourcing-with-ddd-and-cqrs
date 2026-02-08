@@ -1,0 +1,27 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Repository;
+
+use App\Domain\Repository\BookingReadRepositoryInterface;
+use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
+
+final readonly class DbalBookingReadRepository implements BookingReadRepositoryInterface
+{
+    public function __construct(
+        private ReadEntityManager $entityManager,
+    ) {}
+
+    public function countAll(): int
+    {
+        $sql = 'SELECT COUNT(*) FROM bookings';
+        return (int) $this->entityManager->fetchOne($sql)['count'];
+    }
+
+    public function exists(string $id): bool
+    {
+        $sql = 'SELECT 1 FROM bookings WHERE id = :id LIMIT 1';
+        return (bool) $this->entityManager->fetchOne($sql, ['id' => $id]);
+    }
+}

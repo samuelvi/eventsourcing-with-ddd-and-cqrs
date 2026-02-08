@@ -17,13 +17,16 @@ services:
     # Write Side
     App\Domain\Repository\UserWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineUserWriteRepository'
     App\Domain\Repository\ProductWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineProductWriteRepository'
+    App\Domain\Repository\SupplierWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineSupplierWriteRepository'
     App\Domain\Repository\MenuWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineMenuWriteRepository'
     App\Domain\Repository\BookingWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineBookingWriteRepository'
     
     # Read Side
     App\Domain\Repository\UserReadRepositoryInterface: '@App\Infrastructure\Repository\DbalUserReadRepository'
+    App\Domain\Repository\BookingReadRepositoryInterface: '@App\Infrastructure\Repository\DbalBookingReadRepository'
     App\Domain\Repository\SupplierReadRepositoryInterface: '@App\Infrastructure\Repository\DoctrineSupplierReadRepository'
     App\Domain\Repository\ProductReadRepositoryInterface: '@App\Infrastructure\Repository\DbalProductReadRepository'
+    App\Domain\Repository\MenuReadRepositoryInterface: '@App\Infrastructure\Repository\DbalMenuReadRepository'
 
     # --- Factories ---
     _instanceof:

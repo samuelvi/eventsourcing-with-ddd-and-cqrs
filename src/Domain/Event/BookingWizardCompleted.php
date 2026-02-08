@@ -14,4 +14,15 @@ final readonly class BookingWizardCompleted
         public string $clientEmail,
         public \DateTimeImmutable $occurredOn
     ) {}
+
+    public static function occur(
+        string $bookingId,
+        int $pax,
+        float $budget,
+        string $clientName,
+        string $clientEmail,
+        \DateTimeImmutable $occurredOn
+    ): self {
+        return new self($bookingId, $pax, $budget, $clientName, $clientEmail, $occurredOn);
+    }
 }

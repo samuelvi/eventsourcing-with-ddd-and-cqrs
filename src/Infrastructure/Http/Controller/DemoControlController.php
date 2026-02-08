@@ -4,17 +4,15 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Http\Controller;
 
-use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
-use App\Infrastructure\Persistence\Doctrine\WriteEntityManager;
-use App\Infrastructure\Persistence\Mongo\MongoStore;
+use App\Application\Service\ArchitectureControlService;
 use App\Domain\Model\Snapshot;
+use App\Domain\Repository\BookingReadRepositoryInterface;
+use App\Domain\Repository\UserReadRepositoryInterface;
+use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\KernelInterface;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -26,12 +24,10 @@ final class DemoControlController extends AbstractController
 
     public function __construct(
         private CacheInterface $cache,
-        private ReadEntityManager $readEntityManager,
-        private WriteEntityManager $writeEntityManager,
         private MongoStore $mongoStore,
-        private MessageBusInterface $eventBus,
-        private SerializerInterface $serializer,
-        private KernelInterface $kernel,
+        private UserReadRepositoryInterface $userRepository,
+        private BookingReadRepositoryInterface $bookingRepository,
+        private ArchitectureControlService $architectureService,
     ) {}
 
     #[Route('/api/demo/status', methods: ['GET'])]
@@ -72,44 +68,18 @@ final class DemoControlController extends AbstractController
     #[Route('/api/demo/rebuild', methods: ['POST'])]
     public function rebuild(): Response
     {
-        // 1. Force both toggles back to enabled for the rebuild process
-        $this->cache->delete(self::CACHE_KEY_MASTER);
-        $this->cache->get(self::CACHE_KEY_MASTER, fn() => true);
-        $this->cache->delete(self::CACHE_KEY_USER_PROJECTIONS);
-        $this->cache->get(self::CACHE_KEY_USER_PROJECTIONS, fn() => true);
-        $this->cache->delete(self::CACHE_KEY_BOOKING_PROJECTIONS);
-        $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true);
-
-        // 2. Clear SQL Read Models
-        $this->readEntityManager->execute('TRUNCATE users, bookings RESTART IDENTITY CASCADE');
-        
-        // 3. Clear Mongo Checkpoints (KEEP EVENTS)
-        $this->mongoStore->clearCheckpoints();
-
-        // 4. Fetch all events from Mongo
-        $events = $this->mongoStore->findEvents();
-
-        foreach ($events as $storedEvent) {
-            $event = $this->serializer->deserialize(
-                json_encode($storedEvent->payload),
-                $storedEvent->eventType,
-                'json'
-            );
-            $this->eventBus->dispatch($event);
-        }
-
-        return new JsonResponse(['status' => 'success', 'processed' => count($events)]);
+        $processedCount = $this->architectureService->rebuild();
+        return new JsonResponse(['status' => 'success', 'processed' => $processedCount]);
     }
 
     #[Route('/api/demo/stats', methods: ['GET'])]
     public function getStats(): Response
     {
         $eventCount = $this->mongoStore->countEvents();
-        $userCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM users')['count'];
-        $bookingCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM bookings')['count'];
+        $userCount = $this->userRepository->countAll();
+        $bookingCount = $this->bookingRepository->countAll();
         $snapshotCount = $this->mongoStore->countSnapshots();
 
-        // Get checkpoints from Mongo
         $checkpoints = $this->mongoStore->findAllCheckpoints();
         $checkpointsMap = [];
         foreach ($checkpoints as $cp) {
@@ -129,11 +99,10 @@ final class DemoControlController extends AbstractController
     public function snapshot(): Response
     {
         $eventCount = $this->mongoStore->countEvents();
-        $userCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM users')['count'];
-        $bookingCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM bookings')['count'];
+        $userCount = $this->userRepository->countAll();
+        $bookingCount = $this->bookingRepository->countAll();
 
-        $snapshot = new Snapshot(
-            Uuid::v7(), 
+        $snapshot = Snapshot::take(
             Uuid::v7(), // System aggregate ID for demo
             $eventCount,
             ['users' => $userCount, 'bookings' => $bookingCount, 'timestamp' => time()]
@@ -148,37 +117,7 @@ final class DemoControlController extends AbstractController
     public function reset(): Response
     {
         try {
-            // 1. Force everything back to enabled
-            $this->cache->delete(self::CACHE_KEY_MASTER);
-            $this->cache->delete(self::CACHE_KEY_USER_PROJECTIONS);
-            $this->cache->delete(self::CACHE_KEY_BOOKING_PROJECTIONS);
-
-            // 2. Clear SQL Tables (Aggressive + Identity Reset)
-            $this->readEntityManager->execute('TRUNCATE users, bookings, products, menus, suppliers RESTART IDENTITY CASCADE');
-
-            // 3. Clear Mongo (Events, Checkpoints, Snapshots)
-            $this->mongoStore->clearAll();
-
-            // 4. Load Fixtures via Console Application
-            $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($this->kernel);
-            $application->setAutoExit(false);
-            
-            $output = new \Symfony\Component\Console\Output\BufferedOutput();
-            $input = new \Symfony\Component\Console\Input\ArrayInput([
-                'command' => 'doctrine:fixtures:load',
-                '--no-interaction' => true,
-                '--append' => true, // Tables are already empty
-            ]);
-            
-            $exitCode = $application->run($input, $output);
-            
-            if ($exitCode !== 0) {
-                return new JsonResponse([
-                    'status' => 'error',
-                    'message' => 'Fixtures failed: ' . $output->fetch()
-                ], Response::HTTP_INTERNAL_SERVER_ERROR);
-            }
-
+            $this->architectureService->reset();
             return new JsonResponse(['status' => 'success']);
         } catch (\Exception $e) {
             return new JsonResponse([

@@ -23,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
 )]
 class ProjectionCheckpoint
 {
-    public function __construct(
+    private function __construct(
         #[Groups(['checkpoint:read'])]
         public readonly string $projectionName,
         #[Groups(['checkpoint:read'])]
@@ -32,10 +32,9 @@ class ProjectionCheckpoint
         public \DateTimeImmutable $updatedAt = new \DateTimeImmutable()
     ) {}
 
-    public function update(Uuid $eventId): void
+    public static function create(string $projectionName): self
     {
-        $this->lastEventId = $eventId;
-        $this->updatedAt = new \DateTimeImmutable();
+        return new self($projectionName);
     }
 
     public static function fromArray(array $data): self
@@ -45,6 +44,12 @@ class ProjectionCheckpoint
             $data['lastEventId'] ? Uuid::fromString($data['lastEventId']) : null,
             new \DateTimeImmutable($data['updatedAt'])
         );
+    }
+
+    public function update(Uuid $eventId): void
+    {
+        $this->lastEventId = $eventId;
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function toArray(): array

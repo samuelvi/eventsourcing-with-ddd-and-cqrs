@@ -23,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
 )]
 class Snapshot
 {
-    public function __construct(
+    private function __construct(
         #[Groups(['snapshot:read'])]
         public readonly Uuid $id,
         #[Groups(['snapshot:read'])]
@@ -35,6 +35,14 @@ class Snapshot
         #[Groups(['snapshot:read'])]
         public readonly \DateTimeImmutable $createdAt = new \DateTimeImmutable()
     ) {}
+
+    public static function take(
+        Uuid $aggregateId,
+        int $version,
+        array $state
+    ): self {
+        return new self(Uuid::v7(), $aggregateId, $version, $state);
+    }
 
     public static function fromArray(array $data): self
     {

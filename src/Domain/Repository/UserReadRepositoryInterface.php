@@ -15,4 +15,8 @@ interface UserReadRepositoryInterface
      * @return array{id: string, name: string, email: string}|null
      */
     public function findById(string $id): ?array;
+
+    public function countAll(): int;
+
+    public function existsByEmail(string $email): bool;
 }

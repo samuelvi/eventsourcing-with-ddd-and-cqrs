@@ -24,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
 )]
 class StoredEvent
 {
-    public function __construct(
+    private function __construct(
         #[Groups(['event:read'])]
         public readonly Uuid $aggregateId,
         #[Groups(['event:read'])]
@@ -38,6 +38,23 @@ class StoredEvent
         #[Groups(['event:read'])]
         public readonly \DateTimeImmutable $occurredOn = new \DateTimeImmutable()
     ) {}
+
+    public static function commit(
+        Uuid $aggregateId,
+        string $eventType,
+        array $payload,
+        int $version = 1,
+        ?\DateTimeImmutable $occurredOn = null
+    ): self {
+        return new self(
+            $aggregateId,
+            $eventType,
+            $payload,
+            Uuid::v7(),
+            $version,
+            $occurredOn ?? new \DateTimeImmutable()
+        );
+    }
 
     public static function fromArray(array $data): self
     {

@@ -30,6 +30,13 @@ make init
 *   **Adminer (Postgres Mgmt):** [http://localhost:8081/](http://localhost:8081/)
 *   **Mongo Express (Mongo Mgmt):** [http://localhost:8082/](http://localhost:8082/)
 
+#### 🔄 Importing n8n Workflow
+To visualize the automation flow:
+1.  Open n8n at [http://localhost:5678/](http://localhost:5678/).
+2.  Create a new workflow.
+3.  Click on the top-right menu (three dots) and select **"Import from File"**.
+4.  Select the `n8n_workflow.json` file located in the root of this project.
+
 #### 🗄️ Dev Database Credentials (Adminer)
 *   **System:** `PostgreSQL`
 *   **Server:** `postgres-db`

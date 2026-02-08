@@ -19,7 +19,9 @@ use Symfony\Contracts\Cache\ItemInterface;
 
 final class DemoControlController extends AbstractController
 {
-    private const CACHE_KEY = 'demo_projections_enabled';
+    private const CACHE_KEY_MASTER = 'demo_projections_enabled';
+    private const CACHE_KEY_USER_PROJECTIONS = 'demo_user_projections_enabled';
+    private const CACHE_KEY_BOOKING_PROJECTIONS = 'demo_booking_projections_enabled';
 
     public function __construct(
         private CacheInterface $cache,
@@ -33,31 +35,55 @@ final class DemoControlController extends AbstractController
     #[Route('/api/demo/status', methods: ['GET'])]
     public function getStatus(): Response
     {
-        $enabled = $this->cache->get(self::CACHE_KEY, fn() => true);
+        $masterEnabled = $this->cache->get(self::CACHE_KEY_MASTER, fn() => true);
+        $userEnabled = $this->cache->get(self::CACHE_KEY_USER_PROJECTIONS, fn() => true);
+        $bookingEnabled = $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true);
         
-        return new JsonResponse(['projectionsEnabled' => $enabled]);
+        return new JsonResponse([
+            'projectionsEnabled' => $masterEnabled,
+            'userProjectionsEnabled' => $userEnabled,
+            'bookingProjectionsEnabled' => $bookingEnabled
+        ]);
     }
 
-    #[Route('/api/demo/toggle', methods: ['POST'])]
-    public function toggle(): Response
+    #[Route('/api/demo/toggle/{type}', methods: ['POST'])]
+    public function toggle(string $type): Response
     {
-        // 1. Get current value (default true)
-        $current = $this->cache->get(self::CACHE_KEY, fn() => true);
+        $key = match($type) {
+            'master' => self::CACHE_KEY_MASTER,
+            'user' => self::CACHE_KEY_USER_PROJECTIONS,
+            'booking' => self::CACHE_KEY_BOOKING_PROJECTIONS,
+            default => throw new \InvalidArgumentException('Invalid type')
+        };
+        
+        $current = $this->cache->get($key, fn() => true);
         $newValue = !$current;
 
-        // 2. Clear and set new value
-        $this->cache->delete(self::CACHE_KEY);
-        $this->cache->get(self::CACHE_KEY, fn() => $newValue);
+        $this->cache->delete($key);
+        $this->cache->get($key, fn() => $newValue);
 
-        return new JsonResponse(['projectionsEnabled' => $newValue]);
+        return new JsonResponse([
+            ($type === 'master' ? 'projectionsEnabled' : ($type . 'ProjectionsEnabled')) => $newValue
+        ]);
     }
 
     #[Route('/api/demo/rebuild', methods: ['POST'])]
     public function rebuild(): Response
     {
+        // 1. Force both toggles back to enabled for the rebuild process
+        $this->cache->delete(self::CACHE_KEY_MASTER);
+        $this->cache->get(self::CACHE_KEY_MASTER, fn() => true);
+        $this->cache->delete(self::CACHE_KEY_USER_PROJECTIONS);
+        $this->cache->get(self::CACHE_KEY_USER_PROJECTIONS, fn() => true);
+        $this->cache->delete(self::CACHE_KEY_BOOKING_PROJECTIONS);
+        $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true);
+
+        // 2. Clear tables
         $this->readEntityManager->fetchOne('TRUNCATE users CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE bookings CASCADE');
+        $this->readEntityManager->fetchOne('TRUNCATE projection_checkpoints CASCADE');
 
+        // 3. Fetch all events
         $events = $this->writeEntityManager->getRepository(StoredEvent::class)->findBy([], ['occurredOn' => 'ASC']);
 
         foreach ($events as $storedEvent) {
@@ -79,22 +105,39 @@ final class DemoControlController extends AbstractController
         $userCount = $this->readEntityManager->fetchOne('SELECT COUNT(*) FROM users')['count'];
         $bookingCount = $this->readEntityManager->fetchOne('SELECT COUNT(*) FROM bookings')['count'];
 
+        // Get checkpoints for display
+        $checkpoints = $this->readEntityManager->query('SELECT projection_name, last_event_id FROM projection_checkpoints');
+        $checkpointsMap = [];
+        foreach ($checkpoints as $cp) {
+            $checkpointsMap[$cp['projection_name']] = $cp['last_event_id'];
+        }
+
         return new JsonResponse([
             'events' => (int)$eventCount,
             'users' => (int)$userCount,
-            'bookings' => (int)$bookingCount
+            'bookings' => (int)$bookingCount,
+            'checkpoints' => $checkpointsMap
         ]);
     }
 
     #[Route('/api/demo/reset', methods: ['POST'])]
     public function reset(): Response
     {
-        $this->cache->delete(self::CACHE_KEY);
-        $this->cache->get(self::CACHE_KEY, fn() => true);
+        $this->cache->delete(self::CACHE_KEY_MASTER);
+        $this->cache->get(self::CACHE_KEY_MASTER, fn() => true);
+        $this->cache->delete(self::CACHE_KEY_USER_PROJECTIONS);
+        $this->cache->get(self::CACHE_KEY_USER_PROJECTIONS, fn() => true);
+        $this->cache->delete(self::CACHE_KEY_BOOKING_PROJECTIONS);
+        $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true);
 
+        // Brutal Clean (Truncate ALL tables in the correct order)
         $this->readEntityManager->fetchOne('TRUNCATE users CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE bookings CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE event_store CASCADE');
+        $this->readEntityManager->fetchOne('TRUNCATE projection_checkpoints CASCADE');
+        $this->readEntityManager->fetchOne('TRUNCATE products CASCADE');
+        $this->readEntityManager->fetchOne('TRUNCATE suppliers CASCADE');
+        $this->readEntityManager->fetchOne('TRUNCATE menus CASCADE');
 
         $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($this->kernel);
         $application->setAutoExit(false);
@@ -102,7 +145,6 @@ final class DemoControlController extends AbstractController
         $input = new \Symfony\Component\Console\Input\ArrayInput([
             'command' => 'doctrine:fixtures:load',
             '--no-interaction' => true,
-            '--append' => true,
         ]);
 
         $application->run($input, new \Symfony\Component\Console\Output\NullOutput());

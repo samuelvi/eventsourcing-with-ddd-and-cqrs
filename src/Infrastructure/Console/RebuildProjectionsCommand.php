@@ -40,7 +40,8 @@ final class RebuildProjectionsCommand extends Command
         // We use raw SQL to truncate to avoid ORM overhead and issues with foreign keys if any
         $this->readEntityManager->fetchOne('TRUNCATE users CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE bookings CASCADE');
-        $io->success('Read models cleared.');
+        $this->readEntityManager->fetchOne('TRUNCATE projection_checkpoints CASCADE');
+        $io->success('Read models and checkpoints cleared.');
 
         // 2. Fetch Events
         $io->section('Replaying Events...');

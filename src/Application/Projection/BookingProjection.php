@@ -6,19 +6,30 @@ namespace App\Application\Projection;
 
 use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\BookingEntity;
+use App\Domain\Model\ProjectionCheckpoint;
 use App\Domain\Repository\BookingWriteRepositoryInterface;
+use App\Infrastructure\Persistence\Doctrine\WriteEntityManager;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Cache\CacheInterface;
 
 #[AsMessageHandler]
 final readonly class BookingProjection
 {
     public function __construct(
         private BookingWriteRepositoryInterface $bookingRepository,
+        private WriteEntityManager $writeEntityManager,
+        private CacheInterface $cache,
     ) {}
 
     public function __invoke(BookingWizardCompleted $event): void
     {
+        // DEMO MODE: Check if booking projections are enabled
+        $enabled = $this->cache->get('demo_booking_projections_enabled', fn() => true);
+        if (!$enabled) {
+            return;
+        }
+
         $data = [
             'pax' => $event->pax,
             'budget' => $event->budget,
@@ -26,12 +37,6 @@ final readonly class BookingProjection
             'clientEmail' => $event->clientEmail,
         ];
 
-        // BookingEntity does not use NamedConstructorTrait in the previous step? 
-        // Let's verify. I created it without it. Let's fix it or use new if public.
-        // I created it with public __construct. Let's stick to standard new for read model projection
-        // or update it to match the rest. Ideally consistence.
-        // Let's assume public construct for now to avoid re-editing file.
-        
         $booking = new BookingEntity(
             Uuid::fromString($event->bookingId),
             $data,
@@ -39,5 +44,14 @@ final readonly class BookingProjection
         );
 
         $this->bookingRepository->save($booking);
+
+        // Update Checkpoint
+        $checkpoint = $this->writeEntityManager->find(ProjectionCheckpoint::class, 'booking_projection');
+        if (!$checkpoint) {
+            $checkpoint = new ProjectionCheckpoint('booking_projection');
+            $this->writeEntityManager->persist($checkpoint);
+        }
+        $checkpoint->update(Uuid::fromString($event->bookingId));
+        $this->writeEntityManager->flush();
     }
 }

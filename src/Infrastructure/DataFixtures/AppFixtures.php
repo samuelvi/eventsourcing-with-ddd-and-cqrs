@@ -7,7 +7,6 @@ namespace App\Infrastructure\DataFixtures;
 use App\Domain\Model\MenuEntity;
 use App\Domain\Model\ProductEntity;
 use App\Domain\Model\SupplierEntity;
-use App\Domain\Model\UserEntity;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 
@@ -15,18 +14,7 @@ final class AppFixtures extends Fixture
 {
     public function load(ObjectManager $manager): void
     {
-        // 1. Create Test Users
-        $users = [
-            ['name' => 'John Doe', 'email' => 'john@example.com'],
-            ['name' => 'Jane Smith', 'email' => 'jane@example.com'],
-        ];
-
-        foreach ($users as $userData) {
-            $user = UserEntity::create($userData['name'], $userData['email']);
-            $manager->persist($user);
-        }
-
-        // 2. Create Suppliers and their Menus/Products
+        // 1. Create Suppliers and their Menus/Products
         $supplierNames = [
             'Gourmet Catering Co.',
             'Street Food Masters',

@@ -58,6 +58,7 @@ final readonly class SubmitBookingWizardHandler
             );
 
             // 2. Persist to Event Store (Source of Truth)
+            // ALWAYS save the event, this is the core of Event Sourcing
             $storedEvent = new StoredEvent(
                 aggregateId: $aggregateId,
                 eventType: BookingWizardCompleted::class,
@@ -72,12 +73,7 @@ final readonly class SubmitBookingWizardHandler
             );
 
             $this->entityManager->persist($storedEvent);
-            
-            // DEMO MODE: Skip persisting to Event Store if disabled
-            $eventStoreEnabled = $this->cache->get('demo_event_store_enabled', fn() => true);
-            if ($eventStoreEnabled) {
-                $this->entityManager->flush();
-            }
+            $this->entityManager->flush();
 
             // 3. Dispatch to Async Bus (for Projections)
             // DEMO MODE: Skip dispatch if projections are disabled to simulate failure

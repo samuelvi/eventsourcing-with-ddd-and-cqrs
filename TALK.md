@@ -1,75 +1,73 @@
-# Event Sourcing & CQRS: Technical Reference Guide
+# Event Sourcing: The Architecture of Truth
 
-Esta guía detalla la implementación de la arquitectura de Event Sourcing y CQRS aplicada en este proyecto, cubriendo desde los fundamentos hasta la estrategia de persistencia híbrida.
-
----
-
-## ■ El Concepto: Estado vs. Historia
-En una aplicación tradicional (CRUD), el estado actual es el único registro. En Event Sourcing, el estado es una función del tiempo.
-*   **Hechos Inmutables**: Cada cambio de estado se registra como un evento atómico e inalterable.
-*   **Auditoría Nativa**: La trazabilidad no es un añadido, es el núcleo del sistema.
-*   **Flexibilidad Evolutiva**: Permite proyectar nuevos modelos de datos a partir de eventos históricos sin pérdida de información.
+Esta guía técnica explora los fundamentos y la implementación de una arquitectura basada en eventos, utilizando este proyecto como referencia práctica.
 
 ---
 
-## ■ Arquitectura de Persistencia Híbrida
+## ■ ¿Qué es Event Sourcing?
 
-Hemos optado por un enfoque Multi-DB para maximizar la especialización de cada motor:
+En la mayoría de los sistemas tradicionales, la base de datos solo almacena el **estado actual**. Si un usuario cambia su dirección de "Calle A" a "Calle B", el valor antiguo se sobrescribe y se pierde para siempre.
 
-| Capa | Motor | Propósito |
+**Event Sourcing** propone un paradigma diferente:
+> **El estado de la aplicación no se guarda; se deriva.**
+
+En lugar de almacenar "cómo están las cosas ahora", almacenamos **"todo lo que ha sucedido"** para llegar hasta aquí. La base de datos se convierte en un libro de historia inmutable (un *Ledger* contable) donde solo se permite añadir nuevas páginas, nunca borrar ni modificar las anteriores.
+
+### Conceptos Fundamentales
+
+1.  **El Evento (The Fact)**: Representa algo que *ya ha sucedido* en el dominio. Es inmutable y se nombra en pasado (ej: `BookingCompleted`).
+2.  **Event Store**: La base de datos especializada (en este caso, MongoDB) que actúa como la única fuente de verdad (*Source of Truth*).
+3.  **Proyección**: Una vista interpretada de la historia, optimizada para responder preguntas específicas (ej: una tabla SQL de usuarios).
+
+---
+
+## ■ ¿Por qué usarlo? (Beneficios Estructurales)
+
+*   **Auditoría Nativa**: No necesitas logs de auditoría separados. La propia base de datos *es* la auditoría. Puedes saber exactamente qué pasó, cuándo y por qué.
+*   **Análisis Temporal**: Permite viajar en el tiempo. Puedes reconstruir el estado del sistema tal y como estaba el "martes pasado a las 10:00".
+*   **Flexibilidad de Negocio**: Si el negocio cambia y necesita nuevos informes, puedes proyectar la historia pasada en nuevos modelos de datos sin perder información.
+
+---
+
+## ■ Implementación Híbrida (Hybrid Persistence)
+
+Este proyecto implementa Event Sourcing utilizando una estrategia de persistencia políglota para maximizar el rendimiento:
+
+| Componente | Tecnología | Rol en Event Sourcing |
 | :--- | :--- | :--- |
-| **Write Side (Event Store)** | **MongoDB** | Alta disponibilidad de escritura, documentos JSON nativos y flexibilidad de esquema. |
-| **Read Side (Projections)** | **PostgreSQL** | Integridad referencial, consultas SQL complejas y optimización para la UI. |
-| **Technical State** | **MongoDB** | Almacenamiento de *Checkpoints* y *Snapshots* técnicos. |
+| **Event Store** | **MongoDB** | Almacena la secuencia de eventos como documentos JSON inmutables. Ideal por su flexibilidad de esquema. |
+| **Read Models** | **PostgreSQL** | Almacena las proyecciones (el estado actual) para consultas rápidas y relacionales. |
+
+### El Rol de CQRS
+Aunque el foco es Event Sourcing, utilizamos el patrón **CQRS** (Command Query Responsibility Segregation) como facilitador natural. Separamos el modelo de escritura (MongoDB) del modelo de lectura (PostgreSQL) para que las consultas de la UI no impacten en la ingesta de eventos.
 
 ---
 
-## ■ Implementación del Flujo de Datos
+## ■ Ciclo de Vida del Dato
 
-### → Fase 1: Captura de la Verdad (Write Side)
-El sistema garantiza que el evento se persista antes de cualquier efecto secundario. La identidad es generada por el cliente (UUID v7) para asegurar idempotencia total.
+### → 1. Captura del Hecho
+El sistema recibe una intención (Comando), la valida y genera un Evento. Este evento se persiste inmediatamente en MongoDB.
+*   *Identidad*: Generada por el cliente (UUID v7) para garantizar unicidad global.
+*   *Garantía*: Una vez el evento está en Mongo, el hecho es irrevocable.
 
-```php
-// Ejemplo de persistencia de hecho inmutable
-$storedEvent = new StoredEvent(
-    $aggregateId,
-    BookingWizardCompleted::class,
-    $payload
-);
-$this->mongoStore->saveEvent($storedEvent);
-```
-
-### → Fase 2: Proyecciones Asíncronas (Read Side)
-Los proyectores reaccionan a los eventos para actualizar los modelos de lectura. Cada proyector es independiente, permitiendo fallos aislados sin corromper la verdad absoluta.
-
-```php
-// Ejemplo de proyección idempotente
-$exists = $this->readRepository->findById($event->id);
-if (!$exists) {
-    $this->writeRepository->save(new BookingEntity(...));
-}
-$this->checkpoint->update($event->id);
-```
+### → 2. Proyección Asíncrona
+Una vez guardado, el evento se publica. Los "Proyectores" escuchan estos eventos y actualizan las tablas de PostgreSQL.
+*   *Idempotencia*: Cada proyector verifica si ya ha procesado ese evento para evitar duplicados.
+*   *Aislamiento*: Si un proyector falla, el evento sigue seguro en Mongo. El sistema es eventualmente consistente.
 
 ---
 
-## ■ Gestión de Fallos y Resiliencia
+## ■ Resiliencia y Recuperación (Self-Healing)
 
-### ◇ Desincronización de Proyecciones
-Al no ser una transacción única, una proyección puede quedar atrás respecto al Event Store. El sistema utiliza **Checkpoints** para monitorizar este desfase en tiempo real.
+La mayor ventaja operativa de Event Sourcing es la capacidad de **reconstrucción**.
 
-### ◇ Reconstrucción (Self-Healing)
-La recuperación ante desastres o la corrupción de los modelos de lectura se resuelve mediante el proceso de **Rebuild**:
-1.  Truncado de las tablas de lectura (Postgres) con reinicio de identidades.
-2.  Reset de los Checkpoints técnicos en MongoDB.
-3.  Replay secuencial de la historia desde MongoDB hacia los proyectores.
+### ◇ El Proceso de Replay
+Si las tablas de lectura (Postgres) se corrompen o se borran, el sistema puede regenerarlas desde cero:
+1.  Se vacían las tablas SQL.
+2.  Se leen todos los eventos desde el principio de los tiempos en MongoDB.
+3.  Se re-ejecuta la lógica de proyección en orden secuencial.
 
----
+Este mecanismo convierte a la base de datos relacional en una "caché desechable" de la verdad, reduciendo drásticamente el riesgo de pérdida de datos.
 
-## ■ Optimización: Snapshots
-Para evitar que el Replay de miles de eventos penalice el tiempo de recuperación, el sistema genera **Snapshots** automáticos cada N eventos. Esto permite inicializar el estado desde una captura reciente y solo procesar los deltas posteriores.
-
----
-
-## ■ Conclusión Técnica
-Esta arquitectura sacrifica la simplicidad inicial por una robustez empresarial superior, permitiendo escalar las lecturas de forma independiente y garantizando que el historial de negocio sea el activo más valioso del sistema.
+### ◇ Snapshots
+Para optimizar el rendimiento en sistemas con millones de eventos, implementamos **Snapshots**. Periódicamente, guardamos una "foto" del estado actual en MongoDB. Al recuperar un objeto, cargamos la foto más reciente y solo aplicamos los eventos ocurridos desde entonces.

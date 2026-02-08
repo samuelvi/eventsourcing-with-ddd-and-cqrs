@@ -47,8 +47,8 @@ function App() {
                 border: 'none', 
                 cursor: 'pointer', 
                 borderRadius: '8px',
-                color: page === target ? '#6366f1' : '#6b7280',
-                backgroundColor: page === target ? '#eef2ff' : 'transparent',
+                color: page === target ? '#111827' : '#6b7280',
+                backgroundColor: page === target ? '#f3f4f6' : 'transparent',
                 fontWeight: page === target ? 600 : 500,
                 transition: 'all 0.2s',
                 fontSize: '14px'
@@ -92,7 +92,7 @@ function App() {
                                 onClick={() => navigateTo('wizard')}
                                 style={{ 
                                     padding: '12px 24px', 
-                                    backgroundColor: '#6366f1', 
+                                    backgroundColor: '#111827', 
                                     color: 'white', 
                                     border: 'none', 
                                     borderRadius: '10px', 
@@ -101,8 +101,7 @@ function App() {
                                     fontWeight: 600,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '8px',
-                                    boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.4)'
+                                    gap: '8px'
                                 }}
                             >
                                 Start Wizard <Icons.ArrowRight />
@@ -112,7 +111,7 @@ function App() {
                                 style={{ 
                                     padding: '12px 24px', 
                                     backgroundColor: '#fff', 
-                                    color: '#4b5563', 
+                                    color: '#111827', 
                                     border: '1px solid #e5e7eb', 
                                     borderRadius: '10px', 
                                     cursor: 'pointer',
@@ -120,7 +119,7 @@ function App() {
                                     fontWeight: 600
                                 }}
                             >
-                                Watch Demo Flow
+                                Open Architecture Monitor
                             </button>
                         </div>
 
@@ -131,7 +130,7 @@ function App() {
                                 { t: 'Instant Recovery', d: 'Rebuild your entire system from history.' }
                             ].map((f, i) => (
                                 <div key={i} style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
-                                    <div style={{ color: '#6366f1', marginBottom: '12px' }}><Icons.CheckCircle /></div>
+                                    <div style={{ color: '#111827', marginBottom: '12px' }}><Icons.CheckCircle /></div>
                                     <h4 style={{ margin: '0 0 8px', fontWeight: 700 }}>{f.t}</h4>
                                     <p style={{ margin: 0, color: '#6b7280', fontSize: '14px', lineHeight: '1.5' }}>{f.d}</p>
                                 </div>

@@ -73,22 +73,10 @@ init: dev-down dev-build dev-up
 
 
 # Ejecutar tests funcionales
-
-
-
 test:
-
-
-
 	$(DOCKER_COMPOSE_DEV) exec -T -e APP_ENV=test symfony-api bin/console doctrine:database:create --if-not-exists
-
-
-
 	$(DOCKER_COMPOSE_DEV) exec -T -e APP_ENV=test symfony-api bin/console doctrine:schema:update --force
-
-
-
-	$(DOCKER_COMPOSE_DEV) exec -T -e APP_ENV=test symfony-api bin/phpunit
+	$(DOCKER_COMPOSE_DEV) exec -T -e APP_ENV=test -e SYMFONY_DEPRECATIONS_HELPER=disabled symfony-api bin/phpunit
 
 
 

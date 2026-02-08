@@ -81,8 +81,7 @@ final class DemoControlController extends AbstractController
         $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true);
 
         // 2. Clear SQL Read Models
-        $this->readEntityManager->execute('TRUNCATE users CASCADE');
-        $this->readEntityManager->execute('TRUNCATE bookings CASCADE');
+        $this->readEntityManager->execute('TRUNCATE users, bookings RESTART IDENTITY CASCADE');
         
         // 3. Clear Mongo Checkpoints (KEEP EVENTS)
         $this->mongoStore->clearCheckpoints();

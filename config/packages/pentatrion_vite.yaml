@@ -1,0 +1,4 @@
+pentatrion_vite:
+    builds:
+        app:
+            build_directory: build

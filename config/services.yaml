@@ -1,0 +1,46 @@
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Domain/Model/'
+            - '../src/Kernel.php'
+
+    # --- Domain Repositories Bindings ---
+    
+    # Write Side
+    App\Domain\Repository\UserWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineUserWriteRepository'
+    App\Domain\Repository\ProductWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineProductWriteRepository'
+    App\Domain\Repository\MenuWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineMenuWriteRepository'
+    App\Domain\Repository\BookingWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineBookingWriteRepository'
+    
+    # Read Side
+    App\Domain\Repository\UserReadRepositoryInterface: '@App\Infrastructure\Repository\DbalUserReadRepository'
+    App\Domain\Repository\SupplierReadRepositoryInterface: '@App\Infrastructure\Repository\DoctrineSupplierReadRepository'
+    App\Domain\Repository\ProductReadRepositoryInterface: '@App\Infrastructure\Repository\DbalProductReadRepository'
+
+    # --- Factories ---
+    _instanceof:
+        App\Domain\Service\ProductDetailFactoryInterface:
+            tags: ['app.product_detail_factory']
+
+    # --- Infrastructure Services ---
+    
+    App\Infrastructure\Persistence\Doctrine\ReadEntityManager:
+        arguments:
+            $connection: '@doctrine.dbal.default_connection'
+
+    App\Infrastructure\Persistence\Doctrine\WriteEntityManager:
+        arguments:
+            $entityManager: '@doctrine.orm.default_entity_manager'
+
+    # --- Application Handlers ---
+    App\Application\Handler\:
+        resource: '../src/Application/Handler'
+        tags: ['messenger.message_handler']

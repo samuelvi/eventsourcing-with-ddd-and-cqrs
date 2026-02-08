@@ -1,0 +1,17 @@
+infrastructure_controllers:
+    resource:
+        path: ../src/Infrastructure/Http/Controller/
+        namespace: App\Infrastructure\Http\Controller
+    type: attribute
+
+api_platform:
+    resource: .
+    type: api_platform
+    prefix: /api
+
+swagger_redirect:
+    path: /swagger
+    controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController::urlRedirectAction
+    defaults:
+        path: /
+        permanent: true

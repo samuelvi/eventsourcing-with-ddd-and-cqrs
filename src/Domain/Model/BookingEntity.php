@@ -1,0 +1,44 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Model;
+
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Uid\Uuid;
+
+#[ORM\Entity]
+#[ORM\Table(name: 'bookings')]
+#[ApiResource(
+    operations: [
+        new Get(uriTemplate: '/bookings/{id}'),
+        new GetCollection(uriTemplate: '/bookings')
+    ],
+    normalizationContext: ['groups' => ['booking:read']]
+)]
+class BookingEntity
+{
+    #[ORM\Id]
+    #[ORM\Column(type: 'uuid', unique: true)]
+    #[Groups(['booking:read'])]
+    public private(set) Uuid $id;
+
+    #[ORM\Column]
+    #[Groups(['booking:read'])]
+    public \DateTimeImmutable $createdAt;
+
+    #[ORM\Column(type: 'json')]
+    #[Groups(['booking:read'])]
+    public array $data;
+
+    public function __construct(Uuid $id, array $data, \DateTimeImmutable $createdAt)
+    {
+        $this->id = $id;
+        $this->data = $data;
+        $this->createdAt = $createdAt;
+    }
+}

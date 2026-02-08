@@ -1,0 +1,17 @@
+api_platform:
+    title: 'n8n POC API'
+    version: '1.0.0'
+    mapping:
+        paths: 
+            - '%kernel.project_dir%/src/Domain/Model'
+            - '%kernel.project_dir%/src/Application/Dto'
+    formats:
+        jsonld: ['application/ld+json']
+        json: ['application/json']
+        html: ['text/html']
+    defaults:
+        stateless: true
+        cache_headers:
+            max_age: 60
+            shared_max_age: 3600
+            vary: ['Content-Type', 'Authorization']

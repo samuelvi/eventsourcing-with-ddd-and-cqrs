@@ -28,6 +28,7 @@ make init
 ### ⚙️ Automation & Tools
 *   **n8n Workflow Tool:** [http://localhost:5678/](http://localhost:5678/)
 *   **Adminer (Postgres Mgmt):** [http://localhost:8081/](http://localhost:8081/)
+*   **Mongo Express (Mongo Mgmt):** [http://localhost:8082/](http://localhost:8082/) (Credentials: user/password)
 
 ## 🏗️ Architecture: Enterprise-Grade Hybrid
 *   **DDD (Domain-Driven Design):** Strict separation of layers (Domain, Application, Infrastructure).

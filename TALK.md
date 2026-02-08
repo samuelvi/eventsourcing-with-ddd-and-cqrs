@@ -17,61 +17,77 @@ En lugar de almacenar "cómo están las cosas ahora", almacenamos **"todo lo que
 
 ## ■ Anatomía de una Transacción (Core Flow)
 
-A continuación, detallamos el ciclo de vida completo de la operación **"Generate New Event"**, desde la interfaz de usuario hasta la persistencia física.
+A continuación, detallamos el flujo técnico completo cuando se pulsa **"Generate New Event"**, indicando archivos y lógica clave.
 
-### 1. Intención del Usuario (Frontend)
-El usuario hace clic en el botón. El frontend genera un ID único (UUID v4) y envía un payload JSON a la API.
-*   **Seguridad**: El ID generado por el cliente garantiza la **idempotencia**. Si la red falla y el usuario reintenta, el servidor sabrá que es la misma petición.
+### 1. Desencadenante (Frontend)
+*   **Archivo**: `assets/pages/DemoFlow.tsx`
+*   **Acción**: El usuario pulsa el botón. Se genera un `bookingId` mediante `uuidv4()` y se envía un `POST` a la API.
+*   **Clave**: La identidad nace en el cliente, permitiendo reintentos seguros (idempotencia).
 
-### 2. Recepción y Bloqueo (Handler)
-El `SubmitBookingWizardHandler` recibe el comando.
-*   **Locking**: Se adquiere un bloqueo distribuido (`LockFactory`) sobre el ID para evitar condiciones de carrera.
-*   **Validación**: Se consulta a `MongoStore` si el `aggregateId` ya existe. Si existe, se detiene el proceso (Idempotencia).
+### 2. Punto de Entrada (Controller)
+*   **Archivo**: `src/Infrastructure/Http/Controller/BookingWizardController.php`
+*   **Método**: `__invoke`
+*   **Lógica**: Recibe el payload y despacha un comando interno (`SubmitBookingWizardCommand`).
 
-### 3. Generación del Hecho (Domain)
-Se instancia el objeto de dominio `BookingWizardCompleted`. Este objeto es puro, inmutable y representa la "verdad".
-*   **Persistencia**: El handler envuelve este evento en un `StoredEvent` y llama a `MongoStore::saveEvent()`.
-*   **Commit**: En este milisegundo, el evento se escribe en **MongoDB**. El negocio está a salvo.
+### 3. El Corazón del Flujo (Handler)
+*   **Archivo**: `src/Application/Handler/SubmitBookingWizardHandler.php`
+*   **Método**: `__invoke`
+*   **Pasos Críticos**:
+    1.  **Locking**: Bloquea el ID para evitar procesamientos duplicados simultáneos.
+    2.  **Idempotency Check**: `mongoStore->findEventByAggregateId($id)` verifica si el hecho ya existe.
+    3.  **Persistence**: Crea un `StoredEvent` y lo guarda en MongoDB.
+    ```php
+    // Persistencia del Hecho (La Verdad Inmutable)
+    $this->mongoStore->saveEvent($storedEvent);
+    ```
+    4.  **Event Dispatch**: Una vez guardado en Mongo, se despacha el evento de dominio al bus asíncrono para las proyecciones.
 
-### 4. Efectos Secundarios (Projections)
-Una vez asegurada la escritura en Mongo, el evento se despacha al bus asíncrono (`EventBus`).
-*   **UserProjection**: Escucha el evento. Verifica en **PostgreSQL** si el usuario ya existe (`fetchOne`). Si no, lo crea (`INSERT`).
-*   **BookingProjection**: Verifica si la reserva existe. Si no, la inserta.
-*   **Checkpoint**: Cada proyector actualiza su "marcapáginas" en la colección `checkpoints` de Mongo, indicando qué evento acaba de procesar.
+### 4. Actualización de Vistas (Projections)
+*   **Archivos**: `src/Application/Projection/UserProjection.php` y `BookingProjection.php`
+*   **Método**: `__invoke`
+*   **Lógica**:
+    1.  Verifican en **PostgreSQL** si el registro ya existe (idempotencia en lectura).
+    2.  Actualizan la tabla SQL (`INSERT`).
+    3.  Actualizan el **Checkpoint** en MongoDB para marcar el progreso técnico.
+    ```php
+    // Registro de progreso técnico
+    $checkpoint->update(Uuid::fromString($event->bookingId));
+    $this->mongoStore->saveCheckpoint($checkpoint);
+    ```
 
-### 5. Gestión de Fallos (Failure Handling)
-*   **Si falla Mongo**: La transacción se aborta antes de emitir nada. El usuario recibe un error 500 limpio.
-*   **Si falla Postgres**: El evento *ya está guardado* en Mongo. El sistema es consistente, pero la vista está desactualizada. El mecanismo de **Replay** recuperará la sincronización automáticamente cuando el servicio vuelva a estar online.
+---
+
+## ■ Gestión de Fallos (Resilience Strategy)
+
+### ◇ Fallo en la Escritura (MongoDB)
+Si la base de datos de eventos falla, el Handler lanza una excepción y la petición del usuario devuelve un error. **Nada se ha guardado.** El sistema mantiene la integridad total.
+
+### ◇ Fallo en la Proyección (PostgreSQL)
+Si falla la base de datos relacional:
+1.  **El hecho ya es seguro**: MongoDB tiene guardado el evento.
+2.  **Detección**: El monitor de la demo mostrará una desincronización (el Checkpoint se quedará atrás).
+3.  **Recuperación**: No hace falta restaurar backups. Se utiliza el proceso de **Replay**:
+    *   *Comando*: `app:projections:rebuild` (o botón "Repair").
+    *   *Acción*: Lee la historia de MongoDB y vuelve a ejecutar las proyecciones sobre PostgreSQL.
 
 ---
 
 ## ■ ¿Por qué usarlo? (Beneficios Estructurales)
 
-*   **Auditoría Nativa**: No necesitas logs de auditoría separados. La propia base de datos *es* la auditoría.
-*   **Análisis Temporal**: Permite viajar en el tiempo y reconstruir el estado pasado.
-*   **Flexibilidad de Negocio**: Puedes proyectar la historia pasada en nuevos modelos de datos sin perder información.
+*   **Auditoría Nativa**: La propia base de datos *es* la auditoría total.
+*   **Análisis Temporal**: Permite reconstruir el estado del sistema en cualquier punto del tiempo.
+*   **Flexibilidad de Negocio**: Permite crear nuevos modelos de datos a partir de eventos históricos años después de que ocurrieran.
 
 ---
 
 ## ■ Implementación Híbrida
 
-| Componente | Tecnología | Rol |
+| Capa | Tecnología | Rol |
 | :--- | :--- | :--- |
 | **Event Store** | **MongoDB** | Fuente de verdad inmutable (JSON). |
 | **Read Models** | **PostgreSQL** | Proyecciones optimizadas para consultas (SQL). |
 
-### El Rol de CQRS
-Utilizamos el patrón **CQRS** como facilitador. Separamos el modelo de escritura (MongoDB) del modelo de lectura (PostgreSQL) para que las consultas de la UI no impacten en la ingesta de eventos.
-
 ---
 
-## ■ Resiliencia y Recuperación (Self-Healing)
-
-### ◇ El Proceso de Replay
-Si las tablas de lectura (Postgres) se corrompen, el sistema puede regenerarlas:
-1.  Se vacían las tablas SQL.
-2.  Se leen todos los eventos desde MongoDB.
-3.  Se re-ejecuta la lógica de proyección en orden secuencial.
-
-### ◇ Snapshots
-Para optimizar el rendimiento, guardamos periódicamente una "foto" del estado actual en MongoDB (Snapshots), permitiendo una recuperación rápida sin re-procesar millones de eventos antiguos.
+## ■ Optimización: Snapshots
+Para sistemas con millones de eventos, implementamos **Snapshots** en MongoDB. Guardamos una "foto" del estado cada $N$ eventos para que la reconstrucción no tenga que leer toda la historia desde el inicio, sino solo desde la última foto.

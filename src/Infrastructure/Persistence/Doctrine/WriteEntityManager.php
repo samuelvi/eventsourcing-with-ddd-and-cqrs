@@ -39,4 +39,15 @@ final readonly class WriteEntityManager
     {
         return $this->entityManager->getRepository($className);
     }
+
+    public function save(object $entity): void
+    {
+        $this->entityManager->persist($entity);
+        $this->entityManager->flush();
+    }
+
+    public function execute(string $sql, array $params = []): int
+    {
+        return $this->entityManager->getConnection()->executeStatement($sql, $params);
+    }
 }

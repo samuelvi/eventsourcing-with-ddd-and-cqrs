@@ -32,4 +32,9 @@ final readonly class ReadEntityManager
         $result = $this->connection->executeQuery($sql, $params)->fetchAssociative();
         return $result === false ? null : $result;
     }
+
+    public function execute(string $sql, array $params = []): int
+    {
+        return $this->connection->executeStatement($sql, $params);
+    }
 }

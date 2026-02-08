@@ -129,11 +129,16 @@ export function DemoFlow() {
         setLoading(true);
         setMessage('Replaying history...');
         try {
-            await fetch('/api/demo/rebuild', { method: 'POST' });
-            await refreshStats();
-            setMessage('Consistency restored');
+            const res = await fetch('/api/demo/rebuild', { method: 'POST' });
+            if (res.ok) {
+                await refreshStats();
+                setMessage('Consistency restored');
+            } else {
+                const data = await res.json();
+                setMessage(`❌ Rebuild failed: ${data.message || 'Unknown error'}`);
+            }
         } catch (e) {
-            setMessage('Rebuild failed');
+            setMessage('❌ Network error during rebuild');
         } finally {
             setLoading(false);
         }
@@ -143,11 +148,17 @@ export function DemoFlow() {
         if (!confirm('Clear all data?')) return;
         setLoading(true);
         try {
-            await fetch('/api/demo/reset', { method: 'POST' });
-            setMessage('Reset complete');
-            await refreshStats();
+            const res = await fetch('/api/demo/reset', { method: 'POST' });
+            const data = await res.json();
+            
+            if (res.ok) {
+                setMessage('Reset complete');
+                await refreshStats();
+            } else {
+                setMessage(`❌ Reset failed: ${data.message || 'Unknown error'}`);
+            }
         } catch (e) {
-            setMessage('Reset failed');
+            setMessage('❌ Network error during reset');
         } finally {
             setLoading(false);
         }

@@ -81,12 +81,10 @@ final class DemoControlController extends AbstractController
         $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true);
 
         // 2. Clear SQL Read Models
-        $this->readEntityManager->fetchOne('TRUNCATE users CASCADE');
-        $this->readEntityManager->fetchOne('TRUNCATE bookings CASCADE');
+        $this->readEntityManager->execute('TRUNCATE users CASCADE');
+        $this->readEntityManager->execute('TRUNCATE bookings CASCADE');
         
-        // 3. Clear Mongo Checkpoints
-        $this->mongoStore->clearAll(); // Note: This clears events too, but rebuild usually starts fresh. 
-        // Wait, rebuild shouldn't clear events. Let's fix MongoStore clearAll or use specific clear.
+        // 3. Clear Mongo Checkpoints (KEEP EVENTS)
         $this->mongoStore->clearCheckpoints();
 
         // 4. Fetch all events from Mongo
@@ -150,6 +148,7 @@ final class DemoControlController extends AbstractController
     #[Route('/api/demo/reset', methods: ['POST'])]
     public function reset(): Response
     {
+        error_log("Starting demo reset...");
         // 1. Force everything back to enabled
         $this->cache->delete(self::CACHE_KEY_MASTER);
         $this->cache->get(self::CACHE_KEY_MASTER, fn() => true);
@@ -159,24 +158,37 @@ final class DemoControlController extends AbstractController
         $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true);
 
         // 2. Clear SQL
-        $this->readEntityManager->fetchOne('TRUNCATE users CASCADE');
-        $this->readEntityManager->fetchOne('TRUNCATE bookings CASCADE');
-        $this->readEntityManager->fetchOne('TRUNCATE products CASCADE');
-        $this->readEntityManager->fetchOne('TRUNCATE suppliers CASCADE');
-        $this->readEntityManager->fetchOne('TRUNCATE menus CASCADE');
+        try {
+            error_log("Truncating SQL tables...");
+            $this->readEntityManager->execute('TRUNCATE suppliers, users, bookings CASCADE');
+        } catch (\Exception $e) {
+            error_log("SQL Truncate error: " . $e->getMessage());
+        }
 
         // 3. Clear Mongo
+        error_log("Clearing MongoStore...");
         $this->mongoStore->clearAll();
 
         // 4. Load Fixtures
-        $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($this->kernel);
-        $application->setAutoExit(false);
-        $input = new \Symfony\Component\Console\Input\ArrayInput([
-            'command' => 'doctrine:fixtures:load',
-            '--no-interaction' => true,
-        ]);
-        $application->run($input, new \Symfony\Component\Console\Output\NullOutput());
-
-        return new JsonResponse(['status' => 'success']);
+        try {
+            error_log("Loading fixtures via console application...");
+            $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($this->kernel);
+            $application->setAutoExit(false);
+            $input = new \Symfony\Component\Console\Input\ArrayInput([
+                'command' => 'doctrine:fixtures:load',
+                '--no-interaction' => true,
+                '--append' => true, // Since we already truncated manually
+            ]);
+            $application->run($input, new \Symfony\Component\Console\Output\NullOutput());
+            
+            error_log("Demo reset finished successfully.");
+            return new JsonResponse(['status' => 'success']);
+        } catch (\Exception $e) {
+            error_log("Fixture load error: " . $e->getMessage());
+            return new JsonResponse([
+                'status' => 'error', 
+                'message' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }

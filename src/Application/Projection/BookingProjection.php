@@ -8,6 +8,7 @@ use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\BookingEntity;
 use App\Domain\Model\ProjectionCheckpoint;
 use App\Domain\Repository\BookingWriteRepositoryInterface;
+use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
@@ -18,6 +19,7 @@ final readonly class BookingProjection
 {
     public function __construct(
         private BookingWriteRepositoryInterface $bookingRepository,
+        private ReadEntityManager $readEntityManager,
         private MongoStore $mongoStore,
         private CacheInterface $cache,
     ) {}
@@ -30,20 +32,28 @@ final readonly class BookingProjection
             return;
         }
 
-        $data = [
-            'pax' => $event->pax,
-            'budget' => $event->budget,
-            'clientName' => $event->clientName,
-            'clientEmail' => $event->clientEmail,
-        ];
-
-        $booking = new BookingEntity(
-            Uuid::fromString($event->bookingId),
-            $data,
-            $event->occurredOn
+        // Idempotency check: Does this booking exist?
+        $exists = $this->readEntityManager->fetchOne(
+            'SELECT id FROM bookings WHERE id = :id',
+            ['id' => $event->bookingId]
         );
 
-        $this->bookingRepository->save($booking);
+        if (!$exists) {
+            $data = [
+                'pax' => $event->pax,
+                'budget' => $event->budget,
+                'clientName' => $event->clientName,
+                'clientEmail' => $event->clientEmail,
+            ];
+
+            $booking = new BookingEntity(
+                Uuid::fromString($event->bookingId),
+                $data,
+                $event->occurredOn
+            );
+
+            $this->bookingRepository->save($booking);
+        }
 
         // Update Checkpoint in Mongo
         $checkpoint = $this->mongoStore->findCheckpoint('booking_projection');

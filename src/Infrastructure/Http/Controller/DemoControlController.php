@@ -18,48 +18,21 @@ use Symfony\Component\Uid\Uuid;
 
 final class DemoControlController extends AbstractController
 {
-    private const CACHE_KEY_MASTER = 'demo_projections_enabled';
-    private const CACHE_KEY_USER_PROJECTIONS = 'demo_user_projections_enabled';
-    private const CACHE_KEY_BOOKING_PROJECTIONS = 'demo_booking_projections_enabled';
-
     public function __construct(
-        private CacheInterface $cache,
-        private MongoStore $mongoStore,
-        private UserReadRepositoryInterface $userRepository,
-        private BookingReadRepositoryInterface $bookingRepository,
         private ArchitectureControlService $architectureService,
     ) {}
 
     #[Route('/api/demo/status', methods: ['GET'])]
     public function getStatus(): Response
     {
-        $masterEnabled = $this->cache->get(self::CACHE_KEY_MASTER, fn() => true);
-        $userEnabled = $this->cache->get(self::CACHE_KEY_USER_PROJECTIONS, fn() => true);
-        $bookingEnabled = $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true);
-        
-        return new JsonResponse([
-            'projectionsEnabled' => $masterEnabled,
-            'userProjectionsEnabled' => $userEnabled,
-            'bookingProjectionsEnabled' => $bookingEnabled
-        ]);
+        return new JsonResponse($this->architectureService->getStatus());
     }
 
     #[Route('/api/demo/toggle/{type}', methods: ['POST'])]
     public function toggle(string $type): Response
     {
-        $key = match($type) {
-            'master' => self::CACHE_KEY_MASTER,
-            'user' => self::CACHE_KEY_USER_PROJECTIONS,
-            'booking' => self::CACHE_KEY_BOOKING_PROJECTIONS,
-            default => throw new \InvalidArgumentException('Invalid type')
-        };
+        $newValue = $this->architectureService->toggle($type);
         
-        $current = $this->cache->get($key, fn() => true);
-        $newValue = !$current;
-
-        $this->cache->delete($key);
-        $this->cache->get($key, fn() => $newValue);
-
         return new JsonResponse([
             ($type === 'master' ? 'projectionsEnabled' : ($type . 'ProjectionsEnabled')) => $newValue
         ]);
@@ -75,42 +48,14 @@ final class DemoControlController extends AbstractController
     #[Route('/api/demo/stats', methods: ['GET'])]
     public function getStats(): Response
     {
-        $eventCount = $this->mongoStore->countEvents();
-        $userCount = $this->userRepository->countAll();
-        $bookingCount = $this->bookingRepository->countAll();
-        $snapshotCount = $this->mongoStore->countSnapshots();
-
-        $checkpoints = $this->mongoStore->findAllCheckpoints();
-        $checkpointsMap = [];
-        foreach ($checkpoints as $cp) {
-            $checkpointsMap[$cp->projectionName] = $cp->lastEventId?->toRfc4122();
-        }
-
-        return new JsonResponse([
-            'events' => $eventCount,
-            'users' => $userCount,
-            'bookings' => $bookingCount,
-            'snapshots' => $snapshotCount,
-            'checkpoints' => $checkpointsMap
-        ]);
+        return new JsonResponse($this->architectureService->getStats());
     }
 
     #[Route('/api/demo/snapshot', methods: ['POST'])]
     public function snapshot(): Response
     {
-        $eventCount = $this->mongoStore->countEvents();
-        $userCount = $this->userRepository->countAll();
-        $bookingCount = $this->bookingRepository->countAll();
-
-        $snapshot = Snapshot::take(
-            Uuid::v7(), // System aggregate ID for demo
-            $eventCount,
-            ['users' => $userCount, 'bookings' => $bookingCount, 'timestamp' => time()]
-        );
-
-        $this->mongoStore->saveSnapshot($snapshot);
-
-        return new JsonResponse(['status' => 'success', 'version' => $eventCount]);
+        $version = $this->architectureService->takeSnapshot();
+        return new JsonResponse(['status' => 'success', 'version' => $version]);
     }
 
     #[Route('/api/demo/reset', methods: ['POST'])]

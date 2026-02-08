@@ -24,7 +24,71 @@ final readonly class ArchitectureControlService
         private MessageBusInterface $eventBus,
         private SerializerInterface $serializer,
         private KernelInterface $kernel,
+        private \App\Domain\Repository\UserReadRepositoryInterface $userRepository,
+        private \App\Domain\Repository\BookingReadRepositoryInterface $bookingRepository,
     ) {}
+
+    public function getStatus(): array
+    {
+        return [
+            'projectionsEnabled' => $this->cache->get(self::CACHE_KEY_MASTER, fn() => true),
+            'userProjectionsEnabled' => $this->cache->get(self::CACHE_KEY_USER_PROJECTIONS, fn() => true),
+            'bookingProjectionsEnabled' => $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true),
+        ];
+    }
+
+    public function toggle(string $type): bool
+    {
+        $key = match($type) {
+            'master' => self::CACHE_KEY_MASTER,
+            'user' => self::CACHE_KEY_USER_PROJECTIONS,
+            'booking' => self::CACHE_KEY_BOOKING_PROJECTIONS,
+            default => throw new \InvalidArgumentException('Invalid type')
+        };
+        
+        $current = $this->cache->get($key, fn() => true);
+        $newValue = !$current;
+
+        $this->cache->delete($key);
+        $this->cache->get($key, fn() => $newValue);
+
+        return $newValue;
+    }
+
+    public function getStats(): array
+    {
+        $checkpoints = $this->mongoStore->findAllCheckpoints();
+        $checkpointsMap = [];
+        foreach ($checkpoints as $cp) {
+            $checkpointsMap[$cp->projectionName] = $cp->lastEventId?->toRfc4122();
+        }
+
+        return [
+            'events' => $this->mongoStore->countEvents(),
+            'users' => $this->userRepository->countAll(),
+            'bookings' => $this->bookingRepository->countAll(),
+            'snapshots' => $this->mongoStore->countSnapshots(),
+            'checkpoints' => $checkpointsMap
+        ];
+    }
+
+    public function takeSnapshot(): int
+    {
+        $eventCount = $this->mongoStore->countEvents();
+        $snapshot = \App\Domain\Model\Snapshot::take(
+            Uuid::v7(), // System aggregate ID for demo
+            $eventCount,
+            [
+                'users' => $this->userRepository->countAll(),
+                'bookings' => $this->bookingRepository->countAll(),
+                'timestamp' => time()
+            ]
+        );
+
+        $this->mongoStore->saveSnapshot($snapshot);
+
+        return $eventCount;
+    }
 
     public function rebuild(): int
     {

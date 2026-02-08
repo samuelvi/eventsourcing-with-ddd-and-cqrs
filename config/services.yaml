@@ -40,6 +40,11 @@ services:
         arguments:
             $entityManager: '@doctrine.orm.default_entity_manager'
 
+    App\Infrastructure\Persistence\Mongo\MongoClient:
+        arguments:
+            $uri: '%env(MONGODB_URL)%'
+            $dbName: '%env(MONGODB_DB)%'
+
     # --- Application Handlers ---
     App\Application\Handler\:
         resource: '../src/Application/Handler'

@@ -7,48 +7,54 @@ namespace App\Domain\Model;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
-use Doctrine\ORM\Mapping as ORM;
+use App\Infrastructure\ApiPlatform\Provider\MongoStoreProvider;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Uid\Uuid;
 
-#[ORM\Entity]
-#[ORM\Table(name: 'snapshots')]
+/**
+ * Plain Domain Object for Snapshot
+ */
 #[ApiResource(
     operations: [
-        new Get(uriTemplate: '/snapshots/{id}'),
-        new GetCollection(uriTemplate: '/snapshots')
+        new Get(uriTemplate: '/snapshots/{id}', provider: MongoStoreProvider::class),
+        new GetCollection(uriTemplate: '/snapshots', provider: MongoStoreProvider::class)
     ],
     normalizationContext: ['groups' => ['snapshot:read']]
 )]
 class Snapshot
 {
-    #[ORM\Id]
-    #[ORM\Column(type: 'uuid', unique: true)]
-    #[Groups(['snapshot:read'])]
-    public private(set) Uuid $id;
+    public function __construct(
+        #[Groups(['snapshot:read'])]
+        public readonly Uuid $id,
+        #[Groups(['snapshot:read'])]
+        public readonly Uuid $aggregateId,
+        #[Groups(['snapshot:read'])]
+        public readonly int $version,
+        #[Groups(['snapshot:read'])]
+        public readonly array $state,
+        #[Groups(['snapshot:read'])]
+        public readonly \DateTimeImmutable $createdAt = new \DateTimeImmutable()
+    ) {}
 
-    #[ORM\Column(type: 'uuid')]
-    #[Groups(['snapshot:read'])]
-    public private(set) Uuid $aggregateId;
-
-    #[ORM\Column(type: 'integer')]
-    #[Groups(['snapshot:read'])]
-    public private(set) int $version; // Last event version/index included in this snapshot
-
-    #[ORM\Column(type: 'json')]
-    #[Groups(['snapshot:read'])]
-    public private(set) array $state;
-
-    #[ORM\Column]
-    #[Groups(['snapshot:read'])]
-    public private(set) \DateTimeImmutable $createdAt;
-
-    public function __construct(Uuid $aggregateId, int $version, array $state)
+    public static function fromArray(array $data): self
     {
-        $this->id = Uuid::v7();
-        $this->aggregateId = $aggregateId;
-        $this->version = $version;
-        $this->state = $state;
-        $this->createdAt = new \DateTimeImmutable();
+        return new self(
+            Uuid::fromString($data['id']),
+            Uuid::fromString($data['aggregateId']),
+            $data['version'],
+            $data['state'],
+            new \DateTimeImmutable($data['createdAt'])
+        );
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'id' => $this->id->toRfc4122(),
+            'aggregateId' => $this->aggregateId->toRfc4122(),
+            'version' => $this->version,
+            'state' => $this->state,
+            'createdAt' => $this->createdAt->format(\DateTimeInterface::ATOM)
+        ];
     }
 }

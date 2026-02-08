@@ -99,6 +99,21 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # MongoDB for Event Store and Checkpoints
+  mongodb:
+    image: mongodb/mongodb-community-server:7.0-ubuntu2204
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=root
+      - MONGODB_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+    restart: unless-stopped
+
   # Adminer Database Management
   adminer:
     image: adminer
@@ -120,5 +135,6 @@ networks:
 
 volumes:
   n8n_data:
+  mongodb_data:
   symfony_caddy_data:
   symfony_caddy_config:

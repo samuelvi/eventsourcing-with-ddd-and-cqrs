@@ -8,7 +8,7 @@ use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\BookingEntity;
 use App\Domain\Model\ProjectionCheckpoint;
 use App\Domain\Repository\BookingWriteRepositoryInterface;
-use App\Infrastructure\Persistence\Doctrine\WriteEntityManager;
+use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -18,7 +18,7 @@ final readonly class BookingProjection
 {
     public function __construct(
         private BookingWriteRepositoryInterface $bookingRepository,
-        private WriteEntityManager $writeEntityManager,
+        private MongoStore $mongoStore,
         private CacheInterface $cache,
     ) {}
 
@@ -45,13 +45,12 @@ final readonly class BookingProjection
 
         $this->bookingRepository->save($booking);
 
-        // Update Checkpoint
-        $checkpoint = $this->writeEntityManager->find(ProjectionCheckpoint::class, 'booking_projection');
+        // Update Checkpoint in Mongo
+        $checkpoint = $this->mongoStore->findCheckpoint('booking_projection');
         if (!$checkpoint) {
             $checkpoint = new ProjectionCheckpoint('booking_projection');
-            $this->writeEntityManager->persist($checkpoint);
         }
         $checkpoint->update(Uuid::fromString($event->bookingId));
-        $this->writeEntityManager->flush();
+        $this->mongoStore->saveCheckpoint($checkpoint);
     }
 }

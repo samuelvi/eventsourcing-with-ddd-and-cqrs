@@ -6,7 +6,7 @@ namespace App\Infrastructure\Console;
 
 use App\Domain\Model\StoredEvent;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
-use App\Infrastructure\Persistence\Doctrine\WriteEntityManager;
+use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -23,7 +23,7 @@ final class RebuildProjectionsCommand extends Command
 {
     public function __construct(
         private ReadEntityManager $readEntityManager,
-        private WriteEntityManager $writeEntityManager,
+        private MongoStore $mongoStore,
         private MessageBusInterface $eventBus,
         private SerializerInterface $serializer,
     ) {
@@ -36,29 +36,25 @@ final class RebuildProjectionsCommand extends Command
         $io->title('Rebuilding Projections');
 
         // 1. Clear Read Models
-        $io->section('Clearing Read Models...');
-        // We use raw SQL to truncate to avoid ORM overhead and issues with foreign keys if any
+        $io->section('Clearing Read Models & Checkpoints...');
         $this->readEntityManager->fetchOne('TRUNCATE users CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE bookings CASCADE');
-        $this->readEntityManager->fetchOne('TRUNCATE projection_checkpoints CASCADE');
+        $this->mongoStore->clearCheckpoints();
         $io->success('Read models and checkpoints cleared.');
 
-        // 2. Fetch Events
-        $io->section('Replaying Events...');
-        $events = $this->writeEntityManager->getRepository(StoredEvent::class)->findBy([], ['occurredOn' => 'ASC']);
+        // 2. Fetch Events from Mongo
+        $io->section('Replaying Events from MongoDB...');
+        $events = $this->mongoStore->findEvents();
 
         foreach ($events as $storedEvent) {
             $io->text(sprintf('Processing: %s', $storedEvent->eventType));
             
-            // Deserialize payload back to Domain Event
             $event = $this->serializer->deserialize(
                 json_encode($storedEvent->payload),
                 $storedEvent->eventType,
                 'json'
             );
 
-            // Dispatch to Bus (Projections will handle it)
-            // Note: In a real app, we might want a specific 'replay' bus to avoid triggering emails etc.
             $this->eventBus->dispatch($event);
         }
 

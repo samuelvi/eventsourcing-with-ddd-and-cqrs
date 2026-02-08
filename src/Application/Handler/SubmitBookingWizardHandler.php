@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Application\Handler;
 
+use App\Application\Command\SubmitBookingWizardCommand;
 use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\StoredEvent;
 use App\Domain\Model\Snapshot;
 use App\Infrastructure\Persistence\Doctrine\WriteEntityManager;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
+use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
@@ -22,6 +24,7 @@ final readonly class SubmitBookingWizardHandler
     public function __construct(
         private WriteEntityManager $entityManager,
         private ReadEntityManager $readEntityManager,
+        private MongoStore $mongoStore,
         private MessageBusInterface $eventBus,
         private LockFactory $lockFactory,
         private CacheInterface $cache,
@@ -39,9 +42,8 @@ final readonly class SubmitBookingWizardHandler
         }
 
         try {
-            // Idempotency check: Does this aggregate already have events?
-            $exists = $this->entityManager->getRepository(StoredEvent::class)
-                ->findOneBy(['aggregateId' => $aggregateId]);
+            // Idempotency check in Mongo
+            $exists = $this->mongoStore->findEventByAggregateId($aggregateId);
 
             if ($exists) {
                 return;
@@ -59,7 +61,7 @@ final readonly class SubmitBookingWizardHandler
                 occurredOn: $occurredOn
             );
 
-            // 2. Persist to Event Store (Source of Truth)
+            // 2. Persist to Event Store (Mongo)
             $storedEvent = new StoredEvent(
                 aggregateId: $aggregateId,
                 eventType: BookingWizardCompleted::class,
@@ -70,27 +72,25 @@ final readonly class SubmitBookingWizardHandler
                     'clientName' => $command->clientName,
                     'clientEmail' => $command->clientEmail,
                     'occurredOn' => $occurredOn->format(\DateTimeInterface::ATOM)
-                ]
+                ],
+                id: Uuid::v7()
             );
 
-            $this->entityManager->persist($storedEvent);
-            $this->entityManager->flush();
+            $this->mongoStore->saveEvent($storedEvent);
 
             // --- AUTOMATIC SNAPSHOT LOGIC ---
-            $eventCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM event_store')['count'];
+            $eventCount = $this->mongoStore->countEvents();
             if ($eventCount > 0 && $eventCount % $this->snapshotThreshold === 0) {
-                // In a real app, we capture the ACTUAL state of the aggregate.
-                // For this demo, we snapshot the projection counts as "System State".
                 $userCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM users')['count'];
                 $bookingCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM bookings')['count'];
 
                 $snapshot = new Snapshot(
-                    Uuid::v7(), // System aggregate ID for demo
+                    Uuid::v7(), 
+                    $aggregateId,
                     $eventCount,
                     ['users' => $userCount, 'bookings' => $bookingCount, 'auto' => true]
                 );
-                $this->entityManager->persist($snapshot);
-                $this->entityManager->flush();
+                $this->mongoStore->saveSnapshot($snapshot);
             }
 
             // 3. Dispatch to Async Bus (for Projections)

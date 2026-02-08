@@ -7,54 +7,59 @@ namespace App\Domain\Model;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
-use Doctrine\ORM\Mapping as ORM;
+use App\Infrastructure\ApiPlatform\Provider\MongoStoreProvider;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Uid\Uuid;
 
-#[ORM\Entity]
-#[ORM\Table(name: 'event_store')]
+/**
+ * Plain Domain Object for StoredEvent (no longer a Doctrine entity)
+ */
 #[ApiResource(
     shortName: 'EventStore',
     operations: [
-        new Get(uriTemplate: '/event-store/{id}'),
-        new GetCollection(uriTemplate: '/event-store')
+        new Get(uriTemplate: '/event-store/{id}', provider: MongoStoreProvider::class),
+        new GetCollection(uriTemplate: '/event-store', provider: MongoStoreProvider::class)
     ],
     normalizationContext: ['groups' => ['event:read']]
 )]
 class StoredEvent
 {
-    #[ORM\Id]
-    #[ORM\Column(type: 'uuid', unique: true)]
-    #[Groups(['event:read'])]
-    public private(set) Uuid $id;
+    public function __construct(
+        #[Groups(['event:read'])]
+        public readonly Uuid $aggregateId,
+        #[Groups(['event:read'])]
+        public readonly string $eventType,
+        #[Groups(['event:read'])]
+        public readonly array $payload,
+        #[Groups(['event:read'])]
+        public readonly Uuid $id,
+        #[Groups(['event:read'])]
+        public readonly int $version = 1,
+        #[Groups(['event:read'])]
+        public readonly \DateTimeImmutable $occurredOn = new \DateTimeImmutable()
+    ) {}
 
-    #[ORM\Column(type: 'uuid')]
-    #[Groups(['event:read'])]
-    public private(set) Uuid $aggregateId;
-
-    #[ORM\Column(length: 255)]
-    #[Groups(['event:read'])]
-    public private(set) string $eventType;
-
-    #[ORM\Column(type: 'json')]
-    #[Groups(['event:read'])]
-    public private(set) array $payload;
-
-    #[ORM\Column(type: 'integer', options: ['default' => 1])]
-    #[Groups(['event:read'])]
-    public private(set) int $version;
-
-    #[ORM\Column]
-    #[Groups(['event:read'])]
-    public private(set) \DateTimeImmutable $occurredOn;
-
-    public function __construct(Uuid $aggregateId, string $eventType, array $payload, ?Uuid $id = null, int $version = 1)
+    public static function fromArray(array $data): self
     {
-        $this->id = $id ?? Uuid::v7();
-        $this->aggregateId = $aggregateId;
-        $this->eventType = $eventType;
-        $this->payload = $payload;
-        $this->version = $version;
-        $this->occurredOn = new \DateTimeImmutable();
+        return new self(
+            Uuid::fromString($data['aggregateId']),
+            $data['eventType'],
+            $data['payload'],
+            Uuid::fromString($data['id']),
+            $data['version'],
+            new \DateTimeImmutable($data['occurredOn'])
+        );
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'id' => $this->id->toRfc4122(),
+            'aggregateId' => $this->aggregateId->toRfc4122(),
+            'eventType' => $this->eventType,
+            'payload' => $this->payload,
+            'version' => $this->version,
+            'occurredOn' => $this->occurredOn->format(\DateTimeInterface::ATOM)
+        ];
     }
 }

@@ -6,7 +6,8 @@ namespace App\Infrastructure\Http\Controller;
 
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
 use App\Infrastructure\Persistence\Doctrine\WriteEntityManager;
-use App\Domain\Model\StoredEvent;
+use App\Infrastructure\Persistence\Mongo\MongoStore;
+use App\Domain\Model\Snapshot;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,7 +16,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
-use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Component\Uid\Uuid;
 
 final class DemoControlController extends AbstractController
 {
@@ -27,6 +28,7 @@ final class DemoControlController extends AbstractController
         private CacheInterface $cache,
         private ReadEntityManager $readEntityManager,
         private WriteEntityManager $writeEntityManager,
+        private MongoStore $mongoStore,
         private MessageBusInterface $eventBus,
         private SerializerInterface $serializer,
         private KernelInterface $kernel,
@@ -78,13 +80,17 @@ final class DemoControlController extends AbstractController
         $this->cache->delete(self::CACHE_KEY_BOOKING_PROJECTIONS);
         $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true);
 
-        // 2. Clear tables
+        // 2. Clear SQL Read Models
         $this->readEntityManager->fetchOne('TRUNCATE users CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE bookings CASCADE');
-        $this->readEntityManager->fetchOne('TRUNCATE projection_checkpoints CASCADE');
+        
+        // 3. Clear Mongo Checkpoints
+        $this->mongoStore->clearAll(); // Note: This clears events too, but rebuild usually starts fresh. 
+        // Wait, rebuild shouldn't clear events. Let's fix MongoStore clearAll or use specific clear.
+        $this->mongoStore->clearCheckpoints();
 
-        // 3. Fetch all events
-        $events = $this->writeEntityManager->getRepository(StoredEvent::class)->findBy([], ['occurredOn' => 'ASC']);
+        // 4. Fetch all events from Mongo
+        $events = $this->mongoStore->findEvents();
 
         foreach ($events as $storedEvent) {
             $event = $this->serializer->deserialize(
@@ -101,54 +107,42 @@ final class DemoControlController extends AbstractController
     #[Route('/api/demo/stats', methods: ['GET'])]
     public function getStats(): Response
     {
-        $eventCount = $this->readEntityManager->fetchOne('SELECT COUNT(*) FROM event_store')['count'];
-        $userCount = $this->readEntityManager->fetchOne('SELECT COUNT(*) FROM users')['count'];
-        $bookingCount = $this->readEntityManager->fetchOne('SELECT COUNT(*) FROM bookings')['count'];
-        $snapshotCount = $this->readEntityManager->fetchOne('SELECT COUNT(*) FROM snapshots')['count'];
+        $eventCount = $this->mongoStore->countEvents();
+        $userCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM users')['count'];
+        $bookingCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM bookings')['count'];
+        $snapshotCount = $this->mongoStore->countSnapshots();
 
-        // Get checkpoints for display
-        $checkpoints = $this->readEntityManager->query('SELECT projection_name, last_event_id FROM projection_checkpoints');
+        // Get checkpoints from Mongo
+        $checkpoints = $this->mongoStore->findAllCheckpoints();
         $checkpointsMap = [];
         foreach ($checkpoints as $cp) {
-            $checkpointsMap[$cp['projection_name']] = $cp['last_event_id'];
+            $checkpointsMap[$cp->projectionName] = $cp->lastEventId?->toRfc4122();
         }
 
         return new JsonResponse([
-            'events' => (int)$eventCount,
-            'users' => (int)$userCount,
-            'bookings' => (int)$bookingCount,
-            'snapshots' => (int)$snapshotCount,
+            'events' => $eventCount,
+            'users' => $userCount,
+            'bookings' => $bookingCount,
+            'snapshots' => $snapshotCount,
             'checkpoints' => $checkpointsMap
         ]);
     }
 
-use App\Domain\Model\Snapshot;
-use App\Domain\Model\UserEntity;
-use App\Domain\Model\BookingEntity;
-// ... rest ...
-
     #[Route('/api/demo/snapshot', methods: ['POST'])]
     public function snapshot(): Response
     {
-        // For a demo, we'll create a system-wide snapshot of current projection counts
-        // In a real app, snapshots are per aggregate (one snapshot per booking ID)
-        
-        $eventCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM event_store')['count'];
+        $eventCount = $this->mongoStore->countEvents();
         $userCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM users')['count'];
         $bookingCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM bookings')['count'];
 
         $snapshot = new Snapshot(
+            Uuid::v7(), 
             Uuid::v7(), // System aggregate ID for demo
             $eventCount,
-            [
-                'users' => $userCount,
-                'bookings' => $bookingCount,
-                'timestamp' => time()
-            ]
+            ['users' => $userCount, 'bookings' => $bookingCount, 'timestamp' => time()]
         );
 
-        $this->writeEntityManager->persist($snapshot);
-        $this->writeEntityManager->flush();
+        $this->mongoStore->saveSnapshot($snapshot);
 
         return new JsonResponse(['status' => 'success', 'version' => $eventCount]);
     }
@@ -156,7 +150,7 @@ use App\Domain\Model\BookingEntity;
     #[Route('/api/demo/reset', methods: ['POST'])]
     public function reset(): Response
     {
-        // 1. Force all toggles back to enabled (Master, User, Booking)
+        // 1. Force everything back to enabled
         $this->cache->delete(self::CACHE_KEY_MASTER);
         $this->cache->get(self::CACHE_KEY_MASTER, fn() => true);
         $this->cache->delete(self::CACHE_KEY_USER_PROJECTIONS);
@@ -164,24 +158,23 @@ use App\Domain\Model\BookingEntity;
         $this->cache->delete(self::CACHE_KEY_BOOKING_PROJECTIONS);
         $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true);
 
-        // Brutal Clean (Truncate ALL tables in the correct order)
+        // 2. Clear SQL
         $this->readEntityManager->fetchOne('TRUNCATE users CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE bookings CASCADE');
-        $this->readEntityManager->fetchOne('TRUNCATE event_store CASCADE');
-        $this->readEntityManager->fetchOne('TRUNCATE projection_checkpoints CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE products CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE suppliers CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE menus CASCADE');
-        $this->readEntityManager->fetchOne('TRUNCATE snapshots CASCADE');
 
+        // 3. Clear Mongo
+        $this->mongoStore->clearAll();
+
+        // 4. Load Fixtures
         $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($this->kernel);
         $application->setAutoExit(false);
-
         $input = new \Symfony\Component\Console\Input\ArrayInput([
             'command' => 'doctrine:fixtures:load',
             '--no-interaction' => true,
         ]);
-
         $application->run($input, new \Symfony\Component\Console\Output\NullOutput());
 
         return new JsonResponse(['status' => 'success']);

@@ -60,7 +60,7 @@ export function Wizard() {
     if (status === 'success') {
         return (
             <div style={{ maxWidth: '500px', margin: '100px auto', textAlign: 'center', backgroundColor: '#fff', padding: '48px', borderRadius: '24px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)' }}>
-                <div style={{ color: '#10b981', marginBottom: '24px' }}>
+                <div style={{ color: '#111827', marginBottom: '24px' }}>
                     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 </div>
                 <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '12px' }}>Request Received</h2>

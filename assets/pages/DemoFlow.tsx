@@ -11,7 +11,7 @@ interface Stats {
 
 // Simple flat icons as SVG components
 const IconCheck = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>;
-const IconAlert = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+const IconAlert = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" cy="12" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
 const IconActivity = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
 const IconZap = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
 
@@ -53,9 +53,9 @@ export function DemoFlow() {
                 evRes.json(), usrRes.json(), bkRes.json(), cpRes.json()
             ]);
 
-            setEvents((evData['hydra:member'] || []).slice(0, 5));
-            setUsers((usrData['hydra:member'] || []).slice(0, 5));
-            setBookings((bkData['hydra:member'] || []).slice(0, 5));
+            setEvents(evData['hydra:member'] || []);
+            setUsers(usrData['hydra:member'] || []);
+            setBookings(bkData['hydra:member'] || []);
             setCheckpoints(cpData['hydra:member'] || []);
 
         } catch (e) {
@@ -141,7 +141,7 @@ export function DemoFlow() {
     const DataList = ({ title, items, columns, emptyMsg }: any) => (
         <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
             <div style={{ padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontSize: '13px', fontWeight: 600, color: '#374151' }}>{title}</div>
-            <div style={{ padding: '0' }}>
+            <div style={{ padding: '0', maxHeight: '250px', overflowY: 'auto' }}>
                 {items.length === 0 ? (
                     <div style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '12px' }}>{emptyMsg}</div>
                 ) : (

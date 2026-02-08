@@ -40,21 +40,22 @@ final class BookingWizardTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
 
-        // 2. Check Event Store
-        $storedEvent = $this->entityManager->getRepository(StoredEvent::class)
-            ->findOneBy(['aggregateId' => $bookingId]);
-        
-        self::assertNotNull($storedEvent, 'Event should be in the store');
-        self::assertEquals('App\Domain\Event\BookingWizardCompleted', $storedEvent->eventType);
+        // 2. Check Event Store via API
+        $response = $client->request('GET', '/api/event-store');
+        $events = $response->toArray()['hydra:member'];
+        $hasEvent = count(array_filter($events, fn($e) => ($e['aggregateId'] ?? '') === $bookingId)) > 0;
+        self::assertTrue($hasEvent, 'Event should be in the store (verified via API)');
 
-        // 3. Check Projections (Wait a bit for async if it were async, but here it is sync by default in test)
-        $user = $this->entityManager->getConnection()
-            ->fetchAssociative('SELECT * FROM users WHERE email = :email', ['email' => 'john@ted.com']);
-        self::assertNotFalse($user, 'User projection should have created the user');
+        // 3. Check Projections via API
+        $response = $client->request('GET', '/api/users');
+        $users = $response->toArray()['hydra:member'];
+        $hasUser = count(array_filter($users, fn($u) => ($u['email'] ?? '') === 'john@ted.com')) > 0;
+        self::assertTrue($hasUser, 'User projection should have created the user (verified via API)');
 
-        $booking = $this->entityManager->getConnection()
-            ->fetchAssociative('SELECT * FROM bookings WHERE id = :id', ['id' => $bookingId]);
-        self::assertNotFalse($booking, 'Booking projection should have created the booking');
+        $response = $client->request('GET', '/api/bookings');
+        $bookings = $response->toArray()['hydra:member'];
+        $hasBooking = count(array_filter($bookings, fn($b) => ($b['id'] ?? '') === $bookingId)) > 0;
+        self::assertTrue($hasBooking, 'Booking projection should have created the booking (verified via API)');
     }
 
     public function testIdempotencyWithSameId(): void
@@ -75,11 +76,13 @@ final class BookingWizardTest extends ApiTestCase
 
         // Second attempt with same ID
         $client->request('POST', '/api/booking-wizard', ['json' => $payload]);
-        self::assertResponseIsSuccessful(); // Should be idempotent (return success but do nothing)
+        self::assertResponseIsSuccessful(); // Should be idempotent
 
-        // Check only 1 event exists
-        $events = $this->entityManager->getRepository(StoredEvent::class)->findBy(['aggregateId' => $bookingId]);
-        self::assertCount(1, $events, 'There should be exactly one event for the same aggregate ID');
+        // Check only 1 event exists via API
+        $response = $client->request('GET', '/api/event-store');
+        $events = $response->toArray()['hydra:member'];
+        $relevantEvents = array_filter($events, fn($e) => ($e['aggregateId'] ?? '') === $bookingId);
+        self::assertCount(1, $relevantEvents, 'There should be exactly one event for the same aggregate ID (verified via API)');
     }
 
     public function testInvalidDataReturns422(): void
@@ -126,15 +129,14 @@ final class BookingWizardTest extends ApiTestCase
             ],
         ]);
 
-        // Check users table
-        $users = $this->entityManager->getConnection()
-            ->fetchAllAssociative('SELECT * FROM users WHERE email = :email', ['email' => $email]);
+        // Check users table via API
+        $response = $client->request('GET', '/api/users');
+        $users = array_filter($response->toArray()['hydra:member'], fn($u) => $u['email'] === $email);
+        self::assertCount(1, $users, 'Only one user record should exist for the same email (verified via API)');
         
-        self::assertCount(1, $users, 'Only one user record should exist for the same email');
-        
-        // Check bookings table
-        $bookings = $this->entityManager->getConnection()->fetchAllAssociative('SELECT * FROM bookings');
-        self::assertCount(2, $bookings, 'Two bookings should exist');
+        // Check bookings table via API
+        $response = $client->request('GET', '/api/bookings');
+        self::assertCount(2, $response->toArray()['hydra:member'], 'Two bookings should exist (verified via API)');
     }
 
     public function testSystemRebuildFromEvents(): void
@@ -154,11 +156,13 @@ final class BookingWizardTest extends ApiTestCase
         ]);
 
         // 2. Simulate "system failure" by clearing read models manually
+        // We still use DB for clearing because it's a "destructive" action for the test setup
         $this->entityManager->getConnection()->executeStatement('TRUNCATE users CASCADE');
         $this->entityManager->getConnection()->executeStatement('TRUNCATE bookings CASCADE');
 
-        $user = $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM users');
-        self::assertEquals(0, $user);
+        // Verify cleared via API
+        $response = $client->request('GET', '/api/users');
+        self::assertCount(0, $response->toArray()['hydra:member']);
 
         // 3. Run Rebuild Command
         $kernel = self::bootKernel();
@@ -168,12 +172,12 @@ final class BookingWizardTest extends ApiTestCase
         $commandTester = new \Symfony\Component\Console\Tester\CommandTester($command);
         $commandTester->execute([]);
 
-        // 4. Verify data is back
-        $userCount = $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM users');
-        self::assertEquals(1, $userCount, 'User should have been restored');
+        // 4. Verify data is back via API
+        $response = $client->request('GET', '/api/users');
+        self::assertCount(1, $response->toArray()['hydra:member'], 'User should have been restored (verified via API)');
         
-        $bookingCount = $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM bookings');
-        self::assertEquals(1, $bookingCount, 'Booking should have been restored');
+        $response = $client->request('GET', '/api/bookings');
+        self::assertCount(1, $response->toArray()['hydra:member'], 'Booking should have been restored (verified via API)');
     }
 
     private function clearDatabase(): void

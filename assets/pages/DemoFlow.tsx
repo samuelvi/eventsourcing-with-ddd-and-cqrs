@@ -32,7 +32,9 @@ export function DemoFlow() {
 
     const safeFetch = async (url: string) => {
         try {
-            const res = await fetch(url);
+            // Append timestamp to bust browser cache for real-time demo
+            const separator = url.includes('?') ? '&' : '?';
+            const res = await fetch(`${url}${separator}t=${Date.now()}`);
             if (!res.ok) return [];
             const data = await res.json();
             return data['hydra:member'] || (Array.isArray(data) ? data : []);

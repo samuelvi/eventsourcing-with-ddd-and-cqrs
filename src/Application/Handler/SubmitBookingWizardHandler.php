@@ -4,24 +4,29 @@ declare(strict_types=1);
 
 namespace App\Application\Handler;
 
-use App\Application\Command\SubmitBookingWizardCommand;
 use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\StoredEvent;
+use App\Domain\Model\Snapshot;
 use App\Infrastructure\Persistence\Doctrine\WriteEntityManager;
+use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 #[AsMessageHandler]
 final readonly class SubmitBookingWizardHandler
 {
     public function __construct(
         private WriteEntityManager $entityManager,
+        private ReadEntityManager $readEntityManager,
         private MessageBusInterface $eventBus,
         private LockFactory $lockFactory,
         private CacheInterface $cache,
+        #[Autowire(env: 'int:SNAPSHOT_THRESHOLD')]
+        private int $snapshotThreshold,
     ) {}
 
     public function __invoke(SubmitBookingWizardCommand $command): void
@@ -39,9 +44,6 @@ final readonly class SubmitBookingWizardHandler
                 ->findOneBy(['aggregateId' => $aggregateId]);
 
             if ($exists) {
-                // If it exists, we could either throw a Conflict exception 
-                // or just return if we want it to be silent (idempotent).
-                // For a "pure" approach and to prevent attacks, we can just stop.
                 return;
             }
 
@@ -58,7 +60,6 @@ final readonly class SubmitBookingWizardHandler
             );
 
             // 2. Persist to Event Store (Source of Truth)
-            // ALWAYS save the event, this is the core of Event Sourcing
             $storedEvent = new StoredEvent(
                 aggregateId: $aggregateId,
                 eventType: BookingWizardCompleted::class,
@@ -75,8 +76,24 @@ final readonly class SubmitBookingWizardHandler
             $this->entityManager->persist($storedEvent);
             $this->entityManager->flush();
 
+            // --- AUTOMATIC SNAPSHOT LOGIC ---
+            $eventCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM event_store')['count'];
+            if ($eventCount > 0 && $eventCount % $this->snapshotThreshold === 0) {
+                // In a real app, we capture the ACTUAL state of the aggregate.
+                // For this demo, we snapshot the projection counts as "System State".
+                $userCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM users')['count'];
+                $bookingCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM bookings')['count'];
+
+                $snapshot = new Snapshot(
+                    Uuid::v7(), // System aggregate ID for demo
+                    $eventCount,
+                    ['users' => $userCount, 'bookings' => $bookingCount, 'auto' => true]
+                );
+                $this->entityManager->persist($snapshot);
+                $this->entityManager->flush();
+            }
+
             // 3. Dispatch to Async Bus (for Projections)
-            // DEMO MODE: Skip dispatch if projections are disabled to simulate failure
             $projectionsEnabled = $this->cache->get('demo_projections_enabled', fn() => true);
             if ($projectionsEnabled) {
                 $this->eventBus->dispatch($event);

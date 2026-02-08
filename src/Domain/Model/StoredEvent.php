@@ -40,16 +40,21 @@ class StoredEvent
     #[Groups(['event:read'])]
     public private(set) array $payload;
 
+    #[ORM\Column(type: 'integer', options: ['default' => 1])]
+    #[Groups(['event:read'])]
+    public private(set) int $version;
+
     #[ORM\Column]
     #[Groups(['event:read'])]
     public private(set) \DateTimeImmutable $occurredOn;
 
-    public function __construct(Uuid $aggregateId, string $eventType, array $payload, ?Uuid $id = null)
+    public function __construct(Uuid $aggregateId, string $eventType, array $payload, ?Uuid $id = null, int $version = 1)
     {
         $this->id = $id ?? Uuid::v7();
         $this->aggregateId = $aggregateId;
         $this->eventType = $eventType;
         $this->payload = $payload;
+        $this->version = $version;
         $this->occurredOn = new \DateTimeImmutable();
     }
 }

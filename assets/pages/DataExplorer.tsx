@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-type EntityType = 'users' | 'bookings' | 'products' | 'suppliers' | 'event-store' | 'checkpoints';
+type EntityType = 'users' | 'bookings' | 'products' | 'suppliers' | 'event-store' | 'checkpoints' | 'snapshots';
 
 export function DataExplorer() {
     const [activeTab, setActiveTab] = useState<EntityType>('event-store');
@@ -33,7 +33,8 @@ export function DataExplorer() {
         'bookings': 'Bookings',
         'products': 'Products Catalog',
         'suppliers': 'Suppliers',
-        'checkpoints': 'Checkpoints'
+        'checkpoints': 'Checkpoints',
+        'snapshots': 'Snapshots'
     };
 
     return (

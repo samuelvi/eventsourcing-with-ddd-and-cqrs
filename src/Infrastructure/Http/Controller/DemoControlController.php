@@ -104,6 +104,7 @@ final class DemoControlController extends AbstractController
         $eventCount = $this->readEntityManager->fetchOne('SELECT COUNT(*) FROM event_store')['count'];
         $userCount = $this->readEntityManager->fetchOne('SELECT COUNT(*) FROM users')['count'];
         $bookingCount = $this->readEntityManager->fetchOne('SELECT COUNT(*) FROM bookings')['count'];
+        $snapshotCount = $this->readEntityManager->fetchOne('SELECT COUNT(*) FROM snapshots')['count'];
 
         // Get checkpoints for display
         $checkpoints = $this->readEntityManager->query('SELECT projection_name, last_event_id FROM projection_checkpoints');
@@ -116,13 +117,46 @@ final class DemoControlController extends AbstractController
             'events' => (int)$eventCount,
             'users' => (int)$userCount,
             'bookings' => (int)$bookingCount,
+            'snapshots' => (int)$snapshotCount,
             'checkpoints' => $checkpointsMap
         ]);
+    }
+
+use App\Domain\Model\Snapshot;
+use App\Domain\Model\UserEntity;
+use App\Domain\Model\BookingEntity;
+// ... rest ...
+
+    #[Route('/api/demo/snapshot', methods: ['POST'])]
+    public function snapshot(): Response
+    {
+        // For a demo, we'll create a system-wide snapshot of current projection counts
+        // In a real app, snapshots are per aggregate (one snapshot per booking ID)
+        
+        $eventCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM event_store')['count'];
+        $userCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM users')['count'];
+        $bookingCount = (int)$this->readEntityManager->fetchOne('SELECT COUNT(*) FROM bookings')['count'];
+
+        $snapshot = new Snapshot(
+            Uuid::v7(), // System aggregate ID for demo
+            $eventCount,
+            [
+                'users' => $userCount,
+                'bookings' => $bookingCount,
+                'timestamp' => time()
+            ]
+        );
+
+        $this->writeEntityManager->persist($snapshot);
+        $this->writeEntityManager->flush();
+
+        return new JsonResponse(['status' => 'success', 'version' => $eventCount]);
     }
 
     #[Route('/api/demo/reset', methods: ['POST'])]
     public function reset(): Response
     {
+        // 1. Force all toggles back to enabled (Master, User, Booking)
         $this->cache->delete(self::CACHE_KEY_MASTER);
         $this->cache->get(self::CACHE_KEY_MASTER, fn() => true);
         $this->cache->delete(self::CACHE_KEY_USER_PROJECTIONS);
@@ -138,6 +172,7 @@ final class DemoControlController extends AbstractController
         $this->readEntityManager->fetchOne('TRUNCATE products CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE suppliers CASCADE');
         $this->readEntityManager->fetchOne('TRUNCATE menus CASCADE');
+        $this->readEntityManager->fetchOne('TRUNCATE snapshots CASCADE');
 
         $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($this->kernel);
         $application->setAutoExit(false);

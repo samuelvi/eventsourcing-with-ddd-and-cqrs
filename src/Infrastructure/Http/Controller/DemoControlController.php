@@ -10,6 +10,7 @@ use App\Domain\Model\StoredEvent;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -26,6 +27,7 @@ final class DemoControlController extends AbstractController
         private WriteEntityManager $writeEntityManager,
         private MessageBusInterface $eventBus,
         private SerializerInterface $serializer,
+        private KernelInterface $kernel,
     ) {}
 
     #[Route('/api/demo/status', methods: ['GET'])]
@@ -97,14 +99,19 @@ final class DemoControlController extends AbstractController
         $this->cache->delete(self::CACHE_KEY);
         $this->cache->get(self::CACHE_KEY, fn() => true);
 
-        // 2. Execute doctrine:fixtures:load
-        $kernel = $this->container->get('kernel');
-        $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($kernel);
+        // 2. Brutal Clean (Truncate all tables to be 100% sure)
+        $this->readEntityManager->fetchOne('TRUNCATE users CASCADE');
+        $this->readEntityManager->fetchOne('TRUNCATE bookings CASCADE');
+        $this->readEntityManager->fetchOne('TRUNCATE event_store CASCADE');
+
+        // 3. Execute doctrine:fixtures:load programmatically
+        $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($this->kernel);
         $application->setAutoExit(false);
 
         $input = new \Symfony\Component\Console\Input\ArrayInput([
             'command' => 'doctrine:fixtures:load',
             '--no-interaction' => true,
+            '--append' => true, // We already truncated manually, so append is safer/faster
         ]);
 
         $application->run($input, new \Symfony\Component\Console\Output\NullOutput());

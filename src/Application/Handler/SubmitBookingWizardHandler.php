@@ -12,6 +12,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Lock\LockFactory;
+use Symfony\Contracts\Cache\CacheInterface;
 
 #[AsMessageHandler]
 final readonly class SubmitBookingWizardHandler
@@ -20,6 +21,7 @@ final readonly class SubmitBookingWizardHandler
         private WriteEntityManager $entityManager,
         private MessageBusInterface $eventBus,
         private LockFactory $lockFactory,
+        private CacheInterface $cache,
     ) {}
 
     public function __invoke(SubmitBookingWizardCommand $command): void
@@ -73,7 +75,11 @@ final readonly class SubmitBookingWizardHandler
             $this->entityManager->flush();
 
             // 3. Dispatch to Async Bus (for Projections)
-            $this->eventBus->dispatch($event);
+            // DEMO MODE: Skip dispatch if projections are disabled to simulate failure
+            $projectionsEnabled = $this->cache->get('demo_projections_enabled', fn() => true);
+            if ($projectionsEnabled) {
+                $this->eventBus->dispatch($event);
+            }
         } finally {
             $lock->release();
         }

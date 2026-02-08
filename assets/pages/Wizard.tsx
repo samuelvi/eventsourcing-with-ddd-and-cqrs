@@ -69,7 +69,7 @@ export function Wizard() {
                     onClick={resetForm} 
                     style={{ 
                         padding: '12px 24px', 
-                        backgroundColor: '#6366f1', 
+                        backgroundColor: '#111827', 
                         color: 'white', 
                         border: 'none', 
                         borderRadius: '10px', 

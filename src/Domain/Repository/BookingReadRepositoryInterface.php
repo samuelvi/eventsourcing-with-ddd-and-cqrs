@@ -6,6 +6,11 @@ namespace App\Domain\Repository;
 
 interface BookingReadRepositoryInterface
 {
+    /**
+     * @return array<array<string, mixed>>
+     */
+    public function findAllForList(): array;
+
     public function countAll(): int;
 
     public function exists(string $id): bool;

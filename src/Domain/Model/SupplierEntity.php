@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
+use App\Infrastructure\ApiPlatform\Provider\SupplierProvider;
 use App\Domain\Shared\NamedConstructorTrait;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -22,7 +23,7 @@ use Symfony\Component\Validator\Constraints as Assert;
     shortName: 'Supplier',
     operations: [
         new Get(uriTemplate: '/suppliers/{id}'),
-        new GetCollection(uriTemplate: '/suppliers'),
+        new GetCollection(uriTemplate: '/suppliers', provider: SupplierProvider::class),
         new Post(uriTemplate: '/suppliers')
     ],
     normalizationContext: ['groups' => ['supplier:read']],

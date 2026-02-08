@@ -9,7 +9,12 @@ use App\Domain\Model\SupplierEntity;
 interface SupplierReadRepositoryInterface
 {
     /**
-     * @return array<SupplierEntity>
+     * @return array<array<string, mixed>>
      */
     public function findOptimalSuppliers(int $limit = 3): array;
+
+    /**
+     * @return array<array<string, mixed>>
+     */
+    public function findAllForList(): array;
 }

@@ -21,7 +21,7 @@ final readonly class DbalUserReadRepository implements UserReadRepositoryInterfa
 
     public function findById(string $id): ?array
     {
-        $sql = 'SELECT * FROM users WHERE id = :id';
+        $sql = 'SELECT id, name, email FROM users WHERE id = :id';
         return $this->entityManager->fetchOne($sql, ['id' => $id]);
     }
 

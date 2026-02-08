@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
+use App\Infrastructure\ApiPlatform\Provider\ProductProvider;
 use App\Domain\Shared\NamedConstructorTrait;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -19,8 +20,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ApiResource(
     shortName: 'Product',
     operations: [
-        new Get(uriTemplate: '/products/{id}'),
-        new GetCollection(uriTemplate: '/products'),
+        new Get(uriTemplate: '/products/{id}', provider: ProductProvider::class),
+        new GetCollection(uriTemplate: '/products', provider: ProductProvider::class),
         new Post(uriTemplate: '/products')
     ],
     normalizationContext: ['groups' => ['product:read']],

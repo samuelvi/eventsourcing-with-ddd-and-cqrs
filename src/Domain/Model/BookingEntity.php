@@ -9,6 +9,7 @@ use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use App\Infrastructure\ApiPlatform\Provider\BookingProvider;
 use App\Domain\Shared\NamedConstructorTrait;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -18,8 +19,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'bookings')]
 #[ApiResource(
     operations: [
-        new Get(uriTemplate: '/bookings/{id}'),
-        new GetCollection(uriTemplate: '/bookings', paginationEnabled: false, order: ['createdAt' => 'DESC'])
+        new Get(uriTemplate: '/bookings/{id}', provider: BookingProvider::class),
+        new GetCollection(uriTemplate: '/bookings', provider: BookingProvider::class, paginationEnabled: false, order: ['createdAt' => 'DESC'])
     ],
     normalizationContext: ['groups' => ['booking:read']]
 )]

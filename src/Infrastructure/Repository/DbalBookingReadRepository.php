@@ -13,6 +13,12 @@ final readonly class DbalBookingReadRepository implements BookingReadRepositoryI
         private ReadEntityManager $entityManager,
     ) {}
 
+    public function findAllForList(): array
+    {
+        $sql = 'SELECT id, created_at, data FROM bookings ORDER BY created_at DESC';
+        return $this->entityManager->query($sql);
+    }
+
     public function countAll(): int
     {
         $sql = 'SELECT COUNT(*) FROM bookings';

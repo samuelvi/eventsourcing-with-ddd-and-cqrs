@@ -24,7 +24,7 @@ services:
     # Read Side
     App\Domain\Repository\UserReadRepositoryInterface: '@App\Infrastructure\Repository\DbalUserReadRepository'
     App\Domain\Repository\BookingReadRepositoryInterface: '@App\Infrastructure\Repository\DbalBookingReadRepository'
-    App\Domain\Repository\SupplierReadRepositoryInterface: '@App\Infrastructure\Repository\DoctrineSupplierReadRepository'
+    App\Domain\Repository\SupplierReadRepositoryInterface: '@App\Infrastructure\Repository\DbalSupplierReadRepository'
     App\Domain\Repository\ProductReadRepositoryInterface: '@App\Infrastructure\Repository\DbalProductReadRepository'
     App\Domain\Repository\MenuReadRepositoryInterface: '@App\Infrastructure\Repository\DbalMenuReadRepository'
 

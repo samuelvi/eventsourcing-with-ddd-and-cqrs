@@ -180,17 +180,27 @@ export function DemoFlow() {
                         <tbody>
                             {items.map((item: any, i: number) => (
                                 <tr key={i} style={{ borderBottom: i === items.length - 1 ? 'none' : '1px solid #f3f4f6', backgroundColor: i === 0 ? '#f0f9ff' : 'transparent' }}>
-                                    {columns.map((col: string, j: number) => (
-                                        <td key={j} style={{ padding: '10px 16px', color: '#4b5563' }}>
-                                            {col.includes('Id') || col === 'id' ? (
-                                                <code style={{ color: '#6366f1', fontWeight: 600 }}>...{String(item[col] || '').slice(-6)}</code>
-                                            ) : col === 'payload' ? (
-                                                <span title={JSON.stringify(item[col])}>{JSON.stringify(item[col]).slice(0, 30)}...</span>
-                                            ) : col === 'createdAt' || col === 'occurredOn' ? (
-                                                new Date(item[col]).toLocaleTimeString()
-                                            ) : item[col]}
-                                        </td>
-                                    ))}
+                                    {columns.map((col: string, j: number) => {
+                                        let val = item[col];
+                                        if (col.includes('.')) {
+                                            const parts = col.split('.');
+                                            val = item[parts[0]]?.[parts[1]];
+                                        }
+                                        
+                                        return (
+                                            <td key={j} style={{ padding: '10px 16px', color: '#4b5563' }}>
+                                                {col.includes('Id') || col === 'id' ? (
+                                                    <code style={{ color: '#6366f1', fontWeight: 600 }}>...{String(val || '').slice(-6)}</code>
+                                                ) : col === 'payload' ? (
+                                                    <span title={JSON.stringify(val)}>{JSON.stringify(val).slice(0, 30)}...</span>
+                                                ) : col === 'createdAt' || col === 'occurredOn' ? (
+                                                    new Date(val).toLocaleTimeString()
+                                                ) : col === 'eventType' ? (
+                                                    val.split('\\').pop()
+                                                ) : val}
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
                             ))}
                         </tbody>
@@ -295,12 +305,12 @@ export function DemoFlow() {
                     {/* LIVE TABLES */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                            <DataList title="Latest Events (Store)" items={events} columns={['eventType', 'aggregateId']} emptyMsg="Empty store." badge={events.length} />
+                            <DataList title="Latest Events (Store)" items={events} columns={['eventType', 'occurredOn']} emptyMsg="Empty store." badge={events.length} />
                             <DataList title="Active Checkpoints" items={checkpoints} columns={['projectionName', 'lastEventId']} emptyMsg="No checkpoints." badge={checkpoints.length} />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                             <DataList title="Users (Projection)" items={users} columns={['name', 'email']} emptyMsg="Empty projection." badge={users.length} />
-                            <DataList title="Bookings (Projection)" items={bookings} columns={['id', 'createdAt']} emptyMsg="Empty projection." badge={bookings.length} />
+                            <DataList title="Bookings (Projection)" items={bookings} columns={['data.clientName', 'createdAt']} emptyMsg="Empty projection." badge={bookings.length} />
                         </div>
                     </div>
                 </div>

@@ -25,13 +25,11 @@ final readonly class UserProvider implements ProviderInterface
             $data = $this->repository->findById($uriVariables['id']);
             if (!$data) return null;
             
-            $user = UserEntity::create($data['name'], $data['email']);
-            // Reflection hack to set ID
-            $ref = new \ReflectionClass($user);
-            $prop = $ref->getProperty('id');
-            $prop->setValue($user, Uuid::fromString($data['id']));
-            
-            return $user;
+            return UserEntity::hydrate(
+                $data['name'], 
+                $data['email'], 
+                Uuid::fromString($data['id'])
+            );
         }
 
         return $this->repository->findAllForList();

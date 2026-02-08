@@ -49,10 +49,15 @@ class UserEntity
     #[Groups(['user:read', 'user:write'])]
     public string $name;
 
-    protected function __construct(string $name, string $email)
+    protected function __construct(string $name, string $email, ?Uuid $id = null)
     {
-        $this->id = Uuid::v7();
+        $this->id = $id ?? Uuid::v7();
         $this->name = $name;
         $this->email = $email;
+    }
+
+    public static function hydrate(string $name, string $email, Uuid $id): self
+    {
+        return new self($name, $email, $id);
     }
 }

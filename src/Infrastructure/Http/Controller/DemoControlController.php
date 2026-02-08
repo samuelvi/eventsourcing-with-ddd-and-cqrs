@@ -41,8 +41,11 @@ final class DemoControlController extends AbstractController
     #[Route('/api/demo/toggle', methods: ['POST'])]
     public function toggle(): Response
     {
-        $this->cache->delete(self::CACHE_KEY);
-        $newValue = !(bool)$this->cache->get(self::CACHE_KEY, fn() => false);
+        // 1. Get current value (default true)
+        $current = $this->cache->get(self::CACHE_KEY, fn() => true);
+        $newValue = !$current;
+
+        // 2. Clear and set new value
         $this->cache->delete(self::CACHE_KEY);
         $this->cache->get(self::CACHE_KEY, fn() => $newValue);
 

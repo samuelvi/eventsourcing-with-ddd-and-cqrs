@@ -7,6 +7,12 @@ interface Stats {
     bookings: number;
 }
 
+// Simple flat icons as SVG components
+const IconCheck = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>;
+const IconAlert = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+const IconActivity = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
+const IconZap = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+
 export function DemoFlow() {
     const [stats, setStats] = useState<Stats>({ events: 0, users: 0, bookings: 0 });
     const [projectionsEnabled, setProjectionsEnabled] = useState(true);
@@ -18,7 +24,9 @@ export function DemoFlow() {
     const refreshStats = async () => {
         try {
             const res = await fetch('/api/demo/stats');
-            setStats(await res.json());
+            const data = await res.json();
+            setStats(data);
+            
             const statusRes = await fetch('/api/demo/status');
             const statusData = await statusRes.json();
             setProjectionsEnabled(statusData.projectionsEnabled);
@@ -29,21 +37,28 @@ export function DemoFlow() {
 
     useEffect(() => {
         refreshStats();
-        const interval = setInterval(refreshStats, 2000);
+        const interval = setInterval(refreshStats, 3000);
         return () => clearInterval(interval);
     }, []);
 
     const toggleProjections = async () => {
         setLoading(true);
-        await fetch('/api/demo/toggle', { method: 'POST' });
-        await refreshStats();
-        setLoading(false);
+        try {
+            const res = await fetch('/api/demo/toggle', { method: 'POST' });
+            const data = await res.json();
+            setProjectionsEnabled(data.projectionsEnabled);
+            setMessage(data.projectionsEnabled ? 'Projectors are now online' : 'Projectors disconnected');
+        } catch (e) {
+            setMessage('Error toggling status');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const submitRandomBooking = async () => {
         setLoading(true);
-        const name = `Demo User ${Math.floor(Math.random() * 1000)}`;
-        const email = `demo${Math.floor(Math.random() * 1000)}@example.com`;
+        const name = `Client ${Math.floor(Math.random() * 1000)}`;
+        const email = `client${Math.floor(Math.random() * 1000)}@example.com`;
         
         try {
             const res = await fetch('/api/booking-wizard', {
@@ -58,137 +73,186 @@ export function DemoFlow() {
                 }),
             });
             if (res.ok) {
-                setMessage(`✅ Event stored for ${name}`);
+                setMessage(`Fact recorded for ${name}`);
             }
             await refreshStats();
         } catch (e) {
-            setMessage('❌ Error creating booking');
+            setMessage('Error creating entry');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const runRebuild = async () => {
         setLoading(true);
-        setMessage('🔄 Replaying history...');
-        await fetch('/api/demo/rebuild', { method: 'POST' });
-        await refreshStats();
-        setMessage('✨ System state restored!');
-        setLoading(false);
-    };
-
-    const runReset = async () => {
-        if (!confirm('Clear all data and restart demo?')) return;
-        setLoading(true);
-        await fetch('/api/demo/reset', { method: 'POST' });
-        setMessage('🌟 Fresh start.');
-        await refreshStats();
-        setLoading(false);
+        setMessage('Replaying history...');
+        try {
+            await fetch('/api/demo/rebuild', { method: 'POST' });
+            await refreshStats();
+            setMessage('Consistency restored');
+        } catch (e) {
+            setMessage('Rebuild failed');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <div style={{ maxWidth: '900px', margin: '0 auto', fontFamily: 'system-ui, sans-serif', padding: '20px', backgroundColor: '#f0f2f5', borderRadius: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h1 style={{ margin: 0 }}>🎭 TED Talk: The Power of Event Sourcing</h1>
-                <button onClick={runReset} disabled={loading} style={{ padding: '8px 16px', cursor: 'pointer', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '6px' }}>
-                    ♻️ Full Reset
-                </button>
-            </div>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+            <header style={{ marginBottom: '40px' }}>
+                <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 700 }}>TED Demo Mode</h1>
+                <p style={{ margin: '4px 0 0', color: '#6b7280' }}>Visualize the separation of concerns in Event Sourcing.</p>
+            </header>
 
-            {/* STEP 1: SIMULATE BREAKAGE */}
-            <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-                <h2 style={{ marginTop: 0, color: '#333' }}>1. Simular Rotura de Infraestructura ⚡</h2>
-                <p style={{ color: '#666' }}>Apaga los proyectores para simular un fallo en el microservicio de lectura.</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                    <button 
-                        onClick={toggleProjections}
-                        disabled={loading}
-                        style={{
-                            padding: '15px 30px',
-                            fontSize: '18px',
-                            backgroundColor: projectionsEnabled ? '#28a745' : '#dc3545',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '50px',
-                            cursor: 'pointer',
-                            fontWeight: 'bold',
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                            transition: 'all 0.3s'
-                        }}
-                    >
-                        PROJECTORS: {projectionsEnabled ? 'ACTIVE ✅' : 'BROKEN ❌'}
-                    </button>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: projectionsEnabled ? '#28a745' : '#dc3545' }}>
-                        {projectionsEnabled ? 'Estás en modo normal.' : '¡PROYECCIONES DESACTIVADAS! Los datos no llegarán a la UI.'}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '32px' }}>
+                
+                {/* INTERACTION ZONE */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    
+                    {/* TOGGLE */}
+                    <div style={{ backgroundColor: '#fff', padding: '32px', borderRadius: '24px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                        <h3 style={{ marginTop: 0, fontSize: '18px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <IconZap /> 1. Infrastructure Link
+                        </h3>
+                        <p style={{ color: '#6b7280', fontSize: '15px', lineHeight: '1.6', marginBottom: '24px' }}>
+                            Toggle the projection engine. When disabled, events are stored but read models remain static.
+                        </p>
+                        <button 
+                            onClick={toggleProjections}
+                            disabled={loading}
+                            style={{
+                                width: '100%',
+                                padding: '16px',
+                                fontSize: '16px',
+                                backgroundColor: projectionsEnabled ? '#6366f1' : '#f43f5e',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                gap: '10px',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            {projectionsEnabled ? <IconCheck /> : <IconAlert />}
+                            Projectors: {projectionsEnabled ? 'Online' : 'Broken'}
+                        </button>
+                    </div>
+
+                    {/* EVENT GEN */}
+                    <div style={{ backgroundColor: '#fff', padding: '32px', borderRadius: '24px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                        <h3 style={{ marginTop: 0, fontSize: '18px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <IconActivity /> 2. Fact Generator
+                        </h3>
+                        <p style={{ color: '#6b7280', fontSize: '15px', lineHeight: '1.6', marginBottom: '24px' }}>
+                            Emit a domain event to witness how the system handles new information.
+                        </p>
+                        <button 
+                            onClick={submitRandomBooking}
+                            disabled={loading}
+                            style={{ 
+                                width: '100%', 
+                                padding: '16px', 
+                                fontSize: '16px', 
+                                backgroundColor: '#111827', 
+                                color: 'white', 
+                                border: 'none', 
+                                borderRadius: '12px', 
+                                cursor: 'pointer', 
+                                fontWeight: 600
+                            }}
+                        >
+                            + Create New Entry
+                        </button>
+                        {message && (
+                            <div style={{ marginTop: '20px', padding: '12px', backgroundColor: '#f3f4f6', color: '#374151', borderRadius: '8px', fontSize: '14px', textAlign: 'center' }}>
+                                {message}
+                            </div>
+                        )}
                     </div>
                 </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                {/* STEP 2: TRAFFIC */}
-                <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                    <h2 style={{ marginTop: 0 }}>2. Generar Tráfico 🚀</h2>
-                    <button 
-                        onClick={submitRandomBooking}
-                        disabled={loading}
-                        style={{ padding: '20px', width: '100%', fontSize: '18px', cursor: 'pointer', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}
-                    >
-                        + Crear Reserva Aleatoria
-                    </button>
-                    <p style={{ minHeight: '24px', marginTop: '15px', color: '#007bff', fontWeight: 'bold' }}>{message}</p>
-                </div>
+                {/* STATUS ZONE */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    <div style={{ backgroundColor: '#fff', padding: '32px', borderRadius: '24px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                        <h3 style={{ marginTop: 0, marginBottom: '24px', fontSize: '18px', fontWeight: 600 }}>3. Integrity Monitor</h3>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Event Store</div>
+                                    <div style={{ fontSize: '16px', fontWeight: 500 }}>Historical Facts</div>
+                                </div>
+                                <div style={{ fontSize: '36px', fontWeight: 700, color: '#6366f1' }}>{stats.events}</div>
+                            </div>
 
-                {/* STEP 3: MONITOR */}
-                <div style={{ backgroundColor: '#212529', color: '#00ff00', padding: '25px', borderRadius: '10px', fontFamily: 'monospace', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                    <h2 style={{ marginTop: 0, color: 'white', fontFamily: 'sans-serif' }}>3. Estado del Sistema 📊</h2>
-                    <div style={{ fontSize: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>&gt; EVENT_STORE:</span>
-                            <span style={{ color: 'white' }}>{stats.events} events</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Read Models</div>
+                                    <div style={{ fontSize: '16px', fontWeight: 500 }}>Current State</div>
+                                </div>
+                                <div style={{ fontSize: '36px', fontWeight: 700, color: isInconsistent ? '#f43f5e' : '#10b981' }}>{stats.bookings}</div>
+                            </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #444', paddingTop: '10px' }}>
-                            <span>&gt; READ_MODELS:</span>
-                            <span style={{ color: isInconsistent ? '#ff4d4d' : '#00ff00' }}>{stats.bookings} records</span>
-                        </div>
-                        <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '14px', color: isInconsistent ? '#ff4d4d' : '#888' }}>
-                            {isInconsistent ? 'STATUS: INCONSISTENT ⚠️' : 'STATUS: SYNCED OK'}
+
+                        <div style={{ 
+                            marginTop: '32px', 
+                            padding: '12px', 
+                            backgroundColor: isInconsistent ? '#fff1f2' : '#ecfdf5', 
+                            borderRadius: '12px', 
+                            textAlign: 'center', 
+                            border: `1px solid ${isInconsistent ? '#fecdd3' : '#d1fae5'}`,
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: isInconsistent ? '#e11d48' : '#059669',
+                            textTransform: 'uppercase'
+                        }}>
+                            {isInconsistent ? 'Inconsistency Detected' : 'System Synchronized'}
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* STEP 4: REPAIR (The Magic) */}
-            <div style={{ 
-                backgroundColor: isInconsistent ? '#fff3cd' : '#e9ecef', 
-                padding: '30px', 
-                borderRadius: '10px', 
-                border: isInconsistent ? '3px solid #ffc107' : '1px solid #ccc', 
-                textAlign: 'center',
-                opacity: isInconsistent ? 1 : 0.6
-            }}>
-                <h2 style={{ marginTop: 0 }}>4. La Autocuración (Self-Healing) ✨</h2>
-                <p style={{ fontSize: '18px' }}>
-                    {isInconsistent 
-                        ? 'Se ha detectado una pérdida de consistencia. El Event Store tiene la verdad, pero la UI está desactualizada.' 
-                        : 'El sistema está sano. Si hubiera un fallo, podrías reconstruirlo todo aquí.'}
-                </p>
-                <button 
-                    onClick={runRebuild}
-                    disabled={loading || !isInconsistent}
-                    style={{
-                        padding: '20px 40px',
-                        backgroundColor: isInconsistent ? '#ffc107' : '#6c757d',
-                        color: '#212529',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: isInconsistent ? 'pointer' : 'not-allowed',
-                        fontSize: '22px',
-                        fontWeight: 'bold',
-                        boxShadow: isInconsistent ? '0 6px 12px rgba(0,0,0,0.2)' : 'none',
-                        transition: 'all 0.3s'
-                    }}
-                >
-                    🛠️ REPAIR & REPLAY HISTORY
-                </button>
+                    {/* HEALING */}
+                    <div style={{ 
+                        backgroundColor: isInconsistent ? '#fff' : 'transparent', 
+                        padding: '32px', 
+                        borderRadius: '24px', 
+                        border: isInconsistent ? '2px solid #6366f1' : '2px dashed #e5e7eb',
+                        textAlign: 'center',
+                        transition: 'all 0.3s ease'
+                    }}>
+                        {isInconsistent ? (
+                            <>
+                                <h4 style={{ margin: '0 0 12px', fontSize: '16px', fontWeight: 600 }}>Self-Healing Protocol</h4>
+                                <p style={{ margin: '0 0 24px', color: '#6b7280', fontSize: '14px', lineHeight: '1.5' }}>
+                                    Restore consistency by replaying the immutable history from the Event Store.
+                                </p>
+                                <button 
+                                    onClick={runRebuild}
+                                    disabled={loading}
+                                    style={{
+                                        width: '100%',
+                                        padding: '16px',
+                                        backgroundColor: '#6366f1',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '12px',
+                                        cursor: 'pointer',
+                                        fontSize: '16px',
+                                        fontWeight: 600,
+                                        boxShadow: '0 10px 15px -3px rgba(99, 102, 241, 0.3)'
+                                    }}
+                                >
+                                    Repair & Sync
+                                </button>
+                            </>
+                        ) : (
+                            <p style={{ color: '#9ca3af', fontStyle: 'italic', margin: 0 }}>System is optimal. All facts are projected.</p>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
 interface FormData {
+    bookingId: string;
     pax: number;
     budget: number;
     clientName: string;
@@ -9,12 +11,25 @@ interface FormData {
 
 export function Wizard() {
     const [formData, setFormData] = useState<FormData>({
+        bookingId: uuidv4(),
         pax: 2,
         budget: 50,
         clientName: '',
         clientEmail: '',
     });
     const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+
+    // Regenerate ID on successful reset to allow a new unique booking
+    const resetForm = () => {
+        setFormData({
+            bookingId: uuidv4(),
+            pax: 2,
+            budget: 50,
+            clientName: '',
+            clientEmail: '',
+        });
+        setStatus('idle');
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -51,7 +66,7 @@ export function Wizard() {
             <div style={{ maxWidth: '600px', margin: '40px auto', textAlign: 'center' }}>
                 <h2>🎉 Request Received!</h2>
                 <p>We are processing your booking request. You will receive an email shortly.</p>
-                <button onClick={() => setStatus('idle')} style={{ padding: '10px 20px', cursor: 'pointer' }}>
+                <button onClick={resetForm} style={{ padding: '10px 20px', cursor: 'pointer' }}>
                     New Booking
                 </button>
             </div>

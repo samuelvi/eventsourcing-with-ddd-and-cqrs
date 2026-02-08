@@ -51,12 +51,45 @@ init-front:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES) exec -T node npm install --quiet
 
 # Inicializar todo el sistema desde cero
+
 init: dev-down dev-build dev-up
+
 	@echo "Esperando a que los servicios arranquen..."
+
 	@sleep 10
+
 	$(MAKE) setup-api
+
 	$(MAKE) init-front
+
 	$(MAKE) load-fixtures
+
 	@echo "Sistema inicializado correctamente."
+
 	@echo "Frontend: http://localhost:5173 (o via Symfony en http://localhost:8080)"
+
 	@echo "API Docs: http://localhost:8080/docs"
+
+
+
+# Ejecutar tests funcionales
+
+
+
+test:
+
+
+
+	$(DOCKER_COMPOSE_DEV) exec -T -e APP_ENV=test symfony-api bin/console doctrine:database:create --if-not-exists
+
+
+
+	$(DOCKER_COMPOSE_DEV) exec -T -e APP_ENV=test symfony-api bin/console doctrine:schema:update --force
+
+
+
+	$(DOCKER_COMPOSE_DEV) exec -T -e APP_ENV=test symfony-api bin/phpunit
+
+
+
+

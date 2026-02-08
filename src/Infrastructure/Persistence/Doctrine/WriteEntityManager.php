@@ -34,4 +34,9 @@ final readonly class WriteEntityManager
     {
         return $this->entityManager->find($className, $id);
     }
+
+    public function getRepository(string $className): \Doctrine\Persistence\ObjectRepository
+    {
+        return $this->entityManager->getRepository($className);
+    }
 }

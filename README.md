@@ -28,7 +28,21 @@ make init
 ### ⚙️ Automation & Tools
 *   **n8n Workflow Tool:** [http://localhost:5678/](http://localhost:5678/)
 *   **Adminer (Postgres Mgmt):** [http://localhost:8081/](http://localhost:8081/)
-*   **Mongo Express (Mongo Mgmt):** [http://localhost:8082/](http://localhost:8082/) (Credentials: user/password)
+*   **Mongo Express (Mongo Mgmt):** [http://localhost:8082/](http://localhost:8082/)
+
+#### 🗄️ Dev Database Credentials (Adminer)
+*   **System:** `PostgreSQL`
+*   **Server:** `postgres-db`
+*   **Username:** `user`
+*   **Password:** `password`
+*   **Database:** `event_sourcing_dev`
+
+#### 🍃 Dev Database Credentials (Mongo Express)
+*   **Login User:** `user` (Web Auth)
+*   **Login Password:** `password` (Web Auth)
+*   **Server:** `mongodb`
+*   **DB Username:** `root`
+*   **DB Password:** `password`
 
 ## 🏗️ Architecture: Enterprise-Grade Hybrid
 *   **DDD (Domain-Driven Design):** Strict separation of layers (Domain, Application, Infrastructure).

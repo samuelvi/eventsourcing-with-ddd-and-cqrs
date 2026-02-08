@@ -37,8 +37,7 @@ final class RebuildProjectionsCommand extends Command
 
         // 1. Clear Read Models
         $io->section('Clearing Read Models & Checkpoints...');
-        $this->readEntityManager->fetchOne('TRUNCATE users CASCADE');
-        $this->readEntityManager->fetchOne('TRUNCATE bookings CASCADE');
+        $this->readEntityManager->execute('TRUNCATE users, bookings RESTART IDENTITY CASCADE');
         $this->mongoStore->clearCheckpoints();
         $io->success('Read models and checkpoints cleared.');
 

@@ -27,7 +27,7 @@ final readonly class MongoStore
         $cursor = $this->mongoClient->getDatabase()->selectCollection('events')->find([], ['sort' => ['occurredOn' => 1]]);
         $events = [];
         foreach ($cursor as $doc) {
-            $events[] = StoredEvent::fromArray((array)$doc);
+            $events[] = StoredEvent::fromArray(json_decode(json_encode($doc), true));
         }
         return $events;
     }
@@ -40,7 +40,7 @@ final readonly class MongoStore
     public function findEventByAggregateId(Uuid $aggregateId): ?StoredEvent
     {
         $doc = $this->mongoClient->getDatabase()->selectCollection('events')->findOne(['aggregateId' => $aggregateId->toRfc4122()]);
-        return $doc ? StoredEvent::fromArray((array)$doc) : null;
+        return $doc ? StoredEvent::fromArray(json_decode(json_encode($doc), true)) : null;
     }
 
     // --- Snapshots ---
@@ -69,7 +69,7 @@ final readonly class MongoStore
     public function findCheckpoint(string $projectionName): ?ProjectionCheckpoint
     {
         $doc = $this->mongoClient->getDatabase()->selectCollection('checkpoints')->findOne(['projectionName' => $projectionName]);
-        return $doc ? ProjectionCheckpoint::fromArray((array)$doc) : null;
+        return $doc ? ProjectionCheckpoint::fromArray(json_decode(json_encode($doc), true)) : null;
     }
 
     public function findAllCheckpoints(): array
@@ -77,7 +77,7 @@ final readonly class MongoStore
         $cursor = $this->mongoClient->getDatabase()->selectCollection('checkpoints')->find();
         $checkpoints = [];
         foreach ($cursor as $doc) {
-            $checkpoints[] = ProjectionCheckpoint::fromArray((array)$doc);
+            $checkpoints[] = ProjectionCheckpoint::fromArray(json_decode(json_encode($doc), true));
         }
         return $checkpoints;
     }

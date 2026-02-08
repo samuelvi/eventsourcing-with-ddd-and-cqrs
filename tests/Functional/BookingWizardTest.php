@@ -183,8 +183,11 @@ final class BookingWizardTest extends ApiTestCase
     private function clearDatabase(): void
     {
         $conn = $this->entityManager->getConnection();
-        $conn->executeStatement('TRUNCATE event_store CASCADE');
         $conn->executeStatement('TRUNCATE users CASCADE');
         $conn->executeStatement('TRUNCATE bookings CASCADE');
+
+        // Clear Mongo
+        $mongoStore = self::getContainer()->get(\App\Infrastructure\Persistence\Mongo\MongoStore::class);
+        $mongoStore->clearAll();
     }
 }

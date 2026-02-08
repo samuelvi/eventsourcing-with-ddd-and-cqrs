@@ -41,10 +41,10 @@ final readonly class BookingProjection
                 'clientEmail' => $event->clientEmail,
             ];
 
-            $booking = new BookingEntity(
-                Uuid::fromString($event->bookingId),
-                $data,
-                $event->occurredOn
+            $booking = BookingEntity::create(
+                id: Uuid::fromString($event->bookingId),
+                data: $data,
+                createdAt: $event->occurredOn
             );
 
             $this->bookingWriteRepository->save($booking);

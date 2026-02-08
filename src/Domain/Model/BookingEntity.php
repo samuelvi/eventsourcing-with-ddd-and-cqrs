@@ -9,6 +9,7 @@ use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use App\Domain\Shared\NamedConstructorTrait;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Uid\Uuid;
@@ -25,6 +26,8 @@ use Symfony\Component\Uid\Uuid;
 #[ApiFilter(OrderFilter::class, properties: ['createdAt'])]
 class BookingEntity
 {
+    use NamedConstructorTrait;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
     #[Groups(['booking:read'])]
@@ -38,7 +41,7 @@ class BookingEntity
     #[Groups(['booking:read'])]
     public array $data;
 
-    public function __construct(Uuid $id, array $data, \DateTimeImmutable $createdAt)
+    protected function __construct(Uuid $id, array $data, \DateTimeImmutable $createdAt)
     {
         $this->id = $id;
         $this->data = $data;

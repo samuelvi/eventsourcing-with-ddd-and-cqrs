@@ -114,7 +114,7 @@ export function DemoFlow() {
                     clientEmail: email
                 }),
             });
-            if (res.ok) setMessage(`Fact recorded for ${name}`);
+            if (res.ok) setMessage(`Fact recorded: ${name}`);
             await refreshStats();
         } catch (e) {
             setMessage('Error creating entry');
@@ -133,10 +133,10 @@ export function DemoFlow() {
                 setMessage('Consistency restored');
             } else {
                 const data = await res.json();
-                setMessage(`❌ Rebuild failed: ${data.message || 'Unknown error'}`);
+                setMessage(`Reset failed: ${data.message || 'Unknown error'}`);
             }
         } catch (e) {
-            setMessage('❌ Network error during rebuild');
+            setMessage('Network error during rebuild');
         } finally {
             setLoading(false);
         }
@@ -150,13 +150,13 @@ export function DemoFlow() {
             const data = await res.json();
             
             if (res.ok) {
-                setMessage('Reset complete');
+                setMessage('Lab reset complete');
                 await refreshStats();
             } else {
-                setMessage(`❌ Reset failed: ${data.message || 'Unknown error'}`);
+                setMessage(`Reset failed: ${data.message || 'Unknown error'}`);
             }
         } catch (e) {
-            setMessage('❌ Network error during reset');
+            setMessage('Network error during reset');
         } finally {
             setLoading(false);
         }
@@ -230,7 +230,7 @@ export function DemoFlow() {
                     <p style={{ margin: '4px 0 0', color: '#6b7280' }}>Enterprise features: Versioning & Snapshots.</p>
                 </div>
                 <button onClick={() => setShowResetModal(true)} disabled={loading} style={{ padding: '8px 16px', cursor: 'pointer', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#4b5563', fontSize: '13px', fontWeight: 600 }}>
-                    ♻️ Reset Lab
+                    Reset Lab
                 </button>
             </header>
 
@@ -271,7 +271,7 @@ export function DemoFlow() {
                             <IconActivity /> 2. Fact Generator
                         </h3>
                         <button onClick={submitRandomBooking} disabled={loading} style={{ width: '100%', marginTop: '16px', padding: '16px', fontSize: '15px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600 }}>
-                            + Emite Nuevo Evento
+                            Generate New Event
                         </button>
                         {message && <div style={{ marginTop: '16px', fontSize: '13px', color: '#6366f1', textAlign: 'center', fontWeight: 500 }}>{message}</div>}
                     </div>
@@ -308,7 +308,7 @@ export function DemoFlow() {
                             </div>
                             {isInconsistent && (
                                 <button onClick={runRebuild} disabled={loading} style={{ width: '100%', marginTop: '20px', padding: '12px', backgroundColor: '#6366f1', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>
-                                    🛠️ Repair & Sync
+                                    Repair & Sync
                                 </button>
                             )}
                         </div>

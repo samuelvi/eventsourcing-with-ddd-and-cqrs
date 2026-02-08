@@ -74,7 +74,7 @@ function App() {
                 <NavButton target="wizard" label="Booking Wizard" icon={Icons.Wizard} />
                 <NavButton target="explorer" label="Data Explorer" icon={Icons.Explorer} />
                 <div style={{ flexGrow: 1 }} />
-                <NavButton target="demo" label="TED Demo Mode" icon={Icons.Demo} />
+                <NavButton target="demo" label="System Monitor" icon={Icons.Demo} />
             </nav>
 
             <main style={{ padding: '40px' }}>

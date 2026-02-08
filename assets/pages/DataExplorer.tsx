@@ -10,7 +10,7 @@ export function DataExplorer() {
     const fetchData = async (type: EntityType) => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/${type}`, {
+            const response = await fetch(`/api/${type}?t=${Date.now()}`, {
                 headers: { 'Accept': 'application/ld+json' }
             });
             const result = await response.json();

@@ -10,6 +10,7 @@ interface Stats {
 export function DemoFlow() {
     const [stats, setStats] = useState<Stats>({ events: 0, users: 0, bookings: 0 });
     const [projectionsEnabled, setProjectionsEnabled] = useState(true);
+    const [eventStoreEnabled, setEventStoreEnabled] = useState(true);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 
@@ -19,6 +20,7 @@ export function DemoFlow() {
         const statusRes = await fetch('/api/demo/status');
         const statusData = await statusRes.json();
         setProjectionsEnabled(statusData.projectionsEnabled);
+        setEventStoreEnabled(statusData.eventStoreEnabled);
     };
 
     useEffect(() => {
@@ -30,6 +32,13 @@ export function DemoFlow() {
     const toggleProjections = async () => {
         setLoading(true);
         await fetch('/api/demo/toggle', { method: 'POST' });
+        await refreshStats();
+        setLoading(false);
+    };
+
+    const toggleEventStore = async () => {
+        setLoading(true);
+        await fetch('/api/demo/toggle-event-store', { method: 'POST' });
         await refreshStats();
         setLoading(false);
     };
@@ -91,24 +100,46 @@ export function DemoFlow() {
             </div>
             <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '20px' }}>
                 <h2 style={{ marginTop: 0 }}>Step 1: Configuration ⚙️</h2>
-                <p>Use this switch to simulate a service failure in your projectors.</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <button 
-                        onClick={toggleProjections}
-                        disabled={loading}
-                        style={{
-                            padding: '10px 20px',
-                            backgroundColor: projectionsEnabled ? '#28a745' : '#dc3545',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '20px',
-                            cursor: 'pointer',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        Projections: {projectionsEnabled ? 'RUNNING ✅' : 'STOPPED ❌'}
-                    </button>
-                    <span>{projectionsEnabled ? 'System is healthy.' : "SIMULATING FAILURE: Events will be saved, but Read Models won't update."}</span>
+                <p>Use these switches to simulate a service failure in your projectors or the event store.</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <button 
+                            onClick={toggleEventStore}
+                            disabled={loading}
+                            style={{
+                                padding: '10px 20px',
+                                minWidth: '200px',
+                                backgroundColor: eventStoreEnabled ? '#007bff' : '#6c757d',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '20px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            Event Store: {eventStoreEnabled ? 'ON 🧠' : 'OFF 🌑'}
+                        </button>
+                        <span>{eventStoreEnabled ? 'Events are being recorded (Source of Truth).' : 'TRADITIONAL MODE: No events recorded. Recovery will be impossible.'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <button 
+                            onClick={toggleProjections}
+                            disabled={loading}
+                            style={{
+                                padding: '10px 20px',
+                                minWidth: '200px',
+                                backgroundColor: projectionsEnabled ? '#28a745' : '#dc3545',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '20px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            Projections: {projectionsEnabled ? 'RUNNING ✅' : 'STOPPED ❌'}
+                        </button>
+                        <span>{projectionsEnabled ? 'Read models are updating.' : 'SIMULATING FAILURE: Events stored, but UI state won\'t update.'}</span>
+                    </div>
                 </div>
             </div>
 

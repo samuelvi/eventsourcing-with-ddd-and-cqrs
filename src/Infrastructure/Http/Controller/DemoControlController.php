@@ -19,7 +19,8 @@ use Symfony\Contracts\Cache\ItemInterface;
 
 final class DemoControlController extends AbstractController
 {
-    private const CACHE_KEY = 'demo_projections_enabled';
+    private const CACHE_KEY_PROJECTIONS = 'demo_projections_enabled';
+    private const CACHE_KEY_EVENT_STORE = 'demo_event_store_enabled';
 
     public function __construct(
         private CacheInterface $cache,
@@ -33,28 +34,35 @@ final class DemoControlController extends AbstractController
     #[Route('/api/demo/status', methods: ['GET'])]
     public function getStatus(): Response
     {
-        $enabled = $this->cache->get(self::CACHE_KEY, fn(ItemInterface $item) => true);
+        $projections = $this->cache->get(self::CACHE_KEY_PROJECTIONS, fn() => true);
+        $eventStore = $this->cache->get(self::CACHE_KEY_EVENT_STORE, fn() => true);
         
-        return new JsonResponse(['projectionsEnabled' => $enabled]);
+        return new JsonResponse([
+            'projectionsEnabled' => $projections,
+            'eventStoreEnabled' => $eventStore
+        ]);
     }
 
     #[Route('/api/demo/toggle', methods: ['POST'])]
     public function toggle(): Response
     {
-        $this->cache->delete(self::CACHE_KEY);
-        $newValue = !(bool)$this->cache->get(self::CACHE_KEY, fn(ItemInterface $item) => false);
-        
-        // Save the new value
-        $this->cache->get(self::CACHE_KEY, function(ItemInterface $item) use ($newValue) {
-            return $newValue;
-        });
-
-        // We must force the value because get() with callback only sets if it doesn't exist
-        // A simpler way for a demo:
-        $this->cache->delete(self::CACHE_KEY);
-        $this->cache->get(self::CACHE_KEY, fn() => $newValue);
+        $this->cache->delete(self::CACHE_KEY_PROJECTIONS);
+        $newValue = !(bool)$this->cache->get(self::CACHE_KEY_PROJECTIONS, fn() => false);
+        $this->cache->delete(self::CACHE_KEY_PROJECTIONS);
+        $this->cache->get(self::CACHE_KEY_PROJECTIONS, fn() => $newValue);
 
         return new JsonResponse(['projectionsEnabled' => $newValue]);
+    }
+
+    #[Route('/api/demo/toggle-event-store', methods: ['POST'])]
+    public function toggleEventStore(): Response
+    {
+        $this->cache->delete(self::CACHE_KEY_EVENT_STORE);
+        $newValue = !(bool)$this->cache->get(self::CACHE_KEY_EVENT_STORE, fn() => false);
+        $this->cache->delete(self::CACHE_KEY_EVENT_STORE);
+        $this->cache->get(self::CACHE_KEY_EVENT_STORE, fn() => $newValue);
+
+        return new JsonResponse(['eventStoreEnabled' => $newValue]);
     }
 
     #[Route('/api/demo/rebuild', methods: ['POST'])]
@@ -95,9 +103,11 @@ final class DemoControlController extends AbstractController
     #[Route('/api/demo/reset', methods: ['POST'])]
     public function reset(): Response
     {
-        // 1. Force projections back to enabled
-        $this->cache->delete(self::CACHE_KEY);
-        $this->cache->get(self::CACHE_KEY, fn() => true);
+        // 1. Force everything back to enabled
+        $this->cache->delete(self::CACHE_KEY_PROJECTIONS);
+        $this->cache->get(self::CACHE_KEY_PROJECTIONS, fn() => true);
+        $this->cache->delete(self::CACHE_KEY_EVENT_STORE);
+        $this->cache->get(self::CACHE_KEY_EVENT_STORE, fn() => true);
 
         // 2. Brutal Clean (Truncate all tables to be 100% sure)
         $this->readEntityManager->fetchOne('TRUNCATE users CASCADE');

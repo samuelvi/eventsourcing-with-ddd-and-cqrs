@@ -72,7 +72,12 @@ final readonly class SubmitBookingWizardHandler
             );
 
             $this->entityManager->persist($storedEvent);
-            $this->entityManager->flush();
+            
+            // DEMO MODE: Skip persisting to Event Store if disabled
+            $eventStoreEnabled = $this->cache->get('demo_event_store_enabled', fn() => true);
+            if ($eventStoreEnabled) {
+                $this->entityManager->flush();
+            }
 
             // 3. Dispatch to Async Bus (for Projections)
             // DEMO MODE: Skip dispatch if projections are disabled to simulate failure

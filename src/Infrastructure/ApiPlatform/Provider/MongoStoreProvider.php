@@ -26,8 +26,7 @@ final readonly class MongoStoreProvider implements ProviderInterface
         }
 
         if ($resourceClass === Snapshot::class) {
-            // Not implemented yet for list, but we can add it
-            return []; 
+            return $this->mongoStore->findSnapshots();
         }
 
         if ($resourceClass === ProjectionCheckpoint::class) {

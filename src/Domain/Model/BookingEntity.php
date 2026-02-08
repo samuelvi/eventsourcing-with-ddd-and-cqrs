@@ -18,7 +18,7 @@ use Symfony\Component\Uid\Uuid;
 #[ApiResource(
     operations: [
         new Get(uriTemplate: '/bookings/{id}'),
-        new GetCollection(uriTemplate: '/bookings', paginationEnabled: false)
+        new GetCollection(uriTemplate: '/bookings', paginationEnabled: false, order: ['createdAt' => 'DESC'])
     ],
     normalizationContext: ['groups' => ['booking:read']]
 )]

@@ -50,6 +50,16 @@ final readonly class MongoStore
         $this->mongoClient->getDatabase()->selectCollection('snapshots')->insertOne($snapshot->toArray());
     }
 
+    public function findSnapshots(): array
+    {
+        $cursor = $this->mongoClient->getDatabase()->selectCollection('snapshots')->find([], ['sort' => ['createdAt' => -1]]);
+        $snapshots = [];
+        foreach ($cursor as $doc) {
+            $snapshots[] = Snapshot::fromArray(json_decode(json_encode($doc), true));
+        }
+        return $snapshots;
+    }
+
     public function countSnapshots(): int
     {
         return $this->mongoClient->getDatabase()->selectCollection('snapshots')->countDocuments();

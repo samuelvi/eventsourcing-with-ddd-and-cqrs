@@ -22,6 +22,7 @@ export function DemoFlow() {
     const [bookingProjectionsEnabled, setBookingProjectionsEnabled] = useState(true);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
+    const [showResetModal, setShowResetModal] = useState(false);
     
     const [events, setEvents] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
@@ -32,7 +33,6 @@ export function DemoFlow() {
 
     const safeFetch = async (url: string) => {
         try {
-            // Append timestamp to bust browser cache for real-time demo
             const separator = url.includes('?') ? '&' : '?';
             const res = await fetch(`${url}${separator}t=${Date.now()}`);
             if (!res.ok) return [];
@@ -46,7 +46,6 @@ export function DemoFlow() {
 
     const refreshStats = async () => {
         try {
-            // Fetch stats and basic status
             const res = await fetch('/api/demo/stats');
             if (res.ok) setStats(await res.json());
             
@@ -58,16 +57,13 @@ export function DemoFlow() {
                 setBookingProjectionsEnabled(statusData.bookingProjectionsEnabled);
             }
 
-            // Fetch detailed datasets (no pagination, newest first where possible)
-            // Note: Users don't have createdAt, but id (UUID v7) is sortable
             const [ev, usr, bk, cp] = await Promise.all([
-                safeFetch('/api/event-store'), // MongoStore findEvents already sorts desc
+                safeFetch('/api/event-store'),
                 safeFetch('/api/users'), 
                 safeFetch('/api/bookings?order[createdAt]=desc'),
                 safeFetch('/api/checkpoints')
             ]);
 
-            // Ensure users are also descending by ID (time-ordered)
             const sortedUsr = [...usr].sort((a, b) => b.id.localeCompare(a.id));
 
             setEvents(ev);
@@ -146,8 +142,8 @@ export function DemoFlow() {
         }
     };
 
-    const runReset = async () => {
-        if (!confirm('Clear all data?')) return;
+    const executeReset = async () => {
+        setShowResetModal(false);
         setLoading(true);
         try {
             const res = await fetch('/api/demo/reset', { method: 'POST' });
@@ -214,12 +210,26 @@ export function DemoFlow() {
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '100px' }}>
+            {/* Modal Overlay */}
+            {showResetModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+                    <div style={{ backgroundColor: 'white', padding: '32px', borderRadius: '24px', maxWidth: '400px', width: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)' }}>
+                        <h2 style={{ margin: '0 0 12px', fontSize: '20px', fontWeight: 700, color: '#111827' }}>¿Resetear Laboratorio?</h2>
+                        <p style={{ margin: '0 0 24px', color: '#6b7280', fontSize: '14px', lineHeight: 1.5 }}>Esta acción eliminará permanentemente todos los eventos de MongoDB y las proyecciones de PostgreSQL. Se recargarán los catálogos base.</p>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button onClick={() => setShowResetModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid #e5e7eb', backgroundColor: 'white', color: '#374151', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>Cancelar</button>
+                            <button onClick={executeReset} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#f43f5e', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>Sí, Resetear Todo</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 700 }}>TED Demo: Event Sourcing & CQRS</h1>
                     <p style={{ margin: '4px 0 0', color: '#6b7280' }}>Enterprise features: Versioning & Snapshots.</p>
                 </div>
-                <button onClick={runReset} disabled={loading} style={{ padding: '8px 16px', cursor: 'pointer', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#4b5563', fontSize: '13px', fontWeight: 600 }}>
+                <button onClick={() => setShowResetModal(true)} disabled={loading} style={{ padding: '8px 16px', cursor: 'pointer', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#4b5563', fontSize: '13px', fontWeight: 600 }}>
                     ♻️ Reset Lab
                 </button>
             </header>

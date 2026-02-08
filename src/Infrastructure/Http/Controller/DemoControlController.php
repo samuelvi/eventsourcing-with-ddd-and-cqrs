@@ -148,43 +148,40 @@ final class DemoControlController extends AbstractController
     #[Route('/api/demo/reset', methods: ['POST'])]
     public function reset(): Response
     {
-        error_log("Starting demo reset...");
-        // 1. Force everything back to enabled
-        $this->cache->delete(self::CACHE_KEY_MASTER);
-        $this->cache->get(self::CACHE_KEY_MASTER, fn() => true);
-        $this->cache->delete(self::CACHE_KEY_USER_PROJECTIONS);
-        $this->cache->get(self::CACHE_KEY_USER_PROJECTIONS, fn() => true);
-        $this->cache->delete(self::CACHE_KEY_BOOKING_PROJECTIONS);
-        $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true);
-
-        // 2. Clear SQL
         try {
-            error_log("Truncating SQL tables...");
-            $this->readEntityManager->execute('TRUNCATE suppliers, users, bookings CASCADE');
-        } catch (\Exception $e) {
-            error_log("SQL Truncate error: " . $e->getMessage());
-        }
+            // 1. Force everything back to enabled
+            $this->cache->delete(self::CACHE_KEY_MASTER);
+            $this->cache->delete(self::CACHE_KEY_USER_PROJECTIONS);
+            $this->cache->delete(self::CACHE_KEY_BOOKING_PROJECTIONS);
 
-        // 3. Clear Mongo
-        error_log("Clearing MongoStore...");
-        $this->mongoStore->clearAll();
+            // 2. Clear SQL Tables (Aggressive + Identity Reset)
+            $this->readEntityManager->execute('TRUNCATE users, bookings, products, menus, suppliers RESTART IDENTITY CASCADE');
 
-        // 4. Load Fixtures
-        try {
-            error_log("Loading fixtures via console application...");
+            // 3. Clear Mongo (Events, Checkpoints, Snapshots)
+            $this->mongoStore->clearAll();
+
+            // 4. Load Fixtures via Console Application
             $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($this->kernel);
             $application->setAutoExit(false);
+            
+            $output = new \Symfony\Component\Console\Output\BufferedOutput();
             $input = new \Symfony\Component\Console\Input\ArrayInput([
                 'command' => 'doctrine:fixtures:load',
                 '--no-interaction' => true,
-                '--append' => true, // Since we already truncated manually
+                '--append' => true, // Tables are already empty
             ]);
-            $application->run($input, new \Symfony\Component\Console\Output\NullOutput());
             
-            error_log("Demo reset finished successfully.");
+            $exitCode = $application->run($input, $output);
+            
+            if ($exitCode !== 0) {
+                return new JsonResponse([
+                    'status' => 'error',
+                    'message' => 'Fixtures failed: ' . $output->fetch()
+                ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
             return new JsonResponse(['status' => 'success']);
         } catch (\Exception $e) {
-            error_log("Fixture load error: " . $e->getMessage());
             return new JsonResponse([
                 'status' => 'error', 
                 'message' => $e->getMessage()

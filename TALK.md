@@ -89,5 +89,15 @@ Si falla la base de datos relacional:
 
 ---
 
+## ■ Preparado para la Asincronía (Async-Ready)
+
+Aunque en esta demo el procesamiento es síncrono para facilitar la visualización inmediata, la arquitectura está diseñada para escalar:
+
+*   **Mediador**: Utilizamos **Symfony Messenger** para desacoplar el Event Store de las Proyecciones.
+*   **Escalabilidad**: Cambiar a un modelo asíncrono (RabbitMQ, Redis) es una tarea de configuración (`messenger.yaml`), no de código.
+*   **Semántica API**: El controlador ya devuelve un código `202 Accepted`, indicando que el hecho ha sido recibido y será procesado, cumpliendo con los estándares de sistemas distribuidos.
+
+---
+
 ## ■ Optimización: Snapshots
 Para sistemas con millones de eventos, implementamos **Snapshots** en MongoDB. Guardamos una "foto" del estado cada $N$ eventos para que la reconstrucción no tenga que leer toda la historia desde el inicio, sino solo desde la última foto.

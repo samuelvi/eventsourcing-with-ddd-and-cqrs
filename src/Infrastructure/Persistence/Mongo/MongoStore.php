@@ -23,6 +23,20 @@ final readonly class MongoStore
     }
 
     /**
+     * @param object|array<string, mixed>|null $doc
+     * @return array<string, mixed>
+     */
+    private function toArrayFromDoc(object|array|null $doc): array
+    {
+        if (!$doc) {
+            return [];
+        }
+        /** @var array<string, mixed> $decoded */
+        $decoded = json_decode((string) json_encode($doc), true);
+        return $decoded;
+    }
+
+    /**
      * @return array<StoredEvent>
      */
     public function findEvents(): array
@@ -30,7 +44,7 @@ final readonly class MongoStore
         $cursor = $this->mongoClient->getDatabase()->selectCollection('events')->find([], ['sort' => ['occurredOn' => -1]]);
         $events = [];
         foreach ($cursor as $doc) {
-            $events[] = StoredEvent::fromArray(json_decode((string) json_encode($doc), true));
+            $events[] = StoredEvent::fromArray($this->toArrayFromDoc($doc));
         }
         return $events;
     }
@@ -43,7 +57,7 @@ final readonly class MongoStore
     public function findEventByAggregateId(Uuid $aggregateId): ?StoredEvent
     {
         $doc = $this->mongoClient->getDatabase()->selectCollection('events')->findOne(['aggregateId' => $aggregateId->toRfc4122()]);
-        return $doc ? StoredEvent::fromArray(json_decode((string) json_encode($doc), true)) : null;
+        return $doc ? StoredEvent::fromArray($this->toArrayFromDoc($doc)) : null;
     }
 
     // --- Snapshots ---
@@ -61,7 +75,7 @@ final readonly class MongoStore
         $cursor = $this->mongoClient->getDatabase()->selectCollection('snapshots')->find([], ['sort' => ['createdAt' => -1]]);
         $snapshots = [];
         foreach ($cursor as $doc) {
-            $snapshots[] = Snapshot::fromArray(json_decode((string) json_encode($doc), true));
+            $snapshots[] = Snapshot::fromArray($this->toArrayFromDoc($doc));
         }
         return $snapshots;
     }
@@ -85,7 +99,7 @@ final readonly class MongoStore
     public function findCheckpoint(string $projectionName): ?ProjectionCheckpoint
     {
         $doc = $this->mongoClient->getDatabase()->selectCollection('checkpoints')->findOne(['projectionName' => $projectionName]);
-        return $doc ? ProjectionCheckpoint::fromArray(json_decode((string) json_encode($doc), true)) : null;
+        return $doc ? ProjectionCheckpoint::fromArray($this->toArrayFromDoc($doc)) : null;
     }
 
     /**
@@ -96,7 +110,7 @@ final readonly class MongoStore
         $cursor = $this->mongoClient->getDatabase()->selectCollection('checkpoints')->find();
         $checkpoints = [];
         foreach ($cursor as $doc) {
-            $checkpoints[] = ProjectionCheckpoint::fromArray(json_decode((string) json_encode($doc), true));
+            $checkpoints[] = ProjectionCheckpoint::fromArray($this->toArrayFromDoc($doc));
         }
         return $checkpoints;
     }

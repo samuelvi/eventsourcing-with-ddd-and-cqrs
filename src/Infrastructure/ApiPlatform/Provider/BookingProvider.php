@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Domain\Model\BookingEntity;
 use App\Domain\Repository\BookingReadRepositoryInterface;
+use App\Domain\Shared\TypeAssert;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -22,26 +23,32 @@ final readonly class BookingProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
         if (isset($uriVariables['id'])) {
-            $row = $this->repository->findById($uriVariables['id']);
+            $row = $this->repository->findById(TypeAssert::string($uriVariables['id']));
             
             if (!$row) {
                 return null;
             }
 
+            /** @var array<string, mixed> $bookingData */
+            $bookingData = json_decode(TypeAssert::string($row['data']), true);
+
             return BookingEntity::hydrate(
-                Uuid::fromString($row['id']),
-                json_decode($row['data'], true),
-                new \DateTimeImmutable($row['created_at'])
+                Uuid::fromString(TypeAssert::string($row['id'])),
+                $bookingData,
+                new \DateTimeImmutable(TypeAssert::string($row['created_at']))
             );
         }
 
         $data = $this->repository->findAllForList();
 
         return array_map(function (array $row) {
+            /** @var array<string, mixed> $bookingData */
+            $bookingData = json_decode(TypeAssert::string($row['data']), true);
+            
             return BookingEntity::hydrate(
-                Uuid::fromString($row['id']),
-                json_decode($row['data'], true),
-                new \DateTimeImmutable($row['created_at'])
+                Uuid::fromString(TypeAssert::string($row['id'])),
+                $bookingData,
+                new \DateTimeImmutable(TypeAssert::string($row['created_at']))
             );
         }, $data);
     }

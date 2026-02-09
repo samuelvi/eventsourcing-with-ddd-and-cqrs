@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Domain\Model\UserEntity;
 use App\Domain\Repository\UserReadRepositoryInterface;
+use App\Domain\Shared\TypeAssert;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -22,13 +23,13 @@ final readonly class UserProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
         if (isset($uriVariables['id'])) {
-            $data = $this->repository->findById($uriVariables['id']);
+            $data = $this->repository->findById(TypeAssert::string($uriVariables['id']));
             if (!$data) return null;
             
             return UserEntity::hydrate(
-                $data['name'], 
-                $data['email'], 
-                Uuid::fromString($data['id'])
+                TypeAssert::string($data['name']), 
+                TypeAssert::string($data['email']), 
+                Uuid::fromString(TypeAssert::string($data['id']))
             );
         }
 
@@ -36,9 +37,9 @@ final readonly class UserProvider implements ProviderInterface
 
         return array_map(function (array $row) {
             return UserEntity::hydrate(
-                $row['name'],
-                $row['email'],
-                Uuid::fromString($row['id'])
+                TypeAssert::string($row['name']),
+                TypeAssert::string($row['email']),
+                Uuid::fromString(TypeAssert::string($row['id']))
             );
         }, $data);
     }

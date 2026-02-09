@@ -6,6 +6,7 @@ namespace App\Infrastructure\Repository;
 
 use App\Domain\Repository\UserReadRepositoryInterface;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
+use App\Domain\Shared\TypeAssert;
 
 final readonly class DbalUserReadRepository implements UserReadRepositoryInterface
 {
@@ -39,7 +40,7 @@ final readonly class DbalUserReadRepository implements UserReadRepositoryInterfa
         $sql = 'SELECT COUNT(*) FROM users';
         $result = $this->entityManager->fetchOne($sql);
 
-        return isset($result['count']) ? (int) $result['count'] : 0;
+        return isset($result['count']) ? TypeAssert::int($result['count']) : 0;
     }
 
     public function existsByEmail(string $email): bool

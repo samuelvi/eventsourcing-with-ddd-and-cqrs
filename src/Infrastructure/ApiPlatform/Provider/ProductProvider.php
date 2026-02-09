@@ -10,6 +10,7 @@ use App\Domain\Model\ProductEntity;
 use App\Domain\Model\SupplierEntity;
 use App\Domain\Repository\ProductReadRepositoryInterface;
 use App\Domain\Service\ProductDetailOrchestrator;
+use App\Domain\Shared\TypeAssert;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -25,7 +26,7 @@ final readonly class ProductProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
         if (isset($uriVariables['id'])) {
-            $data = $this->repository->findById($uriVariables['id']);
+            $data = $this->repository->findById(TypeAssert::string($uriVariables['id']));
             
             if (!$data) {
                 return null;
@@ -33,25 +34,25 @@ final readonly class ProductProvider implements ProviderInterface
 
             // Hydrate logic duplicated - ideally extract to private method
             $supplier = SupplierEntity::hydrate(
-                Uuid::fromString($data['supplier_id']),
+                Uuid::fromString(TypeAssert::string($data['supplier_id'])),
                 'Unknown', 
                 true,
                 0.0
             );
 
             $product = ProductEntity::hydrate(
-                Uuid::fromString($data['id']),
-                $data['name'],
-                (float) $data['price'],
-                $data['type'],
+                Uuid::fromString(TypeAssert::string($data['id'])),
+                TypeAssert::string($data['name']),
+                TypeAssert::float($data['price']),
+                TypeAssert::string($data['type']),
                 $supplier,
-                $data['external_reference_id'] ? Uuid::fromString($data['external_reference_id']) : null
+                $data['external_reference_id'] ? Uuid::fromString(TypeAssert::string($data['external_reference_id'])) : null
             );
 
             if ($data['external_reference_id']) {
                 $product->setDetails($this->orchestrator->getDetails(
-                    $data['type'], 
-                    Uuid::fromString($data['external_reference_id'])
+                    TypeAssert::string($data['type']), 
+                    Uuid::fromString(TypeAssert::string($data['external_reference_id']))
                 ));
             }
 
@@ -65,25 +66,25 @@ final readonly class ProductProvider implements ProviderInterface
             // Partial hydration of supplier (only ID is strictly needed for link, but name helps if available)
             // Note: DBAL query for findAllForList might need to fetch supplier_id
             $supplier = SupplierEntity::hydrate(
-                Uuid::fromString($data['supplier_id']),
+                Uuid::fromString(TypeAssert::string($data['supplier_id'])),
                 'Unknown', // We don't join supplier table in list for performance, or we could.
                 true,
                 0.0
             );
 
             $product = ProductEntity::hydrate(
-                Uuid::fromString($data['id']),
-                $data['name'],
-                (float) $data['price'],
-                $data['type'],
+                Uuid::fromString(TypeAssert::string($data['id'])),
+                TypeAssert::string($data['name']),
+                TypeAssert::float($data['price']),
+                TypeAssert::string($data['type']),
                 $supplier,
-                $data['external_reference_id'] ? Uuid::fromString($data['external_reference_id']) : null
+                $data['external_reference_id'] ? Uuid::fromString(TypeAssert::string($data['external_reference_id'])) : null
             );
 
             if ($data['external_reference_id']) {
                 $product->setDetails($this->orchestrator->getDetails(
-                    $data['type'], 
-                    Uuid::fromString($data['external_reference_id'])
+                    TypeAssert::string($data['type']), 
+                    Uuid::fromString(TypeAssert::string($data['external_reference_id']))
                 ));
             }
 

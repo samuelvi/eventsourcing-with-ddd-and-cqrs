@@ -10,6 +10,7 @@ use App\Domain\Model\SupplierEntity;
 use App\Domain\Repository\MenuWriteRepositoryInterface;
 use App\Domain\Repository\MenuReadRepositoryInterface;
 use App\Domain\Service\ProductDetailFactoryInterface;
+use App\Domain\Shared\TypeAssert;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class MenuProductFactory implements ProductDetailFactoryInterface
@@ -27,11 +28,11 @@ final readonly class MenuProductFactory implements ProductDetailFactoryInterface
     public function create(array $data, SupplierEntity $supplier): Uuid
     {
         $menu = MenuEntity::create(
-            title: $data['title'] ?? 'Untitled Menu',
-            price: (float) ($data['price'] ?? 0.0),
-            currency: $data['currency'] ?? 'EUR',
+            title: isset($data['title']) ? TypeAssert::string($data['title']) : 'Untitled Menu',
+            price: isset($data['price']) ? TypeAssert::float($data['price']) : 0.0,
+            currency: isset($data['currency']) ? TypeAssert::string($data['currency']) : 'EUR',
             supplier: $supplier,
-            description: $data['description'] ?? null
+            description: isset($data['description']) ? TypeAssert::string($data['description']) : null
         );
 
         $this->menuWriteRepository->save($menu);

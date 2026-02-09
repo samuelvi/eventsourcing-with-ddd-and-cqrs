@@ -6,6 +6,7 @@ namespace App\Infrastructure\Repository;
 
 use App\Domain\Repository\ProductReadRepositoryInterface;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
+use App\Domain\Shared\TypeAssert;
 
 final readonly class DbalProductReadRepository implements ProductReadRepositoryInterface
 {
@@ -36,6 +37,6 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
         $sql = 'SELECT COUNT(*) FROM products';
         $result = $this->entityManager->fetchOne($sql);
         
-        return isset($result['count']) ? (int) $result['count'] : 0;
+        return isset($result['count']) ? TypeAssert::int($result['count']) : 0;
     }
 }

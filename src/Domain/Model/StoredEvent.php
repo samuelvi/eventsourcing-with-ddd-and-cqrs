@@ -7,6 +7,7 @@ namespace App\Domain\Model;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use App\Domain\Shared\TypeAssert;
 use App\Infrastructure\ApiPlatform\Provider\MongoStoreProvider;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Uid\Uuid;
@@ -66,12 +67,12 @@ class StoredEvent
     public static function fromArray(array $data): self
     {
         return new self(
-            Uuid::fromString($data['aggregateId']),
-            $data['eventType'],
-            $data['payload'],
-            Uuid::fromString($data['id']),
-            $data['version'],
-            new \DateTimeImmutable($data['occurredOn'])
+            Uuid::fromString(TypeAssert::string($data['aggregateId'])),
+            TypeAssert::string($data['eventType']),
+            TypeAssert::array($data['payload']),
+            Uuid::fromString(TypeAssert::string($data['id'])),
+            TypeAssert::int($data['version']),
+            new \DateTimeImmutable(TypeAssert::string($data['occurredOn']))
         );
     }
 

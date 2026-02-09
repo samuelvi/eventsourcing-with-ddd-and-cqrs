@@ -27,7 +27,7 @@ final readonly class DoctrineSupplierWriteRepository implements SupplierWriteRep
             ->getQuery()
             ->getOneOrNullResult();
 
-        if (!$supplier) {
+        if (!$supplier instanceof SupplierEntity) {
             throw new EntityNotFoundException(sprintf('Supplier with ID "%s" not found.', $id));
         }
 

@@ -7,6 +7,7 @@ namespace App\Domain\Model;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use App\Domain\Shared\TypeAssert;
 use App\Infrastructure\ApiPlatform\Provider\MongoStoreProvider;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Uid\Uuid;
@@ -54,11 +55,11 @@ class Snapshot
     public static function fromArray(array $data): self
     {
         return new self(
-            Uuid::fromString($data['id']),
-            Uuid::fromString($data['aggregateId']),
-            $data['version'],
-            $data['state'],
-            new \DateTimeImmutable($data['createdAt'])
+            Uuid::fromString(TypeAssert::string($data['id'])),
+            Uuid::fromString(TypeAssert::string($data['aggregateId'])),
+            TypeAssert::int($data['version']),
+            TypeAssert::array($data['state']),
+            new \DateTimeImmutable(TypeAssert::string($data['createdAt']))
         );
     }
 

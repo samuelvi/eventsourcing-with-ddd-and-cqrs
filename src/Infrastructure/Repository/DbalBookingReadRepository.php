@@ -6,6 +6,7 @@ namespace App\Infrastructure\Repository;
 
 use App\Domain\Repository\BookingReadRepositoryInterface;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
+use App\Domain\Shared\TypeAssert;
 
 final readonly class DbalBookingReadRepository implements BookingReadRepositoryInterface
 {
@@ -27,7 +28,7 @@ final readonly class DbalBookingReadRepository implements BookingReadRepositoryI
         $sql = 'SELECT COUNT(*) FROM bookings';
         $result = $this->entityManager->fetchOne($sql);
         
-        return isset($result['count']) ? (int) $result['count'] : 0;
+        return isset($result['count']) ? TypeAssert::int($result['count']) : 0;
     }
 
     public function exists(string $id): bool

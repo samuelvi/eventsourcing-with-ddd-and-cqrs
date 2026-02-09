@@ -37,6 +37,9 @@ class ProjectionCheckpoint
         return new self($projectionName);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public static function fromArray(array $data): self
     {
         return new self(
@@ -52,6 +55,9 @@ class ProjectionCheckpoint
         $this->updatedAt = new \DateTimeImmutable();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

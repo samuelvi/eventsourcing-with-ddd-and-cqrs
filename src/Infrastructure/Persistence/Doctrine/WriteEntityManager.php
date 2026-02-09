@@ -27,6 +27,11 @@ final readonly class WriteEntityManager
         $this->entityManager->flush();
     }
 
+    /**
+     * @template T of object
+     * @param class-string<T> $className
+     * @return \Doctrine\Persistence\ObjectRepository<T>
+     */
     public function getRepository(string $className): \Doctrine\Persistence\ObjectRepository
     {
         return $this->entityManager->getRepository($className);
@@ -38,8 +43,11 @@ final readonly class WriteEntityManager
         $this->entityManager->flush();
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function execute(string $sql, array $params = []): int
     {
-        return $this->entityManager->getConnection()->executeStatement($sql, $params);
+        return (int) $this->entityManager->getConnection()->executeStatement($sql, $params);
     }
 }

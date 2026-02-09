@@ -15,6 +15,9 @@ final readonly class CreateProductCommand
         public array $detailsData,
     ) {}
 
+    /**
+     * @param array<string, mixed> $detailsData
+     */
     public static function create(
         string $name,
         float $price,

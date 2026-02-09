@@ -60,3 +60,7 @@ docker/dev/redis/data
 .phpunit.result.cache
 /phpunit.xml
 ###< symfony/phpunit-bridge ###
+
+###> phpstan/phpstan ###
+phpstan.neon
+###< phpstan/phpstan ###

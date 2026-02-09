@@ -11,12 +11,15 @@ use Symfony\Component\Uid\Uuid;
 
 final class BookingWizardTest extends ApiTestCase
 {
-    private EntityManagerInterface $entityManager;
+    /** @var EntityManagerInterface */
+    private $entityManager;
 
     protected function setUp(): void
     {
         self::bootKernel();
-        $this->entityManager = self::getContainer()->get('doctrine.orm.entity_manager');
+        /** @var EntityManagerInterface $em */
+        $em = self::getContainer()->get('doctrine.orm.entity_manager');
+        $this->entityManager = $em;
         
         // Ensure clean state before each test
         $this->clearDatabase();
@@ -186,6 +189,7 @@ final class BookingWizardTest extends ApiTestCase
         $conn->executeStatement('TRUNCATE users, bookings RESTART IDENTITY CASCADE');
 
         // Clear Mongo
+        /** @var \App\Infrastructure\Persistence\Mongo\MongoStore $mongoStore */
         $mongoStore = self::getContainer()->get(\App\Infrastructure\Persistence\Mongo\MongoStore::class);
         $mongoStore->clearAll();
     }

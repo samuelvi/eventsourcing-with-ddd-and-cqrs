@@ -6,7 +6,14 @@ namespace App\Domain\Repository;
 
 interface ProductReadRepositoryInterface
 {
+    /**
+     * @return array<array<string, mixed>>
+     */
     public function findAllForList(): array;
-    public function findById(int $id): ?array;
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findById(string $id): ?array;
     public function countAll(): int;
 }

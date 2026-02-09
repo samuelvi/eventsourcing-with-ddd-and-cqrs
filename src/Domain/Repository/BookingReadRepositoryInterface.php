@@ -14,4 +14,9 @@ interface BookingReadRepositoryInterface
     public function countAll(): int;
 
     public function exists(string $id): bool;
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findById(string $id): ?array;
 }

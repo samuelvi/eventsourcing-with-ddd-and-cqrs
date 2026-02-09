@@ -33,8 +33,11 @@ final readonly class ReadEntityManager
         return $result === false ? null : $result;
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function execute(string $sql, array $params = []): int
     {
-        return $this->connection->executeStatement($sql, $params);
+        return (int) $this->connection->executeStatement($sql, $params);
     }
 }

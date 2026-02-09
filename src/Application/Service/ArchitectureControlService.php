@@ -9,6 +9,7 @@ use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Cache\CacheInterface;
 
 final readonly class ArchitectureControlService
@@ -28,6 +29,9 @@ final readonly class ArchitectureControlService
         private \App\Domain\Repository\BookingReadRepositoryInterface $bookingRepository,
     ) {}
 
+    /**
+     * @return array<string, bool>
+     */
     public function getStatus(): array
     {
         return [
@@ -55,6 +59,9 @@ final readonly class ArchitectureControlService
         return $newValue;
     }
 
+    /**
+     * @return array<string, int|array<string, string|null>>
+     */
     public function getStats(): array
     {
         $checkpoints = $this->mongoStore->findAllCheckpoints();

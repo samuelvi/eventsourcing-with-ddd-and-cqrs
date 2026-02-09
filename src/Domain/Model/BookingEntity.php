@@ -38,14 +38,28 @@ class BookingEntity
     #[Groups(['booking:read'])]
     public \DateTimeImmutable $createdAt;
 
+    /**
+     * @var array<string, mixed>
+     */
     #[ORM\Column(type: 'json')]
     #[Groups(['booking:read'])]
     public array $data;
 
+    /**
+     * @param array<string, mixed> $data
+     */
     protected function __construct(Uuid $id, array $data, \DateTimeImmutable $createdAt)
     {
         $this->id = $id;
         $this->data = $data;
         $this->createdAt = $createdAt;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function hydrate(Uuid $id, array $data, \DateTimeImmutable $createdAt): self
+    {
+        return new self($id, $data, $createdAt);
     }
 }

@@ -7,10 +7,11 @@ namespace App\Domain\Shared;
 trait NamedConstructorTrait
 {
     /**
-     * @param array<string, mixed> $params
+     * @param mixed ...$params
      */
     public static function create(mixed ...$params): static
     {
+        /** @phpstan-ignore-next-line */
         return new static(...$params);
     }
 }

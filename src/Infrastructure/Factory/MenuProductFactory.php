@@ -36,7 +36,7 @@ final readonly class MenuProductFactory implements ProductDetailFactoryInterface
 
         $this->menuWriteRepository->save($menu);
 
-        return $menu->getId();
+        return $menu->id;
     }
 
     public function getDetails(Uuid $referenceId): ?object

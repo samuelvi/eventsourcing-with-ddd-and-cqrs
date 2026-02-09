@@ -22,11 +22,27 @@ final readonly class BookingProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
         if (isset($uriVariables['id'])) {
-            // Not strictly needed for the demo tables, but for completeness:
-            // We could implement findById if needed.
-            return null;
+            $row = $this->repository->findById($uriVariables['id']);
+            
+            if (!$row) {
+                return null;
+            }
+
+            return BookingEntity::hydrate(
+                Uuid::fromString($row['id']),
+                json_decode($row['data'], true),
+                new \DateTimeImmutable($row['created_at'])
+            );
         }
 
-        return $this->repository->findAllForList();
+        $data = $this->repository->findAllForList();
+
+        return array_map(function (array $row) {
+            return BookingEntity::hydrate(
+                Uuid::fromString($row['id']),
+                json_decode($row['data'], true),
+                new \DateTimeImmutable($row['created_at'])
+            );
+        }, $data);
     }
 }

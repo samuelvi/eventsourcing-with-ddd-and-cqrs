@@ -78,6 +78,10 @@ test:
 	$(DOCKER_COMPOSE_DEV) exec -T -e APP_ENV=test symfony-api bin/console doctrine:schema:update --force
 	$(DOCKER_COMPOSE_DEV) exec -T -e APP_ENV=test -e SYMFONY_DEPRECATIONS_HELPER=disabled symfony-api bin/phpunit
 
+# Ejecutar análisis estático con PHPStan
+phpstan:
+	$(DOCKER_COMPOSE_DEV) exec -T symfony-api vendor/bin/phpstan analyse --memory-limit=1G
+
 
 
 

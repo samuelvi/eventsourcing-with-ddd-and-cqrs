@@ -13,6 +13,9 @@ final readonly class DbalBookingReadRepository implements BookingReadRepositoryI
         private ReadEntityManager $entityManager,
     ) {}
 
+    /**
+     * @return array<array<string, mixed>>
+     */
     public function findAllForList(): array
     {
         $sql = 'SELECT id, created_at, data FROM bookings ORDER BY created_at DESC';
@@ -29,5 +32,16 @@ final readonly class DbalBookingReadRepository implements BookingReadRepositoryI
     {
         $sql = 'SELECT 1 FROM bookings WHERE id = :id LIMIT 1';
         return (bool) $this->entityManager->fetchOne($sql, ['id' => $id]);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findById(string $id): ?array
+    {
+        $sql = 'SELECT id, created_at, data FROM bookings WHERE id = :id';
+        $result = $this->entityManager->fetchOne($sql, ['id' => $id]);
+
+        return $result ?: null;
     }
 }

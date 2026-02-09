@@ -13,6 +13,9 @@ final readonly class DbalMenuReadRepository implements MenuReadRepositoryInterfa
         private ReadEntityManager $entityManager,
     ) {}
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function findById(string $id): ?array
     {
         $sql = 'SELECT id, title, description, price, currency, supplier_id FROM menus WHERE id = :id';

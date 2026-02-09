@@ -32,6 +32,14 @@ final readonly class UserProvider implements ProviderInterface
             );
         }
 
-        return $this->repository->findAllForList();
+        $data = $this->repository->findAllForList();
+
+        return array_map(function (array $row) {
+            return UserEntity::hydrate(
+                $row['name'],
+                $row['email'],
+                Uuid::fromString($row['id'])
+            );
+        }, $data);
     }
 }

@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Domain\Model\SupplierEntity;
 use App\Domain\Repository\SupplierReadRepositoryInterface;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * @implements ProviderInterface<SupplierEntity>
@@ -21,9 +22,29 @@ final readonly class SupplierProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
         if (isset($uriVariables['id'])) {
-            return null;
+            $row = $this->repository->findById($uriVariables['id']);
+            
+            if (!$row) {
+                return null;
+            }
+
+            return SupplierEntity::hydrate(
+                Uuid::fromString($row['id']),
+                $row['name'],
+                (bool) $row['is_active'],
+                (float) $row['rating']
+            );
         }
 
-        return $this->repository->findAllForList();
+        $data = $this->repository->findAllForList();
+
+        return array_map(function (array $row) {
+            return SupplierEntity::hydrate(
+                Uuid::fromString($row['id']),
+                $row['name'],
+                (bool) $row['is_active'],
+                (float) $row['rating']
+            );
+        }, $data);
     }
 }

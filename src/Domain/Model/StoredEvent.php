@@ -29,6 +29,7 @@ class StoredEvent
         public readonly Uuid $aggregateId,
         #[Groups(['event:read'])]
         public readonly string $eventType,
+        /** @var array<string, mixed> */
         #[Groups(['event:read'])]
         public readonly array $payload,
         #[Groups(['event:read'])]
@@ -39,6 +40,9 @@ class StoredEvent
         public readonly \DateTimeImmutable $occurredOn = new \DateTimeImmutable()
     ) {}
 
+    /**
+     * @param array<string, mixed> $payload
+     */
     public static function commit(
         Uuid $aggregateId,
         string $eventType,
@@ -56,6 +60,9 @@ class StoredEvent
         );
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public static function fromArray(array $data): self
     {
         return new self(
@@ -68,6 +75,9 @@ class StoredEvent
         );
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

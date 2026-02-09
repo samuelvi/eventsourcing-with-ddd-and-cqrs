@@ -18,6 +18,9 @@ final readonly class ProductDetailOrchestrator
         private iterable $factories,
     ) {}
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public function createDetails(string $type, array $data, SupplierEntity $supplier): Uuid
     {
         foreach ($this->factories as $factory) {

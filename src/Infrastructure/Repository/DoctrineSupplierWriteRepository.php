@@ -17,7 +17,9 @@ final readonly class DoctrineSupplierWriteRepository implements SupplierWriteRep
 
     public function getById(string $id): SupplierEntity
     {
-        $qb = $this->entityManager->getRepository(SupplierEntity::class)->createQueryBuilder('s');
+        /** @var \Doctrine\ORM\EntityRepository<SupplierEntity> $repo */
+        $repo = $this->entityManager->getRepository(SupplierEntity::class);
+        $qb = $repo->createQueryBuilder('s');
         
         $supplier = $qb
             ->where('s.id = :id')

@@ -17,4 +17,9 @@ interface SupplierReadRepositoryInterface
      * @return array<array<string, mixed>>
      */
     public function findAllForList(): array;
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findById(string $id): ?array;
 }

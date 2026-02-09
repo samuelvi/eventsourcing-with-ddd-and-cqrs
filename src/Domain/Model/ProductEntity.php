@@ -48,7 +48,7 @@ class ProductEntity
     #[Groups(['product:read', 'product:write'])]
     public string $type = self::TYPE_MENU;
 
-    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
+    #[ORM\Column(type: 'float')]
     #[Assert\PositiveOrZero]
     #[Groups(['product:read', 'product:write'])]
     public float $price;
@@ -74,14 +74,26 @@ class ProductEntity
         float $price,
         SupplierEntity $supplier,
         string $type = self::TYPE_MENU,
-        ?Uuid $externalReferenceId = null
+        ?Uuid $externalReferenceId = null,
+        ?Uuid $id = null
     ) {
-        $this->id = Uuid::v7();
+        $this->id = $id ?? Uuid::v7();
         $this->name = $name;
         $this->price = $price;
         $this->supplier = $supplier;
         $this->type = $type;
         $this->externalReferenceId = $externalReferenceId;
+    }
+
+    public static function hydrate(
+        Uuid $id,
+        string $name,
+        float $price,
+        string $type,
+        SupplierEntity $supplier,
+        ?Uuid $externalReferenceId = null
+    ): self {
+        return new self($name, $price, $supplier, $type, $externalReferenceId, $id);
     }
 
     public function setDetails(?object $details): void

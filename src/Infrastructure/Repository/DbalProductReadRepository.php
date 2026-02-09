@@ -13,15 +13,21 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
         private ReadEntityManager $entityManager,
     ) {}
 
+    /**
+     * @return array<array<string, mixed>>
+     */
     public function findAllForList(): array
     {
-        $sql = 'SELECT id, name, price, type, external_reference_id FROM products ORDER BY name ASC';
+        $sql = 'SELECT id, name, price, type, external_reference_id, supplier_id FROM products ORDER BY name ASC';
         return $this->entityManager->query($sql);
     }
 
-    public function findById(int $id): ?array
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findById(string $id): ?array
     {
-        $sql = 'SELECT id, name, price, type, external_reference_id FROM products WHERE id = :id';
+        $sql = 'SELECT id, name, price, type, external_reference_id, supplier_id FROM products WHERE id = :id';
         return $this->entityManager->fetchOne($sql, ['id' => $id]);
     }
 

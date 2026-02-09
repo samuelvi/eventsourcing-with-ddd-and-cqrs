@@ -57,10 +57,17 @@ class SupplierEntity
     #[Groups(['supplier:read'])]
     public private(set) Collection $products;
 
-    protected function __construct(string $name)
+    protected function __construct(string $name, ?Uuid $id = null, bool $isActive = true, float $rating = 0.0)
     {
-        $this->id = Uuid::v7();
+        $this->id = $id ?? Uuid::v7();
         $this->name = $name;
+        $this->isActive = $isActive;
+        $this->rating = $rating;
         $this->products = new ArrayCollection();
+    }
+
+    public static function hydrate(Uuid $id, string $name, bool $isActive, float $rating): self
+    {
+        return new self($name, $id, $isActive, $rating);
     }
 }

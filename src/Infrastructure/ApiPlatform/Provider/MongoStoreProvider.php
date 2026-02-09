@@ -11,6 +11,9 @@ use App\Domain\Model\StoredEvent;
 use App\Domain\Model\Snapshot;
 use App\Domain\Model\ProjectionCheckpoint;
 
+/**
+ * @implements ProviderInterface<object>
+ */
 final readonly class MongoStoreProvider implements ProviderInterface
 {
     public function __construct(
@@ -33,6 +36,6 @@ final readonly class MongoStoreProvider implements ProviderInterface
             return $this->mongoStore->findAllCheckpoints();
         }
 
-        return [];
+        return null;
     }
 }

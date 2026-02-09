@@ -30,12 +30,16 @@ class Snapshot
         public readonly Uuid $aggregateId,
         #[Groups(['snapshot:read'])]
         public readonly int $version,
+        /** @var array<string, mixed> */
         #[Groups(['snapshot:read'])]
         public readonly array $state,
         #[Groups(['snapshot:read'])]
         public readonly \DateTimeImmutable $createdAt = new \DateTimeImmutable()
     ) {}
 
+    /**
+     * @param array<string, mixed> $state
+     */
     public static function take(
         Uuid $aggregateId,
         int $version,
@@ -44,6 +48,9 @@ class Snapshot
         return new self(Uuid::v7(), $aggregateId, $version, $state);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public static function fromArray(array $data): self
     {
         return new self(
@@ -55,6 +62,9 @@ class Snapshot
         );
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

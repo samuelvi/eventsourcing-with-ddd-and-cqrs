@@ -41,7 +41,7 @@ class MenuEntity
     #[Groups(['menu:read', 'product:read'])]
     public ?string $description = null;
 
-    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
+    #[ORM\Column(type: 'float')]
     #[Assert\PositiveOrZero]
     #[Groups(['menu:read', 'product:read'])]
     public float $price;

@@ -43,7 +43,7 @@ final readonly class BookingProvider implements ProviderInterface
 
         return array_map(function (array $row) {
             /** @var array<string, mixed> $bookingData */
-            $bookingData = json_decode(TypeAssert::string($row['data']), true);
+            $bookingData = TypeAssert::array(json_decode(TypeAssert::string($row['data']), true));
             
             return BookingEntity::hydrate(
                 Uuid::fromString(TypeAssert::string($row['id'])),

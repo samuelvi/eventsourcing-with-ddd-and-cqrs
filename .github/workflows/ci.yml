@@ -31,6 +31,13 @@ jobs:
         ports:
           - 27017:27017
 
+    env:
+      DATABASE_URL: "postgresql://app:!ChangeMe!@127.0.0.1:5432/app?serverVersion=16&charset=utf8"
+      MONGODB_URL: "mongodb://127.0.0.1:27017"
+      MONGODB_DB: "event_sourcing_test"
+      APP_ENV: test
+      APP_SECRET: "c0d3b4s3"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -54,12 +61,6 @@ jobs:
 
       - name: Run Unit & Functional Tests
         run: bin/phpunit
-        env:
-          DATABASE_URL: "postgresql://app:!ChangeMe!@127.0.0.1:5432/app?serverVersion=16&charset=utf8"
-          MONGODB_URL: "mongodb://127.0.0.1:27017"
-          MONGODB_DB: "event_sourcing_test"
-          APP_ENV: test
-          APP_SECRET: "c0d3b4s3"
 
   frontend:
     name: Frontend (React & Lint)

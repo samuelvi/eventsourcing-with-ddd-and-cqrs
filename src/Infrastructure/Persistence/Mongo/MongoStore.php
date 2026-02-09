@@ -7,19 +7,42 @@ namespace App\Infrastructure\Persistence\Mongo;
 use App\Domain\Model\StoredEvent;
 use App\Domain\Model\Snapshot;
 use App\Domain\Model\ProjectionCheckpoint;
+use App\Domain\Exception\ConcurrencyException;
 use Symfony\Component\Uid\Uuid;
+use MongoDB\Driver\Exception\BulkWriteException;
 
 final readonly class MongoStore
 {
     public function __construct(
         private MongoClient $mongoClient,
-    ) {}
+    ) {
+        // Ensure indexes (in a real app, this should be a migration command)
+        $this->ensureIndexes();
+    }
+
+    private function ensureIndexes(): void
+    {
+        $this->mongoClient->getDatabase()->selectCollection('events')->createIndex(
+            ['aggregateId' => 1, 'version' => 1],
+            ['unique' => true]
+        );
+    }
 
     // --- Event Store ---
 
     public function saveEvent(StoredEvent $event): void
     {
-        $this->mongoClient->getDatabase()->selectCollection('events')->insertOne($event->toArray());
+        try {
+            $this->mongoClient->getDatabase()->selectCollection('events')->insertOne($event->toArray());
+        } catch (BulkWriteException $e) {
+            if ($e->getCode() === 11000) {
+                throw ConcurrencyException::versionMismatch(
+                    $event->aggregateId->toRfc4122(),
+                    $event->version
+                );
+            }
+            throw $e;
+        }
     }
 
     /**

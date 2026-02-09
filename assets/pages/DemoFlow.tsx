@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
 
 interface Stats {
@@ -79,26 +80,31 @@ const IconCpu = () => (
 );
 
 export function DemoFlow() {
-    const [stats, setStats] = useState<Stats>({
-        events: 0,
-        users: 0,
-        bookings: 0,
-        snapshots: 0,
-        checkpoints: {}
-    });
-    const [projectionsEnabled, setProjectionsEnabled] = useState(true);
-    const [userProjectionsEnabled, setUserProjectionsEnabled] = useState(true);
-    const [bookingProjectionsEnabled, setBookingProjectionsEnabled] = useState(true);
-    const [loading, setLoading] = useState(false);
+    const queryClient = useQueryClient();
     const [message, setMessage] = useState('');
     const [showResetModal, setShowResetModal] = useState(false);
 
-    const [events, setEvents] = useState<any[]>([]);
-    const [users, setUsers] = useState<any[]>([]);
-    const [bookings, setBookings] = useState<any[]>([]);
-    const [checkpoints, setCheckpoints] = useState<any[]>([]);
+    // --- Queries ---
 
-    const isInconsistent = stats.events > stats.bookings || stats.events > stats.users;
+    const { data: stats = { events: 0, users: 0, bookings: 0, snapshots: 0, checkpoints: {} } } = useQuery({
+        queryKey: ['stats'],
+        queryFn: async () => {
+            const res = await fetch('/api/demo/stats');
+            if (!res.ok) throw new Error('Stats error');
+            return res.json();
+        },
+        refetchInterval: 2000
+    });
+
+    const { data: status = { projectionsEnabled: true, userProjectionsEnabled: true, bookingProjectionsEnabled: true } } = useQuery({
+        queryKey: ['status'],
+        queryFn: async () => {
+            const res = await fetch('/api/demo/status');
+            if (!res.ok) throw new Error('Status error');
+            return res.json();
+        },
+        refetchInterval: 2000
+    });
 
     const safeFetch = async (url: string) => {
         try {
@@ -108,128 +114,123 @@ export function DemoFlow() {
             const data = await res.json();
             return data['hydra:member'] || (Array.isArray(data) ? data : []);
         } catch {
-            console.error(`Error fetching ${url}:`);
             return [];
         }
     };
 
-    const refreshStats = async () => {
-        try {
-            const res = await fetch('/api/demo/stats');
-            if (res.ok) setStats(await res.json());
+    const { data: events = [] } = useQuery({
+        queryKey: ['events'],
+        queryFn: () => safeFetch('/api/event-store'),
+        refetchInterval: 2000
+    });
 
-            const statusRes = await fetch('/api/demo/status');
-            if (statusRes.ok) {
-                const statusData = await statusRes.json();
-                setProjectionsEnabled(statusData.projectionsEnabled);
-                setUserProjectionsEnabled(statusData.userProjectionsEnabled);
-                setBookingProjectionsEnabled(statusData.bookingProjectionsEnabled);
-            }
+    const { data: users = [] } = useQuery({
+        queryKey: ['users'],
+        queryFn: () => safeFetch('/api/users'),
+        refetchInterval: 2000
+    });
 
-            const [ev, usr, bk, cp] = await Promise.all([
-                safeFetch('/api/event-store'),
-                safeFetch('/api/users'),
-                safeFetch('/api/bookings?order[createdAt]=desc'),
-                safeFetch('/api/checkpoints')
-            ]);
+    const { data: bookings = [] } = useQuery({
+        queryKey: ['bookings'],
+        queryFn: () => safeFetch('/api/bookings?order[createdAt]=desc'),
+        refetchInterval: 2000
+    });
 
-            const sortedUsr = [...usr].sort((a, b) => b.id.localeCompare(a.id));
+    const { data: checkpoints = [] } = useQuery({
+        queryKey: ['checkpoints'],
+        queryFn: () => safeFetch('/api/checkpoints'),
+        refetchInterval: 2000
+    });
 
-            setEvents(ev);
-            setUsers(sortedUsr);
-            setBookings(bk);
-            setCheckpoints(cp);
-        } catch {
-            console.error('Refresh loop error');
-        }
-    };
+    const isInconsistent = stats.events > stats.bookings || stats.events > stats.users;
 
-    useEffect(() => {
-        refreshStats();
-        const interval = setInterval(refreshStats, 2000);
-        return () => clearInterval(interval);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    // --- Mutations ---
 
-    const toggleProjections = async (type: 'master' | 'user' | 'booking') => {
-        setLoading(true);
-        try {
-            const res = await fetch(`/api/demo/toggle/${type}`, { method: 'POST' });
-            const data = await res.json();
-            if (type === 'master') setProjectionsEnabled(data.projectionsEnabled);
-            else if (type === 'user') setUserProjectionsEnabled(data.userProjectionsEnabled);
-            else setBookingProjectionsEnabled(data.bookingProjectionsEnabled);
+    const toggleMutation = useMutation({
+        mutationFn: async (type: 'master' | 'user' | 'booking') => {
+            await fetch(`/api/demo/toggle/${type}`, { method: 'POST' });
+            return type;
+        },
+        onSuccess: (type) => {
+            queryClient.invalidateQueries({ queryKey: ['status'] });
             setMessage(`${type.toUpperCase()} state updated`);
-        } catch {
-            setMessage('Error toggling status');
-        } finally {
-            setLoading(false);
-        }
-    };
+        },
+        onError: () => setMessage('Error toggling status')
+    });
 
-    const submitRandomBooking = async () => {
-        setLoading(true);
-        const name = `Demo ${Math.floor(Math.random() * 1000)}`;
-        const email = `client${Math.floor(Math.random() * 1000)}@test.com`;
-        try {
+    const createBookingMutation = useMutation({
+        mutationFn: async (payload: any) => {
             const res = await fetch('/api/booking-wizard', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bookingId: uuidv4(),
-                    pax: Math.floor(Math.random() * 5) + 1,
-                    budget: 100,
-                    clientName: name,
-                    clientEmail: email
-                })
+                body: JSON.stringify(payload)
             });
-            if (res.ok) setMessage(`Fact recorded: ${name}`);
-            await refreshStats();
-        } catch {
-            setMessage('Error creating entry');
-        } finally {
-            setLoading(false);
-        }
-    };
+            if (!res.ok) throw new Error('Failed');
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries();
+            setMessage('Fact recorded');
+        },
+        onError: () => setMessage('Error creating entry')
+    });
 
-    const runRebuild = async () => {
-        setLoading(true);
-        setMessage('Replaying history...');
-        try {
+    const rebuildMutation = useMutation({
+        mutationFn: async () => {
             const res = await fetch('/api/demo/rebuild', { method: 'POST' });
-            if (res.ok) {
-                await refreshStats();
-                setMessage('Consistency restored');
-            } else {
-                const data = await res.json();
-                setMessage(`Sync failed: ${data.message || 'Unknown error'}`);
-            }
-        } catch {
-            setMessage('Network error during rebuild');
-        } finally {
-            setLoading(false);
-        }
+            if (!res.ok) throw new Error('Rebuild failed');
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries();
+            setMessage('Consistency restored');
+        },
+        onError: () => setMessage('Sync failed')
+    });
+
+    const resetMutation = useMutation({
+        mutationFn: async () => {
+            await fetch('/api/demo/reset', { method: 'POST' });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries();
+            setMessage('Lab reset complete');
+            setShowResetModal(false);
+        },
+        onError: () => setMessage('Reset failed')
+    });
+
+    // --- Actions ---
+
+    const toggleProjections = (type: 'master' | 'user' | 'booking') => {
+        toggleMutation.mutate(type);
     };
 
-    const executeReset = async () => {
-        setShowResetModal(false);
-        setLoading(true);
-        try {
-            const res = await fetch('/api/demo/reset', { method: 'POST' });
-            const data = await res.json();
-
-            if (res.ok) {
-                setMessage('Lab reset complete');
-                await refreshStats();
-            } else {
-                setMessage(`Reset failed: ${data.message || 'Unknown error'}`);
-            }
-        } catch {
-            setMessage('Network error during reset');
-        } finally {
-            setLoading(false);
-        }
+    const submitRandomBooking = () => {
+        const name = `Demo ${Math.floor(Math.random() * 1000)}`;
+        const email = `client${Math.floor(Math.random() * 1000)}@test.com`;
+        createBookingMutation.mutate({
+            bookingId: uuidv4(),
+            pax: Math.floor(Math.random() * 5) + 1,
+            budget: 100,
+            clientName: name,
+            clientEmail: email
+        });
     };
+
+    const runRebuild = () => {
+        setMessage('Replaying history...');
+        rebuildMutation.mutate();
+    };
+
+    const executeReset = () => {
+        resetMutation.mutate();
+    };
+
+    // Derived states for UI from query data
+    const projectionsEnabled = status.projectionsEnabled;
+    const userProjectionsEnabled = status.userProjectionsEnabled;
+    const bookingProjectionsEnabled = status.bookingProjectionsEnabled;
+    const sortedUsers = [...users].sort((a: any, b: any) => b.id.localeCompare(a.id));
+    const loading = toggleMutation.isPending || createBookingMutation.isPending || rebuildMutation.isPending || resetMutation.isPending;
 
     const DataList = ({ title, items, columns, emptyMsg, badge }: any) => (
         <div

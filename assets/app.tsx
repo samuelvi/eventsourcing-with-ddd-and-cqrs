@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Wizard } from './pages/Wizard';
 import { DataExplorer } from './pages/DataExplorer';
 import { DemoFlow } from './pages/DemoFlow';
+
+const queryClient = new QueryClient();
 
 // Shared Flat Icons
 export const Icons = {
@@ -336,7 +339,9 @@ if (rootElement) {
     const root = ReactDOM.createRoot(rootElement);
     root.render(
         <React.StrictMode>
-            <App />
+            <QueryClientProvider client={queryClient}>
+                <App />
+            </QueryClientProvider>
         </React.StrictMode>
     );
 }

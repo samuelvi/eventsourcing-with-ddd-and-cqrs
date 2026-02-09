@@ -25,7 +25,9 @@ final readonly class DbalBookingReadRepository implements BookingReadRepositoryI
     public function countAll(): int
     {
         $sql = 'SELECT COUNT(*) FROM bookings';
-        return (int) $this->entityManager->fetchOne($sql)['count'];
+        $result = $this->entityManager->fetchOne($sql);
+        
+        return isset($result['count']) ? (int) $result['count'] : 0;
     }
 
     public function exists(string $id): bool

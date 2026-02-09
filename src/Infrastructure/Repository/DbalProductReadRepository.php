@@ -34,6 +34,8 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
     public function countAll(): int
     {
         $sql = 'SELECT COUNT(*) FROM products';
-        return (int) $this->entityManager->fetchOne($sql)['count'];
+        $result = $this->entityManager->fetchOne($sql);
+        
+        return isset($result['count']) ? (int) $result['count'] : 0;
     }
 }

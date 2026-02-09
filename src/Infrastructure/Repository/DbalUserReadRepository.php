@@ -37,7 +37,9 @@ final readonly class DbalUserReadRepository implements UserReadRepositoryInterfa
     public function countAll(): int
     {
         $sql = 'SELECT COUNT(*) FROM users';
-        return (int) $this->entityManager->fetchOne($sql)['count'];
+        $result = $this->entityManager->fetchOne($sql);
+
+        return isset($result['count']) ? (int) $result['count'] : 0;
     }
 
     public function existsByEmail(string $email): bool

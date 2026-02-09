@@ -6,11 +6,13 @@ description: Event Sourcing pattern implementation with Domain Events for Symfon
 # Event Sourcing Pattern
 
 ## Overview
+
 Event Sourcing captures all changes to application state as a sequence of events. Instead of storing current state, store the events that led to that state.
 
 ## Implementation
 
 ### Domain Event Structure
+
 ```php
 final readonly class EntityCreatedEvent
 {
@@ -34,6 +36,7 @@ final readonly class EntityCreatedEvent
 ```
 
 ### Event Store Interface
+
 ```php
 interface EventStoreInterface
 {
@@ -43,12 +46,13 @@ interface EventStoreInterface
 ```
 
 ### Usage in Command Handler
+
 ```php
 public function __invoke(CreateEntityCommand $command): void
 {
     $entity = Entity::create(...);
     $this->repository->save($entity);
-    
+
     // Persist domain event
     $event = EntityCreatedEvent::create($entity->getId(), $entity->getName());
     $this->eventStore->append($event);
@@ -56,10 +60,12 @@ public function __invoke(CreateEntityCommand $command): void
 ```
 
 ## Key Principles
+
 - Events are immutable and append-only
 - State can be rebuilt by replaying events
 - Audit trail comes for free
 - Time travel debugging possible
 
 ## References
+
 - [Event Sourcing by Martin Fowler](https://martinfowler.com/eaaDev/EventSourcing.html)

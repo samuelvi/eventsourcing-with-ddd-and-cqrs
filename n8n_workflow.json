@@ -1,78 +1,69 @@
 {
-  "name": "Symfony API Integration",
-  "nodes": [
-    {
-      "parameters": {},
-      "name": "Start",
-      "type": "n8n-nodes-base.start",
-      "typeVersion": 1,
-      "position": [
-        250,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "requestMethod": "POST",
-        "url": "http://symfony-api:80/users",
-        "options": {},
-        "bodyParametersUi": {
-          "parameter": [
-            {
-              "name": "name",
-              "value": "N8N User"
+    "name": "Symfony API Integration",
+    "nodes": [
+        {
+            "parameters": {},
+            "name": "Start",
+            "type": "n8n-nodes-base.start",
+            "typeVersion": 1,
+            "position": [250, 300]
+        },
+        {
+            "parameters": {
+                "requestMethod": "POST",
+                "url": "http://symfony-api:80/users",
+                "options": {},
+                "bodyParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "name",
+                            "value": "N8N User"
+                        },
+                        {
+                            "name": "email",
+                            "value": "n8n@example.com"
+                        }
+                    ]
+                }
             },
-            {
-              "name": "email",
-              "value": "n8n@example.com"
-            }
-          ]
+            "name": "Create User",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [450, 300]
+        },
+        {
+            "parameters": {
+                "url": "http://symfony-api:80/users",
+                "options": {}
+            },
+            "name": "Get Users",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [650, 300]
         }
-      },
-      "name": "Create User",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 1,
-      "position": [
-        450,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "url": "http://symfony-api:80/users",
-        "options": {}
-      },
-      "name": "Get Users",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 1,
-      "position": [
-        650,
-        300
-      ]
+    ],
+    "connections": {
+        "Start": {
+            "main": [
+                [
+                    {
+                        "node": "Create User",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Create User": {
+            "main": [
+                [
+                    {
+                        "node": "Get Users",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
     }
-  ],
-  "connections": {
-    "Start": {
-      "main": [
-        [
-          {
-            "node": "Create User",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create User": {
-      "main": [
-        [
-          {
-            "node": "Get Users",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  }
 }

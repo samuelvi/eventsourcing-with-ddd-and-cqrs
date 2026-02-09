@@ -16,16 +16,16 @@ Adhere to modern PHP 8.4+ standards.
 ## Modern Features
 
 - **Property Hooks:**
-  ```php
-  public string $email {
-      set {
-          if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-              throw new \InvalidArgumentException('Invalid email');
-          }
-          $this->email = $value;
-      }
-  }
-  ```
+    ```php
+    public string $email {
+        set {
+            if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                throw new \InvalidArgumentException('Invalid email');
+            }
+            $this->email = $value;
+        }
+    }
+    ```
 - **Constructor Property Promotion:** Use for DTOs/VOs.
 - **Asymmetric Visibility:** `public private(set) string $id;`
 - **Match Expression:** Use `match` instead of `switch`.

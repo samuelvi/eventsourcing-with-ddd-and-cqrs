@@ -6,14 +6,15 @@ description: Repository Pattern implementation with Doctrine QueryBuilder. Encap
 # Repository Pattern
 
 ## Overview
+
 Encapsulates data access logic, preventing direct `EntityManager` usage in business logic.
 
 ## Key Principles
 
 1.  **No Magic Methods:** Do not use `find()`, `findBy()`, `findOneBy()`. Use explicit QueryBuilder methods.
 2.  **Return Types:**
-    *   **Read-Only:** Return arrays (`getArrayResult()`) for performance and to bypass the Identity Map.
-    *   **Write/Update:** Return Entities only when modification is needed.
+    - **Read-Only:** Return arrays (`getArrayResult()`) for performance and to bypass the Identity Map.
+    - **Write/Update:** Return Entities only when modification is needed.
 3.  **Explicit Naming:** Method names should describe the query (e.g., `findForInvoicePrefill`, `findAllForList`).
 
 ## Implementation Example
@@ -64,6 +65,7 @@ class UserRepository extends ServiceEntityRepository
 ```
 
 ## Best Practices
+
 - **Inject Repository:** Inject specific repositories into Services/Handlers, never `EntityManagerInterface`.
 - **Select Specific Fields:** Only select fields needed for the specific view/logic.
 - **Use Constants:** Use Entity constants for status checks.

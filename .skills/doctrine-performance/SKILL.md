@@ -8,6 +8,7 @@ description: Doctrine performance optimization patterns.
 ## Key Principles
 
 ### 1. Bypass Identity Map with getArrayResult()
+
 For read-only lists/APIs, use `getArrayResult()`. It is much faster as it skips hydration and Identity Map overhead.
 
 ```php
@@ -19,6 +20,7 @@ $results = $qb->getQuery()->getResult();
 ```
 
 ### 2. Select Only Needed Fields
+
 Avoid `select('u')` (all fields). Select specific fields.
 
 ```php
@@ -30,6 +32,7 @@ $qb->select('u');
 ```
 
 ### 3. Eager Loading (Joins)
+
 Prevent N+1 problems by joining related entities in the main query.
 
 ```php
@@ -39,6 +42,7 @@ $qb->select('u', 'o')
 ```
 
 ### 4. Existence Checks (LIMIT 1)
+
 Use `LIMIT 1` logic instead of `COUNT(*)`.
 
 ```php
@@ -56,6 +60,7 @@ public function exists(string $email): bool
 ```
 
 ### 5. Zero-Query Optimization
+
 Check inputs before querying.
 
 ```php

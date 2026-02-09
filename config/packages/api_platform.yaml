@@ -2,7 +2,7 @@ api_platform:
     title: 'n8n POC API'
     version: '1.0.0'
     mapping:
-        paths: 
+        paths:
             - '%kernel.project_dir%/src/Domain/Model'
             - '%kernel.project_dir%/src/Application/Dto'
     formats:

@@ -1,163 +1,163 @@
 name: event-sourcing
 
 services:
-  # Symfony Backend Service (FrankenPHP)
-  symfony-api:
-    build:
-      context: ../../
-      dockerfile: docker/dev/Dockerfile
-    container_name: symfony-api
-    ports:
-      - "8080:80"
-      - "443:443"
-      - "443:443/udp"
-    env_file:
-      - ../../.env
-    environment:
-      - SERVER_NAME=:80
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST:-postgres-db}:${DB_PORT:-5432}/${POSTGRES_DB}?serverVersion=16&charset=utf8
-      - APP_ENV=dev
-      - APP_DEBUG=1
-      - TRUSTED_PROXIES=127.0.0.1,REMOTE_ADDR
-      - CORS_ALLOW_ORIGIN=^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$
-    volumes:
-      - ../../:/app
-      - symfony_caddy_data:/data
-      - symfony_caddy_config:/config
-    networks:
-      - app-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    tty: true
+    # Symfony Backend Service (FrankenPHP)
+    symfony-api:
+        build:
+            context: ../../
+            dockerfile: docker/dev/Dockerfile
+        container_name: symfony-api
+        ports:
+            - '8080:80'
+            - '443:443'
+            - '443:443/udp'
+        env_file:
+            - ../../.env
+        environment:
+            - SERVER_NAME=:80
+            - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST:-postgres-db}:${DB_PORT:-5432}/${POSTGRES_DB}?serverVersion=16&charset=utf8
+            - APP_ENV=dev
+            - APP_DEBUG=1
+            - TRUSTED_PROXIES=127.0.0.1,REMOTE_ADDR
+            - CORS_ALLOW_ORIGIN=^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$
+        volumes:
+            - ../../:/app
+            - symfony_caddy_data:/data
+            - symfony_caddy_config:/config
+        networks:
+            - app-network
+        depends_on:
+            postgres:
+                condition: service_healthy
+        restart: unless-stopped
+        tty: true
 
-  # Node/Vite Service for Frontend
-  node:
-    image: node:20-alpine
-    container_name: node-vite
-    working_dir: /app
-    volumes:
-      - ../../:/app
-    ports:
-      - "5173:5173"
-    command: ["sh", "-c", "npm install && npm run dev -- --host"]
-    networks:
-      - app-network
-    restart: unless-stopped
+    # Node/Vite Service for Frontend
+    node:
+        image: node:20-alpine
+        container_name: node-vite
+        working_dir: /app
+        volumes:
+            - ../../:/app
+        ports:
+            - '5173:5173'
+        command: ['sh', '-c', 'npm install && npm run dev -- --host']
+        networks:
+            - app-network
+        restart: unless-stopped
 
-  # Postgres Database
-  postgres:
-    image: postgres:16-alpine
-    container_name: postgres-db
-    env_file:
-      - ../../.env.dev
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    ports:
-      - "5432:5432"
-    volumes:
-      - ./postgres/data:/var/lib/postgresql/data
-      - ./postgres/init:/docker-entrypoint-initdb.d
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+    # Postgres Database
+    postgres:
+        image: postgres:16-alpine
+        container_name: postgres-db
+        env_file:
+            - ../../.env.dev
+        environment:
+            - POSTGRES_USER=${POSTGRES_USER}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            - POSTGRES_DB=${POSTGRES_DB}
+        ports:
+            - '5432:5432'
+        volumes:
+            - ./postgres/data:/var/lib/postgresql/data
+            - ./postgres/init:/docker-entrypoint-initdb.d
+        networks:
+            - app-network
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
 
-  # n8n Automation Tool
-  n8n:
-    image: n8nio/n8n
-    container_name: n8n
-    ports:
-      - "5678:5678"
-    env_file:
-      - ../../.env
-    environment:
-      - N8N_HOST=${N8N_HOST}
-      - N8N_PORT=${N8N_PORT}
-      - N8N_PROTOCOL=${N8N_PROTOCOL}
-      - NODE_ENV=${NODE_ENV}
-      - WEBHOOK_URL=${WEBHOOK_URL}
-      - DB_TYPE=${DB_TYPE}
-      - DB_POSTGRESDB_HOST=${DB_HOST:-postgres-db}
-      - DB_POSTGRESDB_PORT=${DB_POSTGRESDB_PORT:-5432}
-      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
-      - DB_POSTGRESDB_USER=${POSTGRES_USER}
-      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - n8n_data:/home/node/.n8n
-    networks:
-      - app-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
+    # n8n Automation Tool
+    n8n:
+        image: n8nio/n8n
+        container_name: n8n
+        ports:
+            - '5678:5678'
+        env_file:
+            - ../../.env
+        environment:
+            - N8N_HOST=${N8N_HOST}
+            - N8N_PORT=${N8N_PORT}
+            - N8N_PROTOCOL=${N8N_PROTOCOL}
+            - NODE_ENV=${NODE_ENV}
+            - WEBHOOK_URL=${WEBHOOK_URL}
+            - DB_TYPE=${DB_TYPE}
+            - DB_POSTGRESDB_HOST=${DB_HOST:-postgres-db}
+            - DB_POSTGRESDB_PORT=${DB_POSTGRESDB_PORT:-5432}
+            - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+            - DB_POSTGRESDB_USER=${POSTGRES_USER}
+            - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+        volumes:
+            - n8n_data:/home/node/.n8n
+        networks:
+            - app-network
+        depends_on:
+            postgres:
+                condition: service_healthy
+        restart: unless-stopped
 
-  # MongoDB for Event Store and Checkpoints
-  mongodb:
-    image: mongodb/mongodb-community-server:7.0-ubuntu2204
-    container_name: mongodb
-    ports:
-      - "27017:27017"
-    environment:
-      - MONGODB_INITDB_ROOT_USERNAME=root
-      - MONGODB_INITDB_ROOT_PASSWORD=password
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+    # MongoDB for Event Store and Checkpoints
+    mongodb:
+        image: mongodb/mongodb-community-server:7.0-ubuntu2204
+        container_name: mongodb
+        ports:
+            - '27017:27017'
+        environment:
+            - MONGODB_INITDB_ROOT_USERNAME=root
+            - MONGODB_INITDB_ROOT_PASSWORD=password
+        volumes:
+            - mongodb_data:/data/db
+        networks:
+            - app-network
+        healthcheck:
+            test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
 
-  # MongoDB Web Viewer
-  mongo-express:
-    image: mongo-express
-    container_name: mongo-express
-    ports:
-      - "8082:8081"
-    environment:
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=root
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=password
-      - ME_CONFIG_MONGODB_URL=mongodb://root:password@mongodb:27017/
-      - ME_CONFIG_BASICAUTH_USERNAME=user
-      - ME_CONFIG_BASICAUTH_PASSWORD=password
-    networks:
-      - app-network
-    depends_on:
-      - mongodb
-    restart: unless-stopped
+    # MongoDB Web Viewer
+    mongo-express:
+        image: mongo-express
+        container_name: mongo-express
+        ports:
+            - '8082:8081'
+        environment:
+            - ME_CONFIG_MONGODB_ADMINUSERNAME=root
+            - ME_CONFIG_MONGODB_ADMINPASSWORD=password
+            - ME_CONFIG_MONGODB_URL=mongodb://root:password@mongodb:27017/
+            - ME_CONFIG_BASICAUTH_USERNAME=user
+            - ME_CONFIG_BASICAUTH_PASSWORD=password
+        networks:
+            - app-network
+        depends_on:
+            - mongodb
+        restart: unless-stopped
 
-  # Adminer Database Management
-  adminer:
-    image: adminer
-    container_name: adminer
-    ports:
-      - "8081:8080"
-    env_file:
-      - ../../.env
-    networks:
-      - app-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
+    # Adminer Database Management
+    adminer:
+        image: adminer
+        container_name: adminer
+        ports:
+            - '8081:8080'
+        env_file:
+            - ../../.env
+        networks:
+            - app-network
+        depends_on:
+            postgres:
+                condition: service_healthy
+        restart: unless-stopped
 
 networks:
-  app-network:
-    driver: bridge
+    app-network:
+        driver: bridge
 
 volumes:
-  n8n_data:
-  mongodb_data:
-  symfony_caddy_data:
-  symfony_caddy_config:
+    n8n_data:
+    mongodb_data:
+    symfony_caddy_data:
+    symfony_caddy_config:

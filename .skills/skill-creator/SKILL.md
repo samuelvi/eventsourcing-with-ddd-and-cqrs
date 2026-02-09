@@ -21,6 +21,7 @@ Skills are modular, self-contained packages that extend the agent's capabilities
 ## Core Principles
 
 ### Concise is Key
+
 Only add context the agent doesn't already have. Prefer concise examples over verbose explanations.
 
 ### Anatomy of a Skill
@@ -38,8 +39,8 @@ skill-name/
 
 #### SKILL.md (required)
 
-- **Frontmatter** (YAML): Contains `name` and `description`. These are the only fields read to determine *when* the skill is used.
-- **Body** (Markdown): Instructions and guidance. Only loaded *after* the skill triggers.
+- **Frontmatter** (YAML): Contains `name` and `description`. These are the only fields read to determine _when_ the skill is used.
+- **Body** (Markdown): Instructions and guidance. Only loaded _after_ the skill triggers.
 
 ## Skill Creation Process
 

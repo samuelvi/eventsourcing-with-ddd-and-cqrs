@@ -1,0 +1,110 @@
+{
+    "name": "2. Quote Status (Random Simulator)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "value": 1
+                        }
+                    ]
+                }
+            },
+            "name": "Every 1 min",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [100, 300]
+        },
+        {
+            "parameters": {
+                "url": "http://symfony-api/api/quotes",
+                "options": {}
+            },
+            "name": "Get All Quotes",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [320, 300]
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "hydra:member",
+                "options": {}
+            },
+            "name": "Iterate Quotes",
+            "type": "n8n-nodes-base.itemLists",
+            "typeVersion": 1,
+            "position": [540, 300]
+        },
+        {
+            "parameters": {
+                "jsCode": "const statuses = ['pending', 'quoted', 'discarded', 'expired'];\nconst randomStatus = statuses[Math.floor(Math.random() * statuses.length)];\nreturn { status: randomStatus };"
+            },
+            "name": "Pick Random Status",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [760, 300]
+        },
+        {
+            "parameters": {
+                "method": "PATCH",
+                "url": "=http://symfony-api/api/quotes/{{ $node[\"Iterate Quotes\"].json.id }}",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"status\": \"{{ $json.status }}\"\n}",
+                "options": {}
+            },
+            "name": "Update Status API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [980, 300]
+        }
+    ],
+    "connections": {
+        "Every 1 min": {
+            "main": [
+                [
+                    {
+                        "node": "Get All Quotes",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get All Quotes": {
+            "main": [
+                [
+                    {
+                        "node": "Iterate Quotes",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Iterate Quotes": {
+            "main": [
+                [
+                    {
+                        "node": "Pick Random Status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Pick Random Status": {
+            "main": [
+                [
+                    {
+                        "node": "Update Status API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

@@ -1,0 +1,130 @@
+{
+    "name": "3. Quote Auto-Quoter (Pending -> Quoted)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "seconds",
+                            "value": 45
+                        }
+                    ]
+                }
+            },
+            "name": "Every 45s",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [100, 300]
+        },
+        {
+            "parameters": {
+                "url": "http://symfony-api/api/quotes",
+                "options": {}
+            },
+            "name": "Get Quotes",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [320, 300]
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "hydra:member",
+                "options": {}
+            },
+            "name": "Split Quotes",
+            "type": "n8n-nodes-base.itemLists",
+            "typeVersion": 1,
+            "position": [540, 300]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "type": "string"
+                    },
+                    "conditions": [
+                        {
+                            "id": "84ea0bc1-0b84-460c-9f8a-0b840b840b84",
+                            "leftValue": "={{ $json.status }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals",
+                                "name": "equals"
+                            },
+                            "rightValue": "pending"
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "name": "If Pending",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [760, 300]
+        },
+        {
+            "parameters": {
+                "method": "PATCH",
+                "url": "=http://symfony-api/api/quotes/{{ $json.id }}",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "{\n  \"status\": \"quoted\"\n}",
+                "options": {}
+            },
+            "name": "Mark as Quoted API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [980, 200]
+        }
+    ],
+    "connections": {
+        "Every 45s": {
+            "main": [
+                [
+                    {
+                        "node": "Get Quotes",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Quotes": {
+            "main": [
+                [
+                    {
+                        "node": "Split Quotes",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Quotes": {
+            "main": [
+                [
+                    {
+                        "node": "If Pending",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "If Pending": {
+            "main": [
+                [
+                    {
+                        "node": "Mark as Quoted API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

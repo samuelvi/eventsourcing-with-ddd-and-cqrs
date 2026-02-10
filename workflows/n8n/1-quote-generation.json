@@ -1,0 +1,117 @@
+{
+    "name": "1. Quote Generation (Orchestrator)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "seconds",
+                            "value": 30
+                        }
+                    ]
+                }
+            },
+            "name": "Poll Bookings (30s)",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [100, 300]
+        },
+        {
+            "parameters": {
+                "url": "http://symfony-api/api/bookings?pending=true",
+                "options": {}
+            },
+            "name": "Get Pending Bookings",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [320, 300]
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "hydra:member",
+                "options": {}
+            },
+            "name": "Iterate Bookings",
+            "type": "n8n-nodes-base.itemLists",
+            "typeVersion": 1,
+            "position": [540, 300]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=http://symfony-api/api/bookings/{{ $json.id }}/generate-quotes",
+                "options": {}
+            },
+            "name": "Generate Quotes API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [760, 300]
+        },
+        {
+            "parameters": {
+                "method": "PATCH",
+                "url": "=http://symfony-api/api/bookings/{{ $node[\"Iterate Bookings\"].json.id }}/process",
+                "options": {},
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "status",
+                            "value": "processed"
+                        }
+                    ]
+                }
+            },
+            "name": "Mark Booking as Processed",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [980, 300]
+        }
+    ],
+    "connections": {
+        "Poll Bookings (30s)": {
+            "main": [
+                [
+                    {
+                        "node": "Get Pending Bookings",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Pending Bookings": {
+            "main": [
+                [
+                    {
+                        "node": "Iterate Bookings",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Iterate Bookings": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Quotes API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Quotes API": {
+            "main": [
+                [
+                    {
+                        "node": "Mark Booking as Processed",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

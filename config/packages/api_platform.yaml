@@ -11,6 +11,10 @@ api_platform:
         html: ['text/html']
     defaults:
         stateless: true
+        use_symfony_listeners: true
+        keep_legacy_inflector: false
+        extra_properties:
+            hydra_prefix: true
         cache_headers:
             max_age: 0
             shared_max_age: 0

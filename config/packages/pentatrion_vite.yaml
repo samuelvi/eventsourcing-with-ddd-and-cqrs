@@ -1,4 +1,5 @@
 pentatrion_vite:
-    builds:
+    default_config: app
+    configs:
         app:
             build_directory: build

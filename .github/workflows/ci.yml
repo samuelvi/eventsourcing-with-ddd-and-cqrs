@@ -58,6 +58,12 @@ jobs:
         run: |
           bin/console doctrine:database:create --if-not-exists --env=test
           bin/console doctrine:schema:create --env=test
+        env:
+          DATABASE_URL: "postgresql://app:ci_password@127.0.0.1:5432/app?serverVersion=16&charset=utf8"
+          MONGODB_URL: "mongodb://127.0.0.1:27017"
+          MONGODB_DB: "event_sourcing_test"
+          APP_ENV: test
+          APP_SECRET: "c0d3b4s3"
 
       - name: Run Unit & Functional Tests
         run: bin/phpunit

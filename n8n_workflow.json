@@ -1,0 +1,89 @@
+{
+    "name": "Generate Users via CQRS",
+    "nodes": [
+        {
+            "parameters": {},
+            "name": "Start",
+            "type": "n8n-nodes-base.start",
+            "typeVersion": 1,
+            "position": [240, 300]
+        },
+        {
+            "parameters": {
+                "functionCode": "const users = [];\nfor (let i = 1; i <= 5; i++) {\n  users.push({\n    json: {\n      name: `User ${Math.floor(Math.random() * 1000)}`,\n      email: `user${Math.floor(Math.random() * 1000)}@example.com`\n    }\n  });\n}\nreturn users;"
+            },
+            "name": "Generate Data",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [460, 300]
+        },
+        {
+            "parameters": {
+                "requestMethod": "POST",
+                "url": "http://symfony-api:80/users",
+                "options": {},
+                "bodyParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "name",
+                            "value": "={{$node[\"Generate Data\"].json[\"name\"]}}"
+                        },
+                        {
+                            "name": "email",
+                            "value": "={{$node[\"Generate Data\"].json[\"email\"]}}"
+                        }
+                    ]
+                }
+            },
+            "name": "Create User API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [680, 300]
+        },
+        {
+            "parameters": {
+                "url": "http://symfony-api:80/users",
+                "options": {}
+            },
+            "name": "List Users API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [900, 300]
+        }
+    ],
+    "connections": {
+        "Start": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Data": {
+            "main": [
+                [
+                    {
+                        "node": "Create User API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Create User API": {
+            "main": [
+                [
+                    {
+                        "node": "List Users API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

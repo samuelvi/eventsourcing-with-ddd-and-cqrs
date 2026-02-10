@@ -69,7 +69,7 @@ class ProductEntity
     #[Groups(['product:read'])]
     public ?object $details = null;
 
-    protected function __construct(
+    private function __construct(
         string $name,
         float $price,
         SupplierEntity $supplier,

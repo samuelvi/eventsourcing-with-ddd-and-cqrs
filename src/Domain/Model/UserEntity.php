@@ -53,7 +53,7 @@ class UserEntity
     #[Groups(['user:read'])]
     public string $name;
 
-    protected function __construct(string $name, string $email, ?Uuid $id = null)
+    private function __construct(string $name, string $email, ?Uuid $id = null)
     {
         $this->id = $id ?? Uuid::v7();
         $this->name = $name;

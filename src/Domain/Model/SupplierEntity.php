@@ -57,7 +57,7 @@ class SupplierEntity
     #[Groups(['supplier:read'])]
     public private(set) Collection $products;
 
-    protected function __construct(string $name, ?Uuid $id = null, bool $isActive = true, float $rating = 0.0)
+    private function __construct(string $name, ?Uuid $id = null, bool $isActive = true, float $rating = 0.0)
     {
         $this->id = $id ?? Uuid::v7();
         $this->name = $name;

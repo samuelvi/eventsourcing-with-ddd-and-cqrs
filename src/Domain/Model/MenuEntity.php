@@ -56,7 +56,7 @@ class MenuEntity
     #[Groups(['menu:read'])]
     public SupplierEntity $supplier;
 
-    protected function __construct(
+    private function __construct(
         string $title,
         float $price,
         string $currency,

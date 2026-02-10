@@ -48,7 +48,7 @@ class BookingEntity
     /**
      * @param array<string, mixed> $data
      */
-    protected function __construct(Uuid $id, array $data, \DateTimeImmutable $createdAt)
+    private function __construct(Uuid $id, array $data, \DateTimeImmutable $createdAt)
     {
         $this->id = $id;
         $this->data = $data;

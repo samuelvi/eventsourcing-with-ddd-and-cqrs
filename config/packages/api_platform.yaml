@@ -5,6 +5,7 @@ api_platform:
         paths:
             - '%kernel.project_dir%/src/Domain/Model'
             - '%kernel.project_dir%/src/Application/Dto'
+            - '%kernel.project_dir%/src/Infrastructure/EventSourcing'
     formats:
         jsonld: ['application/ld+json']
         json: ['application/json']

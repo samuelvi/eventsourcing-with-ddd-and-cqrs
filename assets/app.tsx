@@ -182,11 +182,35 @@ function App() {
                     zIndex: 100
                 }}
             >
-                <NavButton target="home" label="Overview" icon={Icons.Home} currentPage={page} onNavigate={navigateTo} />
-                <NavButton target="wizard" label="Booking Wizard" icon={Icons.Wizard} currentPage={page} onNavigate={navigateTo} />
-                <NavButton target="explorer" label="Data Explorer" icon={Icons.Explorer} currentPage={page} onNavigate={navigateTo} />
+                <NavButton
+                    target="home"
+                    label="Overview"
+                    icon={Icons.Home}
+                    currentPage={page}
+                    onNavigate={navigateTo}
+                />
+                <NavButton
+                    target="wizard"
+                    label="Booking Wizard"
+                    icon={Icons.Wizard}
+                    currentPage={page}
+                    onNavigate={navigateTo}
+                />
+                <NavButton
+                    target="explorer"
+                    label="Data Explorer"
+                    icon={Icons.Explorer}
+                    currentPage={page}
+                    onNavigate={navigateTo}
+                />
                 <div style={{ flexGrow: 1 }} />
-                <NavButton target="demo" label="System Monitor" icon={Icons.Demo} currentPage={page} onNavigate={navigateTo} />
+                <NavButton
+                    target="demo"
+                    label="System Monitor"
+                    icon={Icons.Demo}
+                    currentPage={page}
+                    onNavigate={navigateTo}
+                />
             </nav>
 
             <main style={{ padding: '40px' }}>

@@ -1,96 +1,96 @@
 name: Quality Assurance
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
 
 jobs:
-  backend:
-    name: Backend (Symfony & PHPStan)
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:16-alpine
+    backend:
+        name: Backend (Symfony & PHPStan)
+        runs-on: ubuntu-latest
+
+        services:
+            postgres:
+                image: postgres:16-alpine
+                env:
+                    POSTGRES_DB: app
+                    POSTGRES_USER: app
+                    POSTGRES_PASSWORD: ci_password
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+            mongo:
+                image: mongo:6.0
+                ports:
+                    - 27017:27017
+
         env:
-          POSTGRES_DB: app
-          POSTGRES_USER: app
-          POSTGRES_PASSWORD: ci_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      
-      mongo:
-        image: mongo:6.0
-        ports:
-          - 27017:27017
+            DATABASE_URL: 'postgresql://app:ci_password@127.0.0.1:5432/app?serverVersion=16&charset=utf8'
+            MONGODB_URL: 'mongodb://127.0.0.1:27017'
+            MONGODB_DB: 'event_sourcing_test'
+            APP_ENV: test
+            APP_SECRET: 'c0d3b4s3'
 
-    env:
-      DATABASE_URL: "postgresql://app:ci_password@127.0.0.1:5432/app?serverVersion=16&charset=utf8"
-      MONGODB_URL: "mongodb://127.0.0.1:27017"
-      MONGODB_DB: "event_sourcing_test"
-      APP_ENV: test
-      APP_SECRET: "c0d3b4s3"
+        steps:
+            - uses: actions/checkout@v4
 
-    steps:
-      - uses: actions/checkout@v4
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.4'
+                  extensions: ctype, iconv, intl, pdo_pgsql, mongodb
+                  tools: composer:v2
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: ctype, iconv, intl, pdo_pgsql, mongodb
-          tools: composer:v2
+            - name: Install Composer Dependencies
+              run: composer install --no-progress --prefer-dist
 
-      - name: Install Composer Dependencies
-        run: composer install --no-progress --prefer-dist
+            - name: PHPStan Analysis (Level 9)
+              run: vendor/bin/phpstan analyse --memory-limit=1G
 
-      - name: PHPStan Analysis (Level 9)
-        run: vendor/bin/phpstan analyse --memory-limit=1G
+            - name: Setup Database Schema
+              run: |
+                  bin/console doctrine:database:create --if-not-exists --env=test
+                  bin/console doctrine:schema:create --env=test
+              env:
+                  DATABASE_URL: 'postgresql://app:ci_password@127.0.0.1:5432/app?serverVersion=16&charset=utf8'
+                  MONGODB_URL: 'mongodb://127.0.0.1:27017'
+                  MONGODB_DB: 'event_sourcing_test'
+                  APP_ENV: test
+                  APP_SECRET: 'c0d3b4s3'
 
-      - name: Setup Database Schema
-        run: |
-          bin/console doctrine:database:create --if-not-exists --env=test
-          bin/console doctrine:schema:create --env=test
-        env:
-          DATABASE_URL: "postgresql://app:ci_password@127.0.0.1:5432/app?serverVersion=16&charset=utf8"
-          MONGODB_URL: "mongodb://127.0.0.1:27017"
-          MONGODB_DB: "event_sourcing_test"
-          APP_ENV: test
-          APP_SECRET: "c0d3b4s3"
+            - name: Run Unit & Functional Tests
+              run: bin/phpunit
+              env:
+                  SYMFONY_DEPRECATIONS_HELPER: 'max[self]=0'
 
-      - name: Run Unit & Functional Tests
-        run: bin/phpunit
-        env:
-          SYMFONY_DEPRECATIONS_HELPER: "max[self]=0"
+    frontend:
+        name: Frontend (React & Lint)
+        runs-on: ubuntu-latest
 
-  frontend:
-    name: Frontend (React & Lint)
-    runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
 
-    steps:
-      - uses: actions/checkout@v4
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
+            - name: Install Dependencies
+              run: npm ci
 
-      - name: Install Dependencies
-        run: npm ci
+            - name: Linting (ESLint)
+              run: npm run lint
 
-      - name: Linting (ESLint)
-        run: npm run lint
+            - name: Formatting Check (Prettier)
+              run: npx prettier --check .
 
-      - name: Formatting Check (Prettier)
-        run: npx prettier --check .
-
-      - name: Type Check (TypeScript)
-        run: npx tsc --noEmit
+            - name: Type Check (TypeScript)
+              run: npx tsc --noEmit

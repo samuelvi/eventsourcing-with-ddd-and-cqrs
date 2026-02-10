@@ -58,6 +58,7 @@ Ciclo de vida completo de la operación **"Generate New Event"**, detallando la 
     1.  **Locking**: Bloquea el ID para evitar procesamientos duplicados simultáneos.
     2.  **Validation**: Verifica en MongoDB si el evento ya existe.
     3.  **Persistence**: Crea un `StoredEvent` y lo guarda en **MongoDB**.
+
     ```php
     // Persistencia del Hecho (Punto de no retorno)
     $this->mongoStore->saveEvent($storedEvent);

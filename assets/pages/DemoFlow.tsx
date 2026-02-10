@@ -86,17 +86,24 @@ export function DemoFlow() {
 
     // --- Queries ---
 
-    const { data: stats = { events: 0, users: 0, bookings: 0, snapshots: 0, checkpoints: {} } } = useQuery({
-        queryKey: ['stats'],
-        queryFn: async () => {
-            const res = await fetch('/api/demo/stats');
-            if (!res.ok) throw new Error('Stats error');
-            return res.json();
-        },
-        refetchInterval: 2000
-    });
+    const { data: stats = { events: 0, users: 0, bookings: 0, snapshots: 0, checkpoints: {} } } =
+        useQuery({
+            queryKey: ['stats'],
+            queryFn: async () => {
+                const res = await fetch('/api/demo/stats');
+                if (!res.ok) throw new Error('Stats error');
+                return res.json();
+            },
+            refetchInterval: 2000
+        });
 
-    const { data: status = { projectionsEnabled: true, userProjectionsEnabled: true, bookingProjectionsEnabled: true } } = useQuery({
+    const {
+        data: status = {
+            projectionsEnabled: true,
+            userProjectionsEnabled: true,
+            bookingProjectionsEnabled: true
+        }
+    } = useQuery({
         queryKey: ['status'],
         queryFn: async () => {
             const res = await fetch('/api/demo/status');
@@ -230,7 +237,11 @@ export function DemoFlow() {
     const userProjectionsEnabled = status.userProjectionsEnabled;
     const bookingProjectionsEnabled = status.bookingProjectionsEnabled;
     const sortedUsers = [...users].sort((a: any, b: any) => b.id.localeCompare(a.id));
-    const loading = toggleMutation.isPending || createBookingMutation.isPending || rebuildMutation.isPending || resetMutation.isPending;
+    const loading =
+        toggleMutation.isPending ||
+        createBookingMutation.isPending ||
+        rebuildMutation.isPending ||
+        resetMutation.isPending;
 
     const DataList = ({ title, items, columns, emptyMsg, badge }: any) => (
         <div

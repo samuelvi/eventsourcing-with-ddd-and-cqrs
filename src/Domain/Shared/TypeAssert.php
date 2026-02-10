@@ -16,10 +16,11 @@ final class TypeAssert
 
     public static function int(mixed $value, string $message = 'Value is not an integer'): int
     {
-        if (!is_int($value) && (!is_string($value) || !ctype_digit($value))) {
+        $filtered = filter_var($value, FILTER_VALIDATE_INT);
+        if ($filtered === false) {
              throw new \InvalidArgumentException($message);
         }
-        return (int) $value;
+        return $filtered;
     }
 
     public static function float(mixed $value, string $message = 'Value is not a float'): float

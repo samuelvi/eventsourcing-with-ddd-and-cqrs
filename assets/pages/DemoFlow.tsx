@@ -2,14 +2,6 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
 
-interface Stats {
-    events: number;
-    users: number;
-    bookings: number;
-    snapshots: number;
-    checkpoints: Record<string, string | null>;
-}
-
 // Professional monotone icons
 const IconOn = () => (
     <svg
@@ -125,25 +117,25 @@ export function DemoFlow() {
         }
     };
 
-    const { data: events = [] } = useQuery({
+    const { data: events = [] } = useQuery<Record<string, unknown>[]>({
         queryKey: ['events'],
         queryFn: () => safeFetch('/api/event-store'),
         refetchInterval: 2000
     });
 
-    const { data: users = [] } = useQuery({
+    const { data: users = [] } = useQuery<Record<string, unknown>[]>({
         queryKey: ['users'],
         queryFn: () => safeFetch('/api/users'),
         refetchInterval: 2000
     });
 
-    const { data: bookings = [] } = useQuery({
+    const { data: bookings = [] } = useQuery<Record<string, unknown>[]>({
         queryKey: ['bookings'],
         queryFn: () => safeFetch('/api/bookings?order[createdAt]=desc'),
         refetchInterval: 2000
     });
 
-    const { data: checkpoints = [] } = useQuery({
+    const { data: checkpoints = [] } = useQuery<Record<string, unknown>[]>({
         queryKey: ['checkpoints'],
         queryFn: () => safeFetch('/api/checkpoints'),
         refetchInterval: 2000
@@ -166,7 +158,7 @@ export function DemoFlow() {
     });
 
     const createBookingMutation = useMutation({
-        mutationFn: async (payload: any) => {
+        mutationFn: async (payload: Record<string, unknown>) => {
             const res = await fetch('/api/booking-wizard', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -236,14 +228,28 @@ export function DemoFlow() {
     const projectionsEnabled = status.projectionsEnabled;
     const userProjectionsEnabled = status.userProjectionsEnabled;
     const bookingProjectionsEnabled = status.bookingProjectionsEnabled;
-    const sortedUsers = [...users].sort((a: any, b: any) => b.id.localeCompare(a.id));
+    const sortedUsers = [...users].sort((a, b) =>
+        String(b.id || '').localeCompare(String(a.id || ''))
+    );
     const loading =
         toggleMutation.isPending ||
         createBookingMutation.isPending ||
         rebuildMutation.isPending ||
         resetMutation.isPending;
 
-    const DataList = ({ title, items, columns, emptyMsg, badge }: any) => (
+    const DataList = ({
+        title,
+        items,
+        columns,
+        emptyMsg,
+        badge
+    }: {
+        title: string;
+        items: Record<string, unknown>[];
+        columns: string[];
+        emptyMsg: string;
+        badge?: number;
+    }) => (
         <div
             style={{
                 backgroundColor: '#fff',
@@ -297,7 +303,7 @@ export function DemoFlow() {
                 ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                         <tbody>
-                            {items.map((item: any, i: number) => (
+                            {items.map((item, i) => (
                                 <tr
                                     key={i}
                                     style={{
@@ -306,11 +312,16 @@ export function DemoFlow() {
                                         backgroundColor: i === 0 ? '#f9fafb' : 'transparent'
                                     }}
                                 >
-                                    {columns.map((col: string, j: number) => {
-                                        let val = item[col];
+                                    {columns.map((col, j) => {
+                                        let val: any = item[col];
                                         if (col.includes('.')) {
                                             const parts = col.split('.');
-                                            val = item[parts[0]]?.[parts[1]];
+                                            const key = parts[0] as keyof typeof item;
+                                            const subItem = item[key];
+                                            val =
+                                                typeof subItem === 'object' && subItem !== null
+                                                    ? (subItem as any)[parts[1]]
+                                                    : undefined;
                                         }
 
                                         return (
@@ -332,11 +343,11 @@ export function DemoFlow() {
                                                         {JSON.stringify(val).slice(0, 30)}...
                                                     </span>
                                                 ) : col === 'createdAt' || col === 'occurredOn' ? (
-                                                    new Date(val).toLocaleTimeString()
+                                                    new Date(String(val)).toLocaleTimeString()
                                                 ) : col === 'eventType' ? (
-                                                    val.split('\\').pop()
+                                                    String(val).split('\\').pop()
                                                 ) : (
-                                                    val
+                                                    String(val)
                                                 )}
                                             </td>
                                         );
@@ -841,10 +852,10 @@ export function DemoFlow() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                             <DataList
                                 title="Users Projection"
-                                items={users}
+                                items={sortedUsers}
                                 columns={['name', 'email']}
                                 emptyMsg="No users."
-                                badge={users.length}
+                                badge={sortedUsers.length}
                             />
                             <DataList
                                 title="Bookings Projection"

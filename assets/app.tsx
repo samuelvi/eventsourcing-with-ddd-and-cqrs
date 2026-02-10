@@ -8,7 +8,7 @@ import { DemoFlow } from './pages/DemoFlow';
 const queryClient = new QueryClient();
 
 // Shared Flat Icons
-export const Icons = {
+export const Icons: Record<string, React.FC> = {
     Home: () => (
         <svg
             width="20"
@@ -82,8 +82,25 @@ export const Icons = {
             <line x1="5" y1="12" x2="19" y2="12" />
             <polyline points="12 5 19 12 12 19" />
         </svg>
+    ),
+    CheckCircle: () => (
+        <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
     )
 };
+
+type PageType = 'home' | 'wizard' | 'explorer' | 'demo';
 
 const NavButton = ({
     target,
@@ -92,11 +109,11 @@ const NavButton = ({
     currentPage,
     onNavigate
 }: {
-    target: 'home' | 'wizard' | 'explorer' | 'demo';
+    target: PageType;
     label: string;
-    icon: any;
+    icon: React.FC;
     currentPage: string;
-    onNavigate: (page: 'home' | 'wizard' | 'explorer' | 'demo') => void;
+    onNavigate: (page: PageType) => void;
 }) => (
     <button
         onClick={() => onNavigate(target)}
@@ -121,34 +138,34 @@ const NavButton = ({
 );
 
 function App() {
-    const [page, setPage] = useState<'home' | 'wizard' | 'explorer' | 'demo'>(
-        window.location.pathname === '/wizard'
+    const [page, setPage] = useState<PageType>(
+        (window.location.pathname === '/wizard'
             ? 'wizard'
             : window.location.pathname === '/explorer'
               ? 'explorer'
               : window.location.pathname === '/demo'
                 ? 'demo'
-                : 'home'
+                : 'home') as PageType
     );
 
     useEffect(() => {
         const handlePopState = () => {
             const path = window.location.pathname;
             setPage(
-                path === '/wizard'
+                (path === '/wizard'
                     ? 'wizard'
                     : path === '/explorer'
                       ? 'explorer'
                       : path === '/demo'
                         ? 'demo'
-                        : 'home'
+                        : 'home') as PageType
             );
         };
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
 
-    const navigateTo = (newPage: 'home' | 'wizard' | 'explorer' | 'demo') => {
+    const navigateTo = (newPage: PageType) => {
         const url =
             newPage === 'wizard'
                 ? '/wizard'
@@ -340,23 +357,6 @@ function App() {
         </div>
     );
 }
-
-// Small helper for the home page
-Icons.CheckCircle = () => (
-    <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-    >
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-        <polyline points="22 4 12 14.01 9 11.01" />
-    </svg>
-);
 
 const rootElement = document.getElementById('root');
 if (rootElement) {

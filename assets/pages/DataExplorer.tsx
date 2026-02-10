@@ -11,7 +11,7 @@ type EntityType =
 
 export function DataExplorer() {
     const [activeTab, setActiveTab] = useState<EntityType>('event-store');
-    const [data, setData] = useState<any[]>([]);
+    const [data, setData] = useState<Record<string, unknown>[]>([]);
     const [loading, setLoading] = useState(false);
 
     const fetchData = async (type: EntityType) => {
@@ -21,7 +21,7 @@ export function DataExplorer() {
                 headers: { Accept: 'application/ld+json' }
             });
             const result = await response.json();
-            setData(result['hydra:member'] || []);
+            setData((result['hydra:member'] as Record<string, unknown>[]) || []);
         } catch (error) {
             console.error('Error fetching data:', error);
             setData([]);
@@ -34,18 +34,18 @@ export function DataExplorer() {
         fetchData(activeTab);
     }, [activeTab]);
 
-    const mongoTabs: Record<EntityType, string> = {
+    const mongoTabs: Partial<Record<EntityType, string>> = {
         'event-store': 'Event Store',
         checkpoints: 'Checkpoints',
         snapshots: 'Snapshots'
-    } as any;
+    };
 
-    const postgresTabs: Record<EntityType, string> = {
+    const postgresTabs: Partial<Record<EntityType, string>> = {
         users: 'Users',
         bookings: 'Bookings',
         products: 'Products Catalog',
         suppliers: 'Suppliers'
-    } as any;
+    };
 
     const TabGroup = ({ title, tabs }: { title: string; tabs: Record<string, string> }) => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

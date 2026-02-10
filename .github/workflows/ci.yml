@@ -67,6 +67,8 @@ jobs:
 
       - name: Run Unit & Functional Tests
         run: bin/phpunit
+        env:
+          SYMFONY_DEPRECATIONS_HELPER: "max[self]=0"
 
   frontend:
     name: Frontend (React & Lint)

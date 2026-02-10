@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Service;
 
 use App\Domain\Model\SupplierEntity;
-use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class ProductDetailOrchestrator
@@ -14,7 +14,7 @@ final readonly class ProductDetailOrchestrator
      * @param iterable<ProductDetailFactoryInterface> $factories
      */
     public function __construct(
-        #[TaggedIterator('app.product_detail_factory')]
+        #[AutowireIterator('app.product_detail_factory')]
         private iterable $factories,
     ) {}
 

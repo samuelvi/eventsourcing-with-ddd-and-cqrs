@@ -31,7 +31,7 @@ class ProductEntity
 {
     use NamedConstructorTrait;
 
-    final public const TYPE_MENU = 'menu';
+    final public const string TYPE_MENU = 'menu';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]

@@ -11,6 +11,11 @@ interface BookingReadRepositoryInterface
      */
     public function findAllForList(): array;
 
+    /**
+     * @return array<array<string, mixed>>
+     */
+    public function findPendingForN8n(): array;
+
     public function countAll(): int;
 
     public function exists(string $id): bool;

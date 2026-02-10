@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Model;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use App\Application\Dto\CreateUserDto;
+use App\Infrastructure\ApiPlatform\State\CreateUserProcessor;
 use App\Infrastructure\ApiPlatform\Provider\UserProvider;
 use App\Domain\Shared\NamedConstructorTrait;
 use Doctrine\ORM\Mapping as ORM;
@@ -20,10 +23,15 @@ use Symfony\Component\Validator\Constraints as Assert;
     shortName: 'User',
     operations: [
         new Get(uriTemplate: '/users/{id}', provider: UserProvider::class),
-        new GetCollection(uriTemplate: '/users', paginationEnabled: false, provider: UserProvider::class)
+        new GetCollection(uriTemplate: '/users', paginationEnabled: false, provider: UserProvider::class),
+        new Post(
+            uriTemplate: '/users',
+            input: CreateUserDto::class,
+            processor: CreateUserProcessor::class,
+            status: 202
+        )
     ],
-    normalizationContext: ['groups' => ['user:read']],
-    denormalizationContext: ['groups' => ['user:write']]
+    normalizationContext: ['groups' => ['user:read']]
 )]
 class UserEntity
 {
@@ -37,14 +45,12 @@ class UserEntity
     #[ORM\Column(length: 255, unique: true)]
     #[Assert\NotBlank]
     #[Assert\Email]
-    #[Groups(['user:read', 'user:write'])]
-    public string $email {
-        set => strtolower(trim($value));
-    }
+    #[Groups(['user:read'])]
+    public string $email;
 
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank]
-    #[Groups(['user:read', 'user:write'])]
+    #[Groups(['user:read'])]
     public string $name;
 
     protected function __construct(string $name, string $email, ?Uuid $id = null)

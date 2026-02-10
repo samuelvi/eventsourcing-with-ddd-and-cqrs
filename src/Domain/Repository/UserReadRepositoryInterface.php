@@ -19,4 +19,6 @@ interface UserReadRepositoryInterface
     public function countAll(): int;
 
     public function existsByEmail(string $email): bool;
+
+    public function exists(string $id): bool;
 }

@@ -103,7 +103,7 @@ final readonly class ArchitectureControlService
         $this->enableAll();
 
         // 2. Clear SQL Read Models
-        $this->readEntityManager->execute('TRUNCATE users, bookings RESTART IDENTITY CASCADE');
+        $this->readEntityManager->execute('TRUNCATE users, bookings, quotes RESTART IDENTITY CASCADE');
         
         // 3. Clear Mongo Checkpoints (KEEP EVENTS)
         $this->mongoStore->clearCheckpoints();
@@ -129,7 +129,7 @@ final readonly class ArchitectureControlService
         $this->enableAll();
 
         // 2. Clear SQL Tables (Aggressive + Identity Reset)
-        $this->readEntityManager->execute('TRUNCATE users, bookings, products, menus, suppliers RESTART IDENTITY CASCADE');
+        $this->readEntityManager->execute('TRUNCATE users, bookings, products, menus, suppliers, quotes RESTART IDENTITY CASCADE');
 
         // 3. Clear Mongo (Events, Checkpoints, Snapshots)
         $this->mongoStore->clearAll();

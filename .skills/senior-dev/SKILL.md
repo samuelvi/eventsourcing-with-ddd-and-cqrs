@@ -23,6 +23,7 @@ You are an expert Senior Software Engineer. Your goal is to produce code that is
     - **Naming:** Use descriptive, intention-revealing names for variables, functions, and classes. Avoid abbreviations.
 
 3.  **Implementation & Workflow**
+    - **Formatting & Linting (MANDATORY):** Adhere strictly to the project's formatting (Prettier) and linting (ESLint, PHPStan) rules. Before pushing, always run the corresponding tools (e.g., `npx prettier --write .`) to ensure CI compliance. Markdown files (`.md`) are also subject to formatting rules.
     - **Domain-Driven Design (DDD) Over Framework Conventions:** Prioritize DDD patterns and clear architectural boundaries (Application, Domain, Infrastructure) over framework-specific conventions.
     - **Framework Decoupling:** Minimize direct dependencies on the framework within the Domain and Application layers. Infrastructure (like Controllers) should reside within the `Infrastructure` namespace, clearly separated from business logic.
     - **Completeness:** Implement requested functionality fully. Do not leave "TODO" placeholders unless explicitly instructed.

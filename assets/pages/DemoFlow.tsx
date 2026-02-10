@@ -313,14 +313,14 @@ export function DemoFlow() {
                                     }}
                                 >
                                     {columns.map((col, j) => {
-                                        let val: any = item[col];
+                                        let val: unknown = item[col];
                                         if (col.includes('.')) {
                                             const parts = col.split('.');
                                             const key = parts[0] as keyof typeof item;
                                             const subItem = item[key];
                                             val =
                                                 typeof subItem === 'object' && subItem !== null
-                                                    ? (subItem as any)[parts[1]]
+                                                    ? (subItem as Record<string, unknown>)[parts[1]]
                                                     : undefined;
                                         }
 

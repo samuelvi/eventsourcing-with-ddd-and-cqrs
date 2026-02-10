@@ -49,7 +49,7 @@ final readonly class DbalBookingReadRepository implements BookingReadRepositoryI
     /**
      * @return array<array<string, mixed>>
      */
-    public function findPendingForN8n(): array
+    public function findPending(): array
     {
         $sql = "SELECT id, data, created_at FROM bookings WHERE status = 'pending' ORDER BY created_at ASC";
         return $this->entityManager->query($sql);

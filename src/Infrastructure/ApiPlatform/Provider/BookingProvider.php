@@ -32,10 +32,10 @@ final readonly class BookingProvider implements ProviderInterface
             return $this->hydrate($row);
         }
 
-        // Custom filter for n8n: /api/bookings?pending=true
+        // Custom filter: /api/bookings?pending=true
         $filters = TypeAssert::array($context['filters'] ?? []);
         if (isset($filters['pending']) && $filters['pending'] === 'true') {
-            $data = $this->repository->findPendingForN8n();
+            $data = $this->repository->findPending();
         } else {
             $data = $this->repository->findAllForList();
         }

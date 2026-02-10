@@ -14,7 +14,7 @@ interface BookingReadRepositoryInterface
     /**
      * @return array<array<string, mixed>>
      */
-    public function findPendingForN8n(): array;
+    public function findPending(): array;
 
     public function countAll(): int;
 

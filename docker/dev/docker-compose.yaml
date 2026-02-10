@@ -22,8 +22,8 @@ services:
             - CORS_ALLOW_ORIGIN=^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$
         volumes:
             - ../../:/app
-            - symfony_caddy_data:/data
-            - symfony_caddy_config:/config
+            - ./symfony/caddy_data:/data
+            - ./symfony/caddy_config:/config
         networks:
             - app-network
         depends_on:
@@ -84,15 +84,13 @@ services:
             - N8N_PROTOCOL=${N8N_PROTOCOL}
             - NODE_ENV=${NODE_ENV}
             - WEBHOOK_URL=${WEBHOOK_URL}
-            - DB_TYPE=${DB_TYPE}
-            - DB_POSTGRESDB_HOST=${DB_HOST:-postgres-db}
-            - DB_POSTGRESDB_PORT=${DB_POSTGRESDB_PORT:-5432}
-            - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
-            - DB_POSTGRESDB_USER=${POSTGRES_USER}
-            - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
             - N8N_USER_MANAGEMENT_DISABLED=true
+            - N8N_PERSONALIZATION_ENABLED=false
+            - N8N_METRICS_ENABLED=false
+            - N8N_SECURE_COOKIE=false
+            - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
         volumes:
-            - n8n_data:/home/node/.n8n
+            - ./n8n/data:/home/node/.n8n
         networks:
             - app-network
         depends_on:
@@ -110,7 +108,7 @@ services:
             - MONGODB_INITDB_ROOT_USERNAME=root
             - MONGODB_INITDB_ROOT_PASSWORD=password
         volumes:
-            - mongodb_data:/data/db
+            - ./mongodb/data:/data/db
         networks:
             - app-network
         healthcheck:
@@ -156,9 +154,3 @@ services:
 networks:
     app-network:
         driver: bridge
-
-volumes:
-    n8n_data:
-    mongodb_data:
-    symfony_caddy_data:
-    symfony_caddy_config:

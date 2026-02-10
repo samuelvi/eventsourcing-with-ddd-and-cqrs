@@ -41,7 +41,10 @@ private/*
 /.phpunit.cache/
 
 docker/dev/postgres/data
-docker/dev/redis/data
+docker/dev/mongodb/data
+docker/dev/symfony/caddy_data
+docker/dev/symfony/caddy_config
+docker/dev/n8n/data
 
 *.log
 

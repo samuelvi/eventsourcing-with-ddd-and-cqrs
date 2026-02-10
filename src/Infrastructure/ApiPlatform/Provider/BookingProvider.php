@@ -55,7 +55,7 @@ final readonly class BookingProvider implements ProviderInterface
             Uuid::fromString(TypeAssert::string($row['id'])),
             $bookingData,
             new \DateTimeImmutable(TypeAssert::string($row['created_at'])),
-            (bool) ($row['processed_by_n8n'] ?? false)
+            TypeAssert::string($row['status'] ?? BookingEntity::STATUS_PENDING)
         );
     }
 }

@@ -15,6 +15,17 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
     ) {}
 
     /**
+     * @return array<array{id: string, price: float, supplier_id: string}>
+     */
+    public function findByBudget(float $budget): array
+    {
+        // Find products (type=menu) where price is within 10% range of budget or less
+        $sql = "SELECT id, price, supplier_id FROM products WHERE price <= :budget AND type = 'menu' ORDER BY price DESC";
+        /** @var array<array{id: string, price: float, supplier_id: string}> */
+        return $this->entityManager->query($sql, ['budget' => $budget]);
+    }
+
+    /**
      * @return array<array<string, mixed>>
      */
     public function findAllForList(): array

@@ -23,7 +23,7 @@ final readonly class BookingMarkAsProcessedProcessor implements ProcessorInterfa
      */
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): BookingEntity
     {
-        $data->markAsProcessedByN8n();
+        $data->markAsProcessed();
         $this->writeRepository->save($data);
 
         return $data;

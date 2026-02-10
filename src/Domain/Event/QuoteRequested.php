@@ -12,7 +12,7 @@ final readonly class QuoteRequested
         public string $quoteId,
         public string $bookingId,
         public string $supplierId,
-        public string $menuId,
+        public string $productId,
         public float $requestedPrice,
         public \DateTimeImmutable $occurredOn
     ) {}

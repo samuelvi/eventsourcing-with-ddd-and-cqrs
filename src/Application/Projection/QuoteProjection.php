@@ -34,7 +34,7 @@ final readonly class QuoteProjection
             id: Uuid::fromString($event->quoteId),
             bookingId: Uuid::fromString($event->bookingId),
             supplierId: Uuid::fromString($event->supplierId),
-            menuId: Uuid::fromString($event->menuId),
+            productId: Uuid::fromString($event->productId),
             price: $event->requestedPrice,
             createdAt: $event->occurredOn
         );

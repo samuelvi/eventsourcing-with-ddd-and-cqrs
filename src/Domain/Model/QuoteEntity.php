@@ -54,7 +54,7 @@ class QuoteEntity
 
     #[ORM\Column(type: 'uuid')]
     #[Groups(['quote:read'])]
-    public private(set) Uuid $menuId;
+    public private(set) Uuid $productId;
 
     public const STATUS_PENDING = 'pending';
     public const STATUS_QUOTED = 'quoted';
@@ -77,14 +77,14 @@ class QuoteEntity
         Uuid $id,
         Uuid $bookingId,
         Uuid $supplierId,
-        Uuid $menuId,
+        Uuid $productId,
         float $price,
         \DateTimeImmutable $createdAt
     ) {
         $this->id = $id;
         $this->bookingId = $bookingId;
         $this->supplierId = $supplierId;
-        $this->menuId = $menuId;
+        $this->productId = $productId;
         $this->price = $price;
         $this->createdAt = $createdAt;
     }
@@ -93,10 +93,10 @@ class QuoteEntity
         Uuid $id,
         Uuid $bookingId,
         Uuid $supplierId,
-        Uuid $menuId,
+        Uuid $productId,
         float $price,
         \DateTimeImmutable $createdAt
     ): self {
-        return new self($id, $bookingId, $supplierId, $menuId, $price, $createdAt);
+        return new self($id, $bookingId, $supplierId, $productId, $price, $createdAt);
     }
 }

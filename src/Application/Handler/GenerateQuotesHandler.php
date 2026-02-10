@@ -7,7 +7,7 @@ namespace App\Application\Handler;
 use App\Application\Command\GenerateQuotesCommand;
 use App\Domain\Event\QuoteRequested;
 use App\Domain\Repository\BookingReadRepositoryInterface;
-use App\Domain\Repository\MenuReadRepositoryInterface;
+use App\Domain\Repository\ProductReadRepositoryInterface;
 use App\Infrastructure\EventSourcing\StoredEvent;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use App\Domain\Shared\TypeAssert;
@@ -20,7 +20,7 @@ final readonly class GenerateQuotesHandler
 {
     public function __construct(
         private BookingReadRepositoryInterface $bookingReadRepository,
-        private MenuReadRepositoryInterface $menuReadRepository,
+        private ProductReadRepositoryInterface $productReadRepository,
         private MongoStore $mongoStore,
         private MessageBusInterface $eventBus,
     ) {}
@@ -36,7 +36,7 @@ final readonly class GenerateQuotesHandler
         $bookingData = TypeAssert::array(json_decode(TypeAssert::string($bookingRow['data']), true));
         $budget = TypeAssert::float($bookingData['budget'] ?? 0.0);
 
-        $matches = $this->menuReadRepository->findByBudget($budget);
+        $matches = $this->productReadRepository->findByBudget($budget);
 
         if (empty($matches)) {
             return;
@@ -44,16 +44,16 @@ final readonly class GenerateQuotesHandler
 
         $occurredOn = new \DateTimeImmutable();
 
-        foreach ($matches as $menu) {
+        foreach ($matches as $product) {
             $quoteId = Uuid::v7();
 
             // 1. Create the Domain Event
             $quoteEvent = new QuoteRequested(
                 quoteId: $quoteId->toRfc4122(),
                 bookingId: $command->bookingId,
-                supplierId: $menu['supplier_id'],
-                menuId: $menu['id'],
-                requestedPrice: (float) $menu['price'],
+                supplierId: $product['supplier_id'],
+                productId: $product['id'],
+                requestedPrice: (float) $product['price'],
                 occurredOn: $occurredOn
             );
 
@@ -64,9 +64,9 @@ final readonly class GenerateQuotesHandler
                 payload: [
                     'quoteId' => $quoteId->toRfc4122(),
                     'bookingId' => $command->bookingId,
-                    'supplierId' => $menu['supplier_id'],
-                    'menuId' => $menu['id'],
-                    'requestedPrice' => (float) $menu['price'],
+                    'supplierId' => $product['supplier_id'],
+                    'productId' => $product['id'],
+                    'requestedPrice' => (float) $product['price'],
                     'occurredOn' => $occurredOn->format(\DateTimeInterface::ATOM)
                 ],
                 occurredOn: $occurredOn

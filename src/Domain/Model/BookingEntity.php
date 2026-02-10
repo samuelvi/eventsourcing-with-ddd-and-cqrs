@@ -59,9 +59,12 @@ class BookingEntity
     #[Groups(['booking:read'])]
     public array $data;
 
-    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_PROCESSED = 'processed';
+
+    #[ORM\Column(length: 50)]
     #[Groups(['booking:read'])]
-    public bool $processedByN8n = false;
+    public string $status = self::STATUS_PENDING;
 
     /**
      * @param array<string, mixed> $data
@@ -71,22 +74,22 @@ class BookingEntity
         $this->id = $id;
         $this->data = $data;
         $this->createdAt = $createdAt;
-        $this->processedByN8n = false;
+        $this->status = self::STATUS_PENDING;
     }
 
     /**
      * @param array<string, mixed> $data
      */
-    public static function hydrate(Uuid $id, array $data, \DateTimeImmutable $createdAt, bool $processedByN8n = false): self
+    public static function hydrate(Uuid $id, array $data, \DateTimeImmutable $createdAt, string $status = self::STATUS_PENDING): self
     {
         $booking = new self($id, $data, $createdAt);
-        $booking->processedByN8n = $processedByN8n;
+        $booking->status = $status;
 
         return $booking;
     }
 
-    public function markAsProcessedByN8n(): void
+    public function markAsProcessed(): void
     {
-        $this->processedByN8n = true;
+        $this->status = self::STATUS_PROCESSED;
     }
 }

@@ -55,7 +55,7 @@ final readonly class QuoteProvider implements ProviderInterface
             Uuid::fromString(TypeAssert::string($data['id'])),
             Uuid::fromString(TypeAssert::string($data['booking_id'])),
             Uuid::fromString(TypeAssert::string($data['supplier_id'])),
-            Uuid::fromString(TypeAssert::string($data['menu_id'])),
+            Uuid::fromString(TypeAssert::string($data['product_id'])),
             TypeAssert::float($data['price']),
             new \DateTimeImmutable(TypeAssert::string($data['created_at']))
         );

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Http\Controller;
 
 use App\Application\Service\ArchitectureControlService;
-use App\Domain\Model\Snapshot;
+use App\Infrastructure\EventSourcing\Snapshot;
 use App\Domain\Repository\BookingReadRepositoryInterface;
 use App\Domain\Repository\UserReadRepositoryInterface;
 use App\Infrastructure\Persistence\Mongo\MongoStore;

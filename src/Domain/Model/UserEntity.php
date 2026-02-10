@@ -9,8 +9,6 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use App\Infrastructure\ApiPlatform\Provider\UserProvider;
 use App\Domain\Shared\NamedConstructorTrait;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Uid\Uuid;
@@ -22,7 +20,7 @@ use Symfony\Component\Validator\Constraints as Assert;
     shortName: 'User',
     operations: [
         new Get(uriTemplate: '/users/{id}', provider: UserProvider::class),
-        new GetCollection(uriTemplate: '/users', provider: UserProvider::class, paginationEnabled: false)
+        new GetCollection(uriTemplate: '/users', paginationEnabled: false, provider: UserProvider::class)
     ],
     normalizationContext: ['groups' => ['user:read']],
     denormalizationContext: ['groups' => ['user:write']]

@@ -6,7 +6,7 @@ namespace App\Application\Projection;
 
 use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\UserEntity;
-use App\Domain\Model\ProjectionCheckpoint;
+use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
 use App\Domain\Repository\UserWriteRepositoryInterface;
 use App\Domain\Repository\UserReadRepositoryInterface;
 use App\Infrastructure\Persistence\Mongo\MongoStore;

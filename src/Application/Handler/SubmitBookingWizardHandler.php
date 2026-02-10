@@ -6,8 +6,8 @@ namespace App\Application\Handler;
 
 use App\Application\Command\SubmitBookingWizardCommand;
 use App\Domain\Event\BookingWizardCompleted;
-use App\Domain\Model\StoredEvent;
-use App\Domain\Model\Snapshot;
+use App\Infrastructure\EventSourcing\StoredEvent;
+use App\Infrastructure\EventSourcing\Snapshot;
 use App\Domain\Repository\BookingReadRepositoryInterface;
 use App\Domain\Repository\UserReadRepositoryInterface;
 use App\Infrastructure\Persistence\Mongo\MongoStore;

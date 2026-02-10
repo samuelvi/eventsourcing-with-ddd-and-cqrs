@@ -82,7 +82,7 @@ final readonly class ArchitectureControlService
     public function takeSnapshot(): int
     {
         $eventCount = $this->mongoStore->countEvents();
-        $snapshot = \App\Domain\Model\Snapshot::take(
+        $snapshot = \App\Infrastructure\EventSourcing\Snapshot::take(
             Uuid::v7(), // System aggregate ID for demo
             $eventCount,
             [

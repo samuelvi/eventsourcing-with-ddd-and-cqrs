@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Mongo;
 
-use App\Domain\Model\StoredEvent;
-use App\Domain\Model\Snapshot;
-use App\Domain\Model\ProjectionCheckpoint;
+use App\Infrastructure\EventSourcing\StoredEvent;
+use App\Infrastructure\EventSourcing\Snapshot;
+use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
 use App\Domain\Exception\ConcurrencyException;
 use Symfony\Component\Uid\Uuid;
 use MongoDB\Driver\Exception\BulkWriteException;

@@ -7,9 +7,9 @@ namespace App\Infrastructure\ApiPlatform\Provider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
-use App\Domain\Model\StoredEvent;
-use App\Domain\Model\Snapshot;
-use App\Domain\Model\ProjectionCheckpoint;
+use App\Infrastructure\EventSourcing\StoredEvent;
+use App\Infrastructure\EventSourcing\Snapshot;
+use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
 
 /**
  * @implements ProviderInterface<object>

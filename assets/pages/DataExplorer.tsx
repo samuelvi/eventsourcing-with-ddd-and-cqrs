@@ -4,7 +4,9 @@ type EntityType =
     | 'users'
     | 'bookings'
     | 'products'
+    | 'products-catalog'
     | 'suppliers'
+    | 'menus'
     | 'quotes'
     | 'event-store'
     | 'checkpoints'
@@ -44,9 +46,11 @@ export function DataExplorer() {
     const postgresTabs: Partial<Record<EntityType, string>> = {
         users: 'Users',
         bookings: 'Bookings',
+        suppliers: 'Suppliers',
         quotes: 'Quotes',
-        products: 'Products Catalog',
-        suppliers: 'Suppliers'
+        products: 'Products',
+        menus: 'Menus',
+        'products-catalog': 'Products Catalog'
     };
 
     const TabGroup = ({ title, tabs }: { title: string; tabs: Record<string, string> }) => (

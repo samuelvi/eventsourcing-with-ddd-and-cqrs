@@ -43,6 +43,29 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
         return $this->entityManager->fetchOne($sql, ['id' => $id]);
     }
 
+    /**
+     * @return array<array<string, mixed>>
+     */
+    public function findCatalog(): array
+    {
+        $sql = '
+            SELECT 
+                p.id, 
+                p.name, 
+                p.price, 
+                p.currency, 
+                p.type, 
+                p.external_reference_id, 
+                p.supplier_id,
+                m.title as menu_title,
+                m.description as menu_description
+            FROM products p
+            LEFT JOIN menus m ON p.external_reference_id = m.id AND p.type = \'menu\'
+            ORDER BY p.name ASC
+        ';
+        return $this->entityManager->query($sql);
+    }
+
     public function countAll(): int
     {
         $sql = 'SELECT COUNT(*) FROM products';

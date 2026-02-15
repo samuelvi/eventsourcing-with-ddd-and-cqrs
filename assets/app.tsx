@@ -79,6 +79,13 @@ function App() {
                     onNavigate={navigateTo}
                 />
                 <NavButton
+                    target="demo"
+                    label="System Monitor"
+                    icon={Icons.Demo}
+                    currentPage={page}
+                    onNavigate={navigateTo}
+                />
+                <NavButton
                     target="wizard"
                     label="Booking Wizard"
                     icon={Icons.Wizard}
@@ -89,14 +96,6 @@ function App() {
                     target="explorer"
                     label="Data Explorer"
                     icon={Icons.Explorer}
-                    currentPage={page}
-                    onNavigate={navigateTo}
-                />
-                <div style={{ flexGrow: 1 }} />
-                <NavButton
-                    target="demo"
-                    label="System Monitor"
-                    icon={Icons.Demo}
                     currentPage={page}
                     onNavigate={navigateTo}
                 />

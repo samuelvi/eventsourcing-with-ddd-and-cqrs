@@ -21,5 +21,10 @@ interface ProductReadRepositoryInterface
      */
     public function findByBudget(float $budget): array;
 
+    /**
+     * @return array<array<string, mixed>>
+     */
+    public function findCatalog(): array;
+
     public function countAll(): int;
 }

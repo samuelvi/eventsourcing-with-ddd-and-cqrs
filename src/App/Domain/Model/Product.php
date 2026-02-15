@@ -51,4 +51,26 @@ final class Product extends AggregateRoot
             $this->details = $event->details;
         }
     }
+
+    public function getSnapshotState(): array
+    {
+        return [
+            'name' => $this->name,
+            'price' => $this->price,
+            'currency' => $this->currency,
+            'type' => $this->type,
+            'supplierId' => $this->supplierId,
+            'details' => $this->details,
+        ];
+    }
+
+    protected function applySnapshot(array $state): void
+    {
+        $this->name = $state['name'];
+        $this->price = $state['price'];
+        $this->currency = $state['currency'];
+        $this->type = $state['type'];
+        $this->supplierId = $state['supplierId'];
+        $this->details = $state['details'];
+    }
 }

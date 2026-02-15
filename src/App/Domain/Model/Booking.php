@@ -47,4 +47,24 @@ final class Booking extends AggregateRoot
             $this->clientEmail = $event->clientEmail;
         }
     }
+
+    public function getSnapshotState(): array
+    {
+        return [
+            'userId' => $this->userId,
+            'pax' => $this->pax,
+            'budget' => $this->budget,
+            'clientName' => $this->clientName,
+            'clientEmail' => $this->clientEmail,
+        ];
+    }
+
+    protected function applySnapshot(array $state): void
+    {
+        $this->userId = $state['userId'];
+        $this->pax = $state['pax'];
+        $this->budget = $state['budget'];
+        $this->clientName = $state['clientName'];
+        $this->clientEmail = $state['clientEmail'];
+    }
 }

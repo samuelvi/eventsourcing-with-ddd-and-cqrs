@@ -22,7 +22,6 @@ final readonly class UserProjection
         private UserReadRepositoryInterface $userReadRepository,
         private UserWriteRepositoryInterface $userWriteRepository,
         private MongoStore $mongoStore,
-        private LockFactory $lockFactory,
         private CacheInterface $cache,
     ) {}
 
@@ -53,32 +52,21 @@ final readonly class UserProjection
             return;
         }
 
-        $lock = $this->lockFactory->createLock('user_creation_' . $userId);
-
-        if (!$lock->acquire(true)) {
-            return;
-        }
-
-        try {
-            if (!$this->userWriteRepository->find($userId)) {
-                $user = UserEntity::hydrate(
-                    name: $name,
-                    email: $email,
-                    id: Uuid::fromString($userId)
-                );
-                try {
-                    $this->userWriteRepository->save($user);
-                } catch (\Throwable $e) {
-                    // Ignore duplicate key errors
-                }
+        if (!$this->userWriteRepository->find($userId)) {
+            $user = UserEntity::hydrate(
+                name: $name,
+                email: $email,
+                id: Uuid::fromString($userId)
+            );
+            try {
+                $this->userWriteRepository->save($user);
+            } catch (\Throwable $e) {
+                // Ignore duplicate key errors at the DB level
             }
-
-            // Update Checkpoint
-            $this->updateCheckpoint($userId);
-
-        } finally {
-            $lock->release();
         }
+
+        // Update Checkpoint
+        $this->updateCheckpoint($userId);
     }
 
     private function updateCheckpoint(string $lastEventId): void

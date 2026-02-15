@@ -45,9 +45,9 @@ abstract class AggregateRoot implements AggregateRootInterface
 
     abstract protected function apply(object $event): void;
 
-    public static function reconstituteFromHistory(Uuid $id, array $events): static
+    public static function reconstituteFromHistory(Uuid $id, array $events, ?self $aggregate = null): static
     {
-        $aggregate = new static($id);
+        $aggregate = $aggregate ?? new static($id);
         foreach ($events as $event) {
             $aggregate->apply($event);
             $aggregate->version++;
@@ -55,4 +55,20 @@ abstract class AggregateRoot implements AggregateRootInterface
 
         return $aggregate;
     }
+
+    /** @return array<string, mixed> */
+    abstract public function getSnapshotState(): array;
+
+    /** @param array<string, mixed> $state */
+    public static function reconstituteFromSnapshot(Uuid $id, int $version, array $state): static
+    {
+        $aggregate = new static($id);
+        $aggregate->version = $version;
+        $aggregate->applySnapshot($state);
+
+        return $aggregate;
+    }
+
+    /** @param array<string, mixed> $state */
+    abstract protected function applySnapshot(array $state): void;
 }

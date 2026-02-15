@@ -8,6 +8,8 @@ use App\Domain\Event\ProductRegistered;
 use App\Domain\Model\ProductEntity;
 use App\Domain\Repository\ProductWriteRepositoryInterface;
 use App\Domain\Repository\SupplierWriteRepositoryInterface;
+use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
+use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
 
@@ -16,6 +18,7 @@ final readonly class ProductProjection
     public function __construct(
         private ProductWriteRepositoryInterface $productWriteRepository,
         private SupplierWriteRepositoryInterface $supplierRepository,
+        private MongoStore $mongoStore,
     ) {}
 
     #[AsMessageHandler]
@@ -34,5 +37,18 @@ final readonly class ProductProjection
         );
 
         $this->productWriteRepository->save($product);
+
+        // Update Checkpoint
+        $this->updateCheckpoint($event->productId);
+    }
+
+    private function updateCheckpoint(string $lastEventId): void
+    {
+        $checkpoint = $this->mongoStore->findCheckpoint('product_projection');
+        if (!$checkpoint) {
+            $checkpoint = ProjectionCheckpoint::create('product_projection');
+        }
+        $checkpoint->update(Uuid::fromString($lastEventId));
+        $this->mongoStore->saveCheckpoint($checkpoint);
     }
 }

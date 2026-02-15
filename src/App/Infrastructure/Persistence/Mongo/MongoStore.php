@@ -101,6 +101,27 @@ final readonly class MongoStore
         return $events;
     }
 
+    /**
+     * @return array<StoredEvent>
+     */
+    public function findAllEventsAfterVersion(Uuid $aggregateId, int $version): array
+    {
+        $cursor = $this->mongoClient->getDatabase()->selectCollection('events')->find(
+            [
+                'aggregateId' => $aggregateId->toRfc4122(),
+                'version' => ['$gt' => $version]
+            ],
+            ['sort' => ['version' => 1]]
+        );
+
+        $events = [];
+        foreach ($cursor as $doc) {
+            $events[] = StoredEvent::fromArray($this->toArrayFromDoc($doc));
+        }
+
+        return $events;
+    }
+
     // --- Snapshots ---
 
     public function saveSnapshot(Snapshot $snapshot): void
@@ -119,6 +140,16 @@ final readonly class MongoStore
             $snapshots[] = Snapshot::fromArray($this->toArrayFromDoc($doc));
         }
         return $snapshots;
+    }
+
+    public function findLatestSnapshotByAggregateId(Uuid $aggregateId): ?Snapshot
+    {
+        $doc = $this->mongoClient->getDatabase()->selectCollection('snapshots')->findOne(
+            ['aggregateId' => $aggregateId->toRfc4122()],
+            ['sort' => ['version' => -1]]
+        );
+
+        return $doc ? Snapshot::fromArray($this->toArrayFromDoc($doc)) : null;
     }
 
     public function countSnapshots(): int

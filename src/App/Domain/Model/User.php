@@ -33,6 +33,20 @@ final class User extends AggregateRoot
         }
     }
 
+    public function getSnapshotState(): array
+    {
+        return [
+            'name' => $this->name,
+            'email' => $this->email,
+        ];
+    }
+
+    protected function applySnapshot(array $state): void
+    {
+        $this->name = $state['name'];
+        $this->email = $state['email'];
+    }
+
     // Getters para lógica interna si fuera necesaria
     public function getName(): string
     {

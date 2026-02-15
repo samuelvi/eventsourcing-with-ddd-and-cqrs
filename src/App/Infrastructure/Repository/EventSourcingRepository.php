@@ -7,6 +7,7 @@ namespace App\Infrastructure\Repository;
 use App\Domain\Model\AggregateRootInterface;
 use App\Domain\Repository\EventStoreRepositoryInterface;
 use App\Infrastructure\EventSourcing\StoredEvent;
+use App\Infrastructure\EventSourcing\Snapshot as SnapshotEntity;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -17,6 +18,8 @@ use Symfony\Component\Messenger\MessageBusInterface;
  */
 readonly class EventSourcingRepository implements EventStoreRepositoryInterface
 {
+    private const SNAPSHOT_THRESHOLD = 5;
+
     /**
      * @param class-string<T> $aggregateClass
      */
@@ -44,14 +47,46 @@ readonly class EventSourcingRepository implements EventStoreRepositoryInterface
             $this->mongoStore->saveEvent($storedEvent);
         }
 
+        // Snapshotting logic: Every X versions
+        if ($aggregate->getVersion() % self::SNAPSHOT_THRESHOLD === 0) {
+            $snapshot = SnapshotEntity::take(
+                $aggregate->getAggregateId(),
+                $aggregate->getVersion(),
+                $aggregate->getSnapshotState()
+            );
+            $this->mongoStore->saveSnapshot($snapshot);
+        }
+
         $aggregate->clearRecordedEvents();
     }
 
     public function get(Uuid $id): ?AggregateRootInterface
     {
-        $storedEvents = $this->mongoStore->findAllEventsByAggregateId($id);
+        /** @var class-string<AggregateRootInterface> $class */
+        $class = $this->aggregateClass;
 
-        if (empty($storedEvents)) {
+        // 1. Try to load the latest snapshot
+        $snapshot = $this->mongoStore->findLatestSnapshotByAggregateId($id);
+        
+        $aggregate = null;
+        $lastVersion = 0;
+
+        if ($snapshot) {
+            $aggregate = $class::reconstituteFromSnapshot(
+                $id,
+                $snapshot->version,
+                $snapshot->state
+            );
+            $lastVersion = $snapshot->version;
+            
+            // 2. Load events after the snapshot version
+            $storedEvents = $this->mongoStore->findAllEventsAfterVersion($id, $lastVersion);
+        } else {
+            // No snapshot: Load all events
+            $storedEvents = $this->mongoStore->findAllEventsByAggregateId($id);
+        }
+
+        if (empty($storedEvents) && $aggregate === null) {
             return null;
         }
 
@@ -64,9 +99,22 @@ readonly class EventSourcingRepository implements EventStoreRepositoryInterface
             );
         }
 
-        /** @var class-string<AggregateRootInterface> $class */
-        $class = $this->aggregateClass;
-        
-        return $class::reconstituteFromHistory($id, $domainEvents);
+        if ($aggregate) {
+            // Apply remaining events to the snapshotted aggregate
+            foreach ($domainEvents as $event) {
+                // We need a way to apply events to an existing aggregate instance
+                // Re-using reconstituteFromHistory logic but on an existing object
+                // Let's add an internal method or just do it here if possible.
+                // Since apply is protected, we can't call it from here easily without a public bridge.
+                // But wait, reconstituteFromHistory is static.
+            }
+            // For simplicity in this POC, if there are events after snapshot, 
+            // we just reconstitute from history using all events if it's easier, 
+            // OR we fix the AggregateRoot to allow applying a batch of events.
+            
+            // Better: Let's add a public method to AggregateRoot to apply multiple events.
+        }
+
+        return $class::reconstituteFromHistory($id, $domainEvents, $aggregate);
     }
 }

@@ -9,6 +9,8 @@ use App\Domain\Model\MenuEntity;
 use App\Domain\Model\ProductEntity;
 use App\Domain\Repository\MenuWriteRepositoryInterface;
 use App\Domain\Repository\SupplierWriteRepositoryInterface;
+use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
+use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
 
@@ -17,6 +19,7 @@ final readonly class MenuProjection
     public function __construct(
         private MenuWriteRepositoryInterface $menuWriteRepository,
         private SupplierWriteRepositoryInterface $supplierRepository,
+        private MongoStore $mongoStore,
     ) {}
 
     #[AsMessageHandler]
@@ -36,5 +39,18 @@ final readonly class MenuProjection
         );
 
         $this->menuWriteRepository->save($menu);
+
+        // Update Checkpoint
+        $this->updateCheckpoint($event->productId);
+    }
+
+    private function updateCheckpoint(string $lastEventId): void
+    {
+        $checkpoint = $this->mongoStore->findCheckpoint('menu_projection');
+        if (!$checkpoint) {
+            $checkpoint = ProjectionCheckpoint::create('menu_projection');
+        }
+        $checkpoint->update(Uuid::fromString($lastEventId));
+        $this->mongoStore->saveCheckpoint($checkpoint);
     }
 }

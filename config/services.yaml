@@ -6,11 +6,11 @@ services:
         autoconfigure: true
 
     App\:
-        resource: '../src/'
+        resource: '../src/App/'
         exclude:
-            - '../src/DependencyInjection/'
-            - '../src/Domain/Model/'
-            - '../src/Kernel.php'
+            - '../src/App/DependencyInjection/'
+            - '../src/App/Domain/Model/'
+            - '../src/App/Kernel.php'
 
     # --- Domain Repositories Bindings ---
 
@@ -55,5 +55,5 @@ services:
 
     # --- Application Handlers ---
     App\Application\Handler\:
-        resource: '../src/Application/Handler'
+        resource: '../src/App/Application/Handler'
         tags: ['messenger.message_handler']

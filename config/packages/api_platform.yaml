@@ -3,9 +3,9 @@ api_platform:
     version: '1.0.0'
     mapping:
         paths:
-            - '%kernel.project_dir%/src/Domain/Model'
-            - '%kernel.project_dir%/src/Application/Dto'
-            - '%kernel.project_dir%/src/Infrastructure/EventSourcing'
+            - '%kernel.project_dir%/src/App/Domain/Model'
+            - '%kernel.project_dir%/src/App/Application/Dto'
+            - '%kernel.project_dir%/src/App/Infrastructure/EventSourcing'
     formats:
         jsonld: ['application/ld+json']
         json: ['application/json']

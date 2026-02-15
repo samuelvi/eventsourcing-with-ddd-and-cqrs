@@ -11,6 +11,6 @@ doctrine:
         mappings:
             App:
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Domain/Model'
+                dir: '%kernel.project_dir%/src/App/Domain/Model'
                 prefix: 'App\Domain\Model'
                 alias: App

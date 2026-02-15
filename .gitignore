@@ -33,6 +33,9 @@ Thumbs.db
 
 private/*
 
+.features-gen/
+.gemini/
+*.tsbuildinfo
 
 /dist/
 

@@ -1,6 +1,6 @@
 infrastructure_controllers:
     resource:
-        path: ../src/Infrastructure/Http/Controller/
+        path: ../src/App/Infrastructure/Http/Controller/
         namespace: App\Infrastructure\Http\Controller
     type: attribute
 

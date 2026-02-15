@@ -77,7 +77,7 @@ setup-api:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T symfony-api bin/console doctrine:migrations:migrate --no-interaction
 
 load-fixtures:
-	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T symfony-api bin/console doctrine:fixtures:load --no-interaction
+	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T symfony-api bin/console app:system:reset --no-interaction
 
 init-front:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T node npm install --quiet

@@ -44,36 +44,38 @@ make init
 - **Adminer (Postgres Mgmt):** [http://localhost:8081/](http://localhost:8081/)
 - **Mongo Express (Mongo Mgmt):** [http://localhost:8082/](http://localhost:8082/)
 
-## 🏗️ Architecture: Enterprise-Grade Hybrid
+## 🏗️ Architecture: Enterprise-Grade Pure Event Sourcing
 
-- **DDD (Domain-Driven Design):** Strict separation of layers (Domain, Application, Infrastructure).
-- **Source of Truth (Write Side):** **MongoDB** storing immutable `StoredEvent` objects.
-- **Read Models (Read Side):** **PostgreSQL** storing optimized SQL tables for the UI.
-- **Concurrency Control**: **Optimistic Locking** enforced via MongoDB Unique Indexes (`aggregateId` + `version`).
-- **CQRS:** Physical separation of Read (DBAL/SQL) and Write (ORM) responsibilities.
-- **Checkpoints & Snapshots:** Managed in MongoDB to decouple technical state from business data.
-- **Automatic Snapshots:** Configurable state capture to speed up historical replay.
+- **Clean Structure**: Core application logic isolated in `src/App/`, following a strict Layered Architecture (Application, Domain, Infrastructure).
+- **Pure Aggregates**: Domain models (`User`, `Product`, `Booking`) are pure PHP objects, completely decoupled from Doctrine or any infrastructure.
+- **Source of Truth (Write Side)**: **MongoDB** storing immutable events with **Optimistic Concurrency Control** (Aggregate Versioning).
+- **Read Models (Read Side)**: **PostgreSQL** providing optimized projections for high-speed queries.
+- **Deterministic Identity**: Uses **UUID v5** for users to ensure autonomous, collision-free identity across the system without read-leaks.
+- **Isolated Testing**: Dedicated test infrastructure in `src/Test/` and a mirrored Docker environment for E2E tests.
 
 ## 🛠️ Advanced Commands
 
-### 🔍 Quality Analysis
+### 🔍 Quality & Maintenance
 
 ```bash
-make phpstan    # Run PHPStan Level 9
+make phpstan    # Run PHPStan Level 9 (Strictest)
 npm run lint    # Run ESLint 9
-npm run format  # Format with Prettier
+make dev-clean  # Full wipe of development data
 ```
 
-### 🔄 Rebuilding Projections (Disaster Recovery)
-
-If Postgres data is lost, it can be fully restored by replaying history from MongoDB:
+### 🔄 System Recovery & Reset
 
 ```bash
-docker compose exec symfony-api bin/console app:projections:rebuild
+make load-fixtures # Full reset: Wipe SQL + Mongo and reload catalogs
+docker compose exec symfony-api bin/console app:projections:rebuild # Disaster recovery
 ```
 
-### 🧪 Running Tests
+### 🧪 Professional Testing Suite
+
+The project features a full BDD E2E suite using **Playwright** and **Gherkin**:
 
 ```bash
-make test
+make test       # Run isolated functional tests (PHPUnit)
+make test-e2e   # Run Gherkin scenarios (Headless)
+make test-e2e-ui # Run Gherkin scenarios (UI Mode / Interactive)
 ```

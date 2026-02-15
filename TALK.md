@@ -49,11 +49,20 @@ El comando llega a `SubmitBookingWizardHandler`, que actúa como el guardián de
 
 ### Fase 3: La Proyección y la Consistencia Eventual (Read Side)
 
-El proyector `BookingProjection` recibe el evento. Aquí es donde se resuelven los retos de integración en el mundo relacional:
+El sistema utiliza proyecciones especializadas para transformar hechos en vistas útiles:
 
-1.  **Auto-resolución de Dependencias**: Si un Booking llega y el usuario aún no existe en PostgreSQL (porque el evento de usuario va con retraso), el proyector de Booking tiene la capacidad de crear una "concha" del usuario en SQL usando los datos del evento.
-2.  **Idempotencia en SQL**: El proyector verifica si el registro ya existe antes de insertarlo, permitiendo que el sistema sea **re-ejecutable** sin generar duplicados.
-3.  **Checkpoint**: Una vez guardado, se actualiza el "marcador" en MongoDB para saber por dónde va cada proyector.
+1.  **Consolidación de Identidad**: `UserProjection` es el único responsable de la tabla de usuarios. Escucha tanto el registro directo de usuarios como los pedidos (`BookingWizardCompleted`). Esto asegura que el usuario exista en SQL antes de que cualquier otra proyección intente usar su clave foránea.
+
+2.  **Polimorfismo en Lectura (Generalista vs Especialista)**:
+    - `ProductProjection` (Generalista): Gestiona el catálogo comercial (nombres, precios, monedas).
+
+    - `MenuProjection` (Especialista): Gestiona el detalle técnico del producto (platos, descripción).
+
+    - Esta separación permite que un solo evento de escritura alimente múltiples tablas optimizadas, permitiendo que el sistema escale a nuevos tipos de productos (ej. "Cooking Classes") sin modificar la estructura comercial base.
+
+3.  **Idempotencia en SQL**: El proyector verifica si el registro ya existe antes de insertarlo, permitiendo que el sistema sea **re-ejecutable** sin generar duplicados.
+
+4.  **Checkpoint**: Una vez guardado, se actualiza el "marcador" en MongoDB para saber por dónde va cada proyector.
 
 ### ¿Cómo se gestiona la reconstrucción del historial?
 
@@ -67,7 +76,7 @@ En esta arquitectura pura, la reconstrucción ocurre en dos lugares con propósi
 Reconstruir un estado a partir de miles de eventos puede ser costoso.
 
 1.  **Snapshots**: El sistema puede capturar una "foto" del estado rehidratado. En lugar de leer 1000 eventos, carga el último Snapshot y aplica solo los eventos posteriores.
-2.  **Pureza de Dominio**: Los Agregados (`User`, `Booking`) son ahora objetos de PHP puros. No tienen anotaciones de Doctrine ni dependencias de infraestructura, lo que facilita enormemente el testeo unitario y asegura que la lógica de negocio esté aislada de la tecnología.
+2.  **Pureza de Dominio**: Los Agregados (`User`, `Product`, `Booking`) son ahora objetos de PHP puros. Todo el código de la aplicación se ha centralizado en `src/App/`, aislando por completo la lógica de negocio de la infraestructura de soporte y testing. Esto facilita enormemente el testeo unitario y asegura que la lógica de negocio esté blindada contra cambios tecnológicos.
 
 ---
 

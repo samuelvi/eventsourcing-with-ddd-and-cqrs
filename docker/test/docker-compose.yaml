@@ -1,0 +1,116 @@
+name: event-sourcing-test
+
+services:
+    # Symfony Backend Service (FrankenPHP)
+    symfony-api-test:
+        build:
+            context: ../../
+            dockerfile: docker/dev/Dockerfile
+        container_name: symfony-api-test
+        ports:
+            - '9080:80'
+            - '9443:443'
+            - '9443:443/udp'
+        env_file:
+            - ../../.env
+            - ../../.env.test
+        environment:
+            - SERVER_NAME=:80
+            - DATABASE_URL=postgresql://user:password@postgres-db-test:5432/event_sourcing_test?serverVersion=16&charset=utf8
+            - APP_ENV=test
+            - APP_DEBUG=0
+        volumes:
+            - ../../:/app
+            - ./symfony/caddy_data:/data
+            - ./symfony/caddy_config:/config
+        networks:
+            - app-network-test
+        depends_on:
+            postgres-test:
+                condition: service_healthy
+            mongodb-test:
+                condition: service_healthy
+        restart: unless-stopped
+        tty: true
+
+    # Postgres Database
+    postgres-test:
+        image: postgres:16-alpine
+        container_name: postgres-db-test
+        environment:
+            - POSTGRES_USER=user
+            - POSTGRES_PASSWORD=password
+            - POSTGRES_DB=event_sourcing_test
+        ports:
+            - '5434:5432'
+        volumes:
+            - ./postgres/data:/var/lib/postgresql/data
+        networks:
+            - app-network-test
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U user -d event_sourcing_test']
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
+
+    # MongoDB for Event Store
+    mongodb-test:
+        image: mongodb/mongodb-community-server:7.0-ubuntu2204
+        container_name: mongodb-test
+        ports:
+            - '27018:27017'
+        environment:
+            - MONGODB_INITDB_ROOT_USERNAME=root
+            - MONGODB_INITDB_ROOT_PASSWORD=password
+        volumes:
+            - ./mongodb/data:/data/db
+        networks:
+            - app-network-test
+        healthcheck:
+            test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
+
+    # n8n Automation Tool
+    automation-test:
+        image: n8nio/n8n
+        container_name: automation-test
+        ports:
+            - '9082:5678'
+        environment:
+            - N8N_USER_MANAGEMENT_DISABLED=true
+            - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
+            - DB_TYPE=postgresdb
+            - DB_POSTGRESDB_HOST=postgres-test
+            - DB_POSTGRESDB_PORT=5432
+            - DB_POSTGRESDB_DATABASE=event_sourcing_test
+            - DB_POSTGRESDB_USER=user
+            - DB_POSTGRESDB_PASSWORD=password
+        volumes:
+            - ./n8n/data:/home/node/.n8n
+        networks:
+            - app-network-test
+        depends_on:
+            postgres-test:
+                condition: service_healthy
+        restart: unless-stopped
+
+    # Adminer Database Management
+    adminer-test:
+        image: adminer
+        container_name: adminer-test
+        ports:
+            - '9081:8080'
+        networks:
+            - app-network-test
+        depends_on:
+            postgres-test:
+                condition: service_healthy
+        restart: unless-stopped
+
+networks:
+    app-network-test:
+        driver: bridge

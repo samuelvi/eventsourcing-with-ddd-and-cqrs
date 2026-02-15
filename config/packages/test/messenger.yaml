@@ -1,0 +1,7 @@
+framework:
+    messenger:
+        transports:
+            sync: 'sync://'
+        routing:
+            'App\Application\Command\*': sync
+            'App\Domain\Event\*': sync

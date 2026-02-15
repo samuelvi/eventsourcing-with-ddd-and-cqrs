@@ -1,0 +1,5 @@
+test_controllers:
+    resource:
+        path: ../../../src/Test/Infrastructure/Http/Controller/
+        namespace: App\Test\Infrastructure\Http\Controller
+    type: attribute

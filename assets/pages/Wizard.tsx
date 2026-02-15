@@ -151,8 +151,11 @@ export function Wizard() {
                     style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
                 >
                     <div>
-                        <label style={labelStyle}>Client Name</label>
+                        <label htmlFor="clientName" style={labelStyle}>
+                            Client Name
+                        </label>
                         <input
+                            id="clientName"
                             type="text"
                             name="clientName"
                             value={formData.clientName}
@@ -164,8 +167,11 @@ export function Wizard() {
                     </div>
 
                     <div>
-                        <label style={labelStyle}>Email Address</label>
+                        <label htmlFor="clientEmail" style={labelStyle}>
+                            Email Address
+                        </label>
                         <input
+                            id="clientEmail"
                             type="email"
                             name="clientEmail"
                             value={formData.clientEmail}
@@ -178,8 +184,11 @@ export function Wizard() {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         <div>
-                            <label style={labelStyle}>People (Pax)</label>
+                            <label htmlFor="pax" style={labelStyle}>
+                                People (Pax)
+                            </label>
                             <input
+                                id="pax"
                                 type="number"
                                 name="pax"
                                 min="1"
@@ -190,8 +199,11 @@ export function Wizard() {
                             />
                         </div>
                         <div>
-                            <label style={labelStyle}>Budget (€)</label>
+                            <label htmlFor="budget" style={labelStyle}>
+                                Budget (€)
+                            </label>
                             <input
+                                id="budget"
                                 type="number"
                                 name="budget"
                                 min="10"

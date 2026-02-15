@@ -173,6 +173,22 @@ export function DemoFlow() {
         onError: () => setMessage('Error creating entry')
     });
 
+    const createUserMutation = useMutation({
+        mutationFn: async (payload: Record<string, unknown>) => {
+            const res = await fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('Failed');
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries();
+            setMessage('User fact recorded');
+        },
+        onError: () => setMessage('Error registering user')
+    });
+
     const rebuildMutation = useMutation({
         mutationFn: async () => {
             const res = await fetch('/api/demo/rebuild', { method: 'POST' });
@@ -212,6 +228,15 @@ export function DemoFlow() {
             budget: 100,
             clientName: name,
             clientEmail: email
+        });
+    };
+
+    const registerRandomUser = () => {
+        const name = `Pure User ${Math.floor(Math.random() * 1000)}`;
+        const email = `user${Math.floor(Math.random() * 1000)}@pure.com`;
+        createUserMutation.mutate({
+            name: name,
+            email: email
         });
     };
 
@@ -579,6 +604,7 @@ export function DemoFlow() {
                                     </span>
                                     <button
                                         onClick={() => toggleProjections('user')}
+                                        aria-label="User Projection"
                                         style={{
                                             padding: '6px 12px',
                                             backgroundColor: userProjectionsEnabled
@@ -607,6 +633,7 @@ export function DemoFlow() {
                                     </span>
                                     <button
                                         onClick={() => toggleProjections('booking')}
+                                        aria-label="Booking Projection"
                                         style={{
                                             padding: '6px 12px',
                                             backgroundColor: bookingProjectionsEnabled
@@ -650,24 +677,43 @@ export function DemoFlow() {
                         >
                             <IconActivity /> Event Simulation
                         </h3>
-                        <button
-                            onClick={submitRandomBooking}
-                            disabled={loading}
-                            style={{
-                                width: '100%',
-                                marginTop: '16px',
-                                padding: '16px',
-                                fontSize: '15px',
-                                backgroundColor: '#111827',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                fontWeight: 600
-                            }}
-                        >
-                            Generate New Event
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <button
+                                onClick={registerRandomUser}
+                                disabled={loading}
+                                style={{
+                                    width: '100%',
+                                    marginTop: '16px',
+                                    padding: '12px',
+                                    fontSize: '14px',
+                                    backgroundColor: '#fff',
+                                    color: '#111827',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '12px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600
+                                }}
+                            >
+                                Register User Only
+                            </button>
+                            <button
+                                onClick={submitRandomBooking}
+                                disabled={loading}
+                                style={{
+                                    width: '100%',
+                                    padding: '16px',
+                                    fontSize: '15px',
+                                    backgroundColor: '#111827',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600
+                                }}
+                            >
+                                Generate New Booking
+                            </button>
+                        </div>
                         {message && (
                             <div
                                 style={{
@@ -860,7 +906,7 @@ export function DemoFlow() {
                             <DataList
                                 title="Bookings Projection"
                                 items={bookings}
-                                columns={['data.clientName', 'createdAt']}
+                                columns={['data.clientName', 'data.clientEmail', 'createdAt']}
                                 emptyMsg="No bookings."
                                 badge={bookings.length}
                             />

@@ -37,6 +37,16 @@ final readonly class WriteEntityManager
         return $this->entityManager->getRepository($className);
     }
 
+    /**
+     * @template T of object
+     * @param class-string<T> $className
+     * @return T|null
+     */
+    public function find(string $className, mixed $id): ?object
+    {
+        return $this->entityManager->find($className, $id);
+    }
+
     public function save(object $entity): void
     {
         $this->entityManager->persist($entity);

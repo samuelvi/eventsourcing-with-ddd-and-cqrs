@@ -26,75 +26,55 @@ final readonly class UserProjection
         private CacheInterface $cache,
     ) {}
 
-    #[AsMessageHandler]
+    #[AsMessageHandler(priority: 10)]
     public function onUserRegistered(UserRegistered $event): void
+    {
+        $this->handleUserPersistence(
+            $event->userId,
+            $event->name,
+            $event->email
+        );
+    }
+
+    #[AsMessageHandler(priority: 10)]
+    public function onBookingWizardCompleted(BookingWizardCompleted $event): void
+    {
+        $this->handleUserPersistence(
+            $event->userId,
+            $event->clientName,
+            $event->clientEmail
+        );
+    }
+
+    private function handleUserPersistence(string $userId, string $name, string $email): void
     {
         $enabled = $this->cache->get('demo_user_projections_enabled', fn() => true);
         if (!$enabled) {
             return;
         }
 
-        $lock = $this->lockFactory->createLock('user_creation_' . $event->userId);
+        $lock = $this->lockFactory->createLock('user_creation_' . $userId);
 
         if (!$lock->acquire(true)) {
             return;
         }
 
         try {
-            if (!$this->userReadRepository->exists($event->userId)) {
+            if (!$this->userWriteRepository->find($userId)) {
                 $user = UserEntity::hydrate(
-                    name: $event->name,
-                    email: $event->email,
-                    id: Uuid::fromString($event->userId)
+                    name: $name,
+                    email: $email,
+                    id: Uuid::fromString($userId)
                 );
-                $this->userWriteRepository->save($user);
+                try {
+                    $this->userWriteRepository->save($user);
+                } catch (\Throwable $e) {
+                    // Ignore duplicate key errors
+                }
             }
 
             // Update Checkpoint
-            $this->updateCheckpoint($event->userId);
-
-        } finally {
-            $lock->release();
-        }
-    }
-
-    #[AsMessageHandler]
-    public function onBookingWizardCompleted(BookingWizardCompleted $event): void
-    {
-        // DEMO MODE: Check if user projections are enabled
-        $enabled = $this->cache->get('demo_user_projections_enabled', fn() => true);
-        if (!$enabled) {
-            return;
-        }
-
-        $lock = $this->lockFactory->createLock('user_creation_' . $event->clientEmail);
-
-        if (!$lock->acquire(true)) {
-            return;
-        }
-
-        try {
-            // Check if user exists (Read Side)
-            if (!$this->userReadRepository->existsByEmail($event->clientEmail)) {
-                // Legacy behavior: We don't have ID, so we create one (UserEntity::create generates v7)
-                // But wait, UserEntity::create uses named constructor?
-                // Let's check UserEntity methods. It has create? 
-                // Previous code used UserEntity::create($name, $email).
-                // But UserEntity in my read_file earlier only showed `hydrate` and `__construct`.
-                // It uses `NamedConstructorTrait`. Let's assume `create` comes from there or I missed it.
-                // Ah, I need to check NamedConstructorTrait or just use hydrate with a new UUID.
-                
-                // Let's assume UserEntity::hydrate with a new UUID is safer if create() is missing.
-                $user = UserEntity::hydrate(
-                    name: $event->clientName, 
-                    email: $event->clientEmail, 
-                    id: Uuid::v7()
-                );
-                $this->userWriteRepository->save($user);
-            }
-
-            // Update Checkpoint in Mongo
-            $this->updateCheckpoint($event->bookingId);
+            $this->updateCheckpoint($userId);
 
         } finally {
             $lock->release();

@@ -53,6 +53,11 @@ class ProductEntity
     #[Groups(['product:read', 'product:write'])]
     public float $price;
 
+    #[ORM\Column(length: 3)]
+    #[Assert\NotBlank]
+    #[Groups(['product:read', 'product:write'])]
+    public string $currency;
+
     #[ORM\ManyToOne(targetEntity: SupplierEntity::class, inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['product:read', 'product:write'])]
@@ -72,6 +77,7 @@ class ProductEntity
     private function __construct(
         string $name,
         float $price,
+        string $currency,
         SupplierEntity $supplier,
         string $type = self::TYPE_MENU,
         ?Uuid $externalReferenceId = null,
@@ -80,6 +86,7 @@ class ProductEntity
         $this->id = $id ?? Uuid::v7();
         $this->name = $name;
         $this->price = $price;
+        $this->currency = $currency;
         $this->supplier = $supplier;
         $this->type = $type;
         $this->externalReferenceId = $externalReferenceId;
@@ -89,11 +96,12 @@ class ProductEntity
         Uuid $id,
         string $name,
         float $price,
+        string $currency,
         string $type,
         SupplierEntity $supplier,
         ?Uuid $externalReferenceId = null
     ): self {
-        return new self($name, $price, $supplier, $type, $externalReferenceId, $id);
+        return new self($name, $price, $currency, $supplier, $type, $externalReferenceId, $id);
     }
 
     public function setDetails(?object $details): void

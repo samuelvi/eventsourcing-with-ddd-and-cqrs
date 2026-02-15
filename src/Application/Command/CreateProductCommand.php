@@ -9,6 +9,7 @@ final readonly class CreateProductCommand
     private function __construct(
         public string $name,
         public float $price,
+        public string $currency,
         public string $supplierId,
         public string $type,
         /** @var array<string, mixed> Data specific to the product type (e.g., Menu fields) */
@@ -21,10 +22,11 @@ final readonly class CreateProductCommand
     public static function create(
         string $name,
         float $price,
+        string $currency,
         string $supplierId,
         string $type,
         array $detailsData
     ): self {
-        return new self($name, $price, $supplierId, $type, $detailsData);
+        return new self($name, $price, $currency, $supplierId, $type, $detailsData);
     }
 }

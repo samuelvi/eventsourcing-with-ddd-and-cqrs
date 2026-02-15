@@ -10,4 +10,5 @@ interface UserWriteRepositoryInterface
 {
     public function save(UserEntity $user): void;
     public function remove(UserEntity $user): void;
+    public function find(string $id): ?UserEntity;
 }

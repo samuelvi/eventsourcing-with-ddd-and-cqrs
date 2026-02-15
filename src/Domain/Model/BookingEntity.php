@@ -48,6 +48,11 @@ class BookingEntity
     #[Groups(['booking:read'])]
     public private(set) Uuid $id;
 
+    #[ORM\ManyToOne(targetEntity: UserEntity::class, cascade: ['persist'])]
+    #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['booking:read'])]
+    public UserEntity $user;
+
     #[ORM\Column]
     #[Groups(['booking:read'])]
     public \DateTimeImmutable $createdAt;
@@ -69,9 +74,10 @@ class BookingEntity
     /**
      * @param array<string, mixed> $data
      */
-    private function __construct(Uuid $id, array $data, \DateTimeImmutable $createdAt)
+    private function __construct(Uuid $id, UserEntity $user, array $data, \DateTimeImmutable $createdAt)
     {
         $this->id = $id;
+        $this->user = $user;
         $this->data = $data;
         $this->createdAt = $createdAt;
         $this->status = self::STATUS_PENDING;
@@ -80,9 +86,9 @@ class BookingEntity
     /**
      * @param array<string, mixed> $data
      */
-    public static function hydrate(Uuid $id, array $data, \DateTimeImmutable $createdAt, string $status = self::STATUS_PENDING): self
+    public static function hydrate(Uuid $id, UserEntity $user, array $data, \DateTimeImmutable $createdAt, string $status = self::STATUS_PENDING): self
     {
-        $booking = new self($id, $data, $createdAt);
+        $booking = new self($id, $user, $data, $createdAt);
         $booking->status = $status;
 
         return $booking;

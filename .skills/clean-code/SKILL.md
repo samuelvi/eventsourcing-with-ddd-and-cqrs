@@ -1,136 +1,118 @@
 ---
 name: clean-code
-description: Core coding standards and principles. Includes specific PHP Best Practices, Refactoring patterns, and Clean Code guidelines.
+description: Clean Code principles from Robert C. Martin and Refactoring patterns from Martin Fowler applied to TypeScript/JavaScript and Test Engineering. Use when writing or reviewing code for readability, maintainability, and structure.
 ---
 
-# Clean Code & Best Practices
+# Clean Code for Test Engineering
 
-## PHP Best Practices (Core)
+Principios de Robert C. Martin (Clean Code) y Martin Fowler (Refactoring) adaptados a TypeScript y automatización de pruebas.
 
-### Language and Comments
+## Newspaper Metaphor (Stepdown Rule)
 
-- **English Only:** All code, variable names, function names, class names, and **comments** must be in English.
-- **No "Spanglish":** Avoid mixing languages.
+El código debe leerse como un artículo de periódico: de arriba a abajo, de lo general a lo específico. Este principio es vital en los Step Definitions.
 
-```php
-// ❌ BAD
-// Calculamos el total
-$total = $precio + $impuesto;
+### Orden de un módulo de pasos
 
-// ✅ GOOD
-// Calculate total
-$total = $price + $tax;
-```
+```typescript
+// 1. Imports
+import { expect } from '@playwright/test';
+import { Given, When, Then } from '../bdd';
 
-### Null and Empty Checks
+// 2. Public Step Definitions (Lo que el negocio lee)
+When('I perform a main action', async ({ page }) => {
+    await helperFunction(page);
+});
 
-- **Use `empty()`:** Prefer `empty()` over checking for `null` or `""` explicitly when you want to catch both.
-- **Be explicit when necessary:** Only check for `=== null` if `0` or `false` are valid values.
-
-```php
-// ❌ BAD
-if ($email === null || $email === '') { ... }
-
-// ✅ GOOD
-if (empty($email)) { ... }
-```
-
-### Type Declarations
-
-- **Strict Types:** Always use `declare(strict_types=1);` at the top of PHP files.
-- **Type Hinting:** Always type hint arguments and return values.
-
-### Dependency Injection
-
-- **Constructor Injection:** Prefer constructor injection over setter or property injection.
-- **Interfaces:** Type hint against interfaces, not concrete classes.
-
-### Performance Mindset (IO Operations)
-
-- **Early Returns:** Avoid unnecessary "round-trips" by validating inputs that would result in empty/no-op operations.
-
-```php
-// ✅ GOOD: Avoid DB call if we know the answer
-public function findUsers(array $ids): array
-{
-    if (empty($ids)) {
-        return [];
-    }
-    // ... query DB
+// 3. Private Helpers (Detalles técnicos ocultos al negocio)
+async function helperFunction(page) {
+    await page.getByRole('button').click();
 }
 ```
 
-## Clean Code Principles (General)
+## Early Returns
 
-### Newspaper Metaphor
+Evitar anidación profunda retornando temprano. Muy útil en fixtures de configuración.
 
-Code should read like a newspaper article: from general to specific. Public API first, private helpers last.
-
-### Early Returns
-
-Avoid deep nesting. Return as soon as invalid conditions are met.
-
-```php
-// ✅ GOOD
-public function process(?Data $data): void
-{
-    if ($data === null) return;
-    if (!$data->isValid()) return;
-
-    $this->doWork($data);
-}
+```typescript
+// ✅ BIEN
+export const test = base.extend({
+    dbReset: [
+        async ({ request }, use, testInfo) => {
+            if (testInfo.tags.includes('@no-reset')) {
+                await use();
+                return;
+            }
+            // logic for reset...
+            await use();
+        }
+    ]
+});
 ```
 
-### Single Responsibility
+## Single Responsibility in Steps
 
-Each class/function should do one thing.
+Cada paso hace una sola cosa. No mezcles "Setup" con "Acción" o "Aserción".
 
-### Descriptive Naming
+```typescript
+// ❌ MAL - hace demasiado
+Given('I am logged in and create a record', async ({ page }) => {
+    await login(page);
+    await createRecord(page);
+});
 
-Avoid abbreviations. Names should reveal intent.
+// ✅ BIEN - pasos atómicos
+Given('I am logged in', async ({ page }) => {
+    await login(page);
+});
 
-### Small Functions
-
-Keep functions small (< 20 lines where possible).
-
-## Refactoring Patterns (Martin Fowler)
-
-### Tell, Don't Ask
-
-Don't ask for data to make decisions. Tell the object what to do.
-
-```php
-// ❌ BAD
-if ($user->getRole() === 'admin') {
-    $user->setPermissions(['all']);
-}
-
-// ✅ GOOD
-$user->grantAdminPermissions();
+When('I create a record', async ({ page }) => {
+    await createRecord(page);
+});
 ```
 
-### Replace Magic Numbers/Strings
+## Nombres descriptivos
 
-Use named constants.
+En tests, el nombre de las variables debe reflejar el rol en el escenario.
 
-```php
-const STATUS_PENDING = 'pending';
-if ($order->status === STATUS_PENDING) { ... }
+```typescript
+// ❌ MAL
+const p = await productFactory.create();
+
+// ✅ BIEN
+const featuredProduct = await productFactory.create({ isFeatured: true });
 ```
 
-## Architecture Mandates
+## Evitar comentarios obvios
 
-### 1. No EntityManager in Controllers
+```typescript
+// ❌ MAL - el código ya lo dice
+// Click the submit button
+await page.getByRole('button', { name: 'Submit' }).click();
 
-**Strict Rule:** Controllers MUST NOT have any type of `EntityManager` (Doctrine, Read, Write, etc.) injected.
+// ✅ BIEN - comentar el "por qué" técnico o de negocio
+// Wait 6s because the backend auto-save trigger is debounced at 5s
+await page.waitForTimeout(6000);
+```
 
-- **Why:** Controllers should only handle HTTP concerns. DB logic belongs in Repositories or Application Services.
-- **Correct approach:** Inject a Repository for queries or an Application Service for complex logic.
+## Replace Magic Numbers/Strings
 
-### 2. Named Constructors
+Usa constantes para valores con significado especial en el dominio.
 
-Use static factory methods instead of public constructors whenever possible to increase semantic clarity.
+```typescript
+// ✅ BIEN
+const MIN_PASSWORD_LENGTH = 8;
+const DEBOUNCE_WAIT_MS = 6000;
 
-### 3. Explicit Queries
+await page.fill('input[type="password"]', 'a'.repeat(MIN_PASSWORD_LENGTH));
+```
 
-Follow the `doctrine-strict` skill: avoid magic methods like `find()` or `findBy()`. Use explicit QueryBuilder or DBAL calls in Repositories.
+## Checklist
+
+### Clean Code en Tests
+
+- [ ] Steps atómicos (una acción o una verificación).
+- [ ] Helpers técnicos ocultos al final del archivo.
+- [ ] Sin lógica de negocio compleja dentro de los Step Definitions.
+- [ ] Variables que describen el rol del dato en el test.
+- [ ] Uso de Early Returns en fixtures y helpers complejos.
+- [ ] Cero comentarios que repitan lo que hace el locator.

@@ -33,25 +33,26 @@ final class AppFixtures extends Fixture
                 $title = sprintf('Seasonal Menu %d', $i);
                 $price = (float) random_int(25, 75);
                 
-                // Create the Menu (Detailed Domain Model)
-                $menu = MenuEntity::create(
-                    title: $title,
+                // 1. Create the Product (Commercial Truth)
+                $productId = \Symfony\Component\Uid\Uuid::v7();
+                $product = ProductEntity::hydrate(
+                    id: $productId,
+                    name: sprintf('%s - %s', $name, $title),
                     price: $price,
                     currency: 'EUR',
+                    type: ProductEntity::TYPE_MENU,
                     supplier: $supplier,
+                    externalReferenceId: $productId
+                );
+                $manager->persist($product);
+
+                // 2. Create the Menu (Technical Details)
+                $menu = MenuEntity::hydrate(
+                    id: $productId,
+                    title: $title,
                     description: 'A delicious selection of seasonal dishes crafted by our expert chefs.'
                 );
                 $manager->persist($menu);
-
-                // Create the Product (Generic Catalog Model) linked via UUID
-                $product = ProductEntity::create(
-                    name: sprintf('%s - %s', $name, $title),
-                    price: $price,
-                    supplier: $supplier,
-                    type: ProductEntity::TYPE_MENU,
-                    externalReferenceId: $menu->id
-                );
-                $manager->persist($product);
             }
         }
 

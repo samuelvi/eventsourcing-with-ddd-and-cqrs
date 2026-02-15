@@ -46,11 +46,17 @@ docker/dev/symfony/caddy_data
 docker/dev/symfony/caddy_config
 docker/dev/n8n/data
 
+docker/test/postgres/data
+docker/test/mongodb/data
+docker/test/symfony/caddy_data
+docker/test/symfony/caddy_config
+docker/test/n8n/data
+
 *.log
 
 *.tmp
 *.bak
-
+/tmp/
 /config/jwt/*.pem
 .last-backup
 

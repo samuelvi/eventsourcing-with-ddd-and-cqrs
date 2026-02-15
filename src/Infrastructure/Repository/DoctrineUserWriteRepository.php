@@ -25,4 +25,9 @@ final readonly class DoctrineUserWriteRepository implements UserWriteRepositoryI
         $this->entityManager->remove($user);
         $this->entityManager->flush();
     }
+
+    public function find(string $id): ?UserEntity
+    {
+        return $this->entityManager->find(UserEntity::class, $id);
+    }
 }

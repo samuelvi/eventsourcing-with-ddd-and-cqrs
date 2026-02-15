@@ -18,20 +18,6 @@ final readonly class ProductDetailOrchestrator
         private iterable $factories,
     ) {}
 
-    /**
-     * @param array<string, mixed> $data
-     */
-    public function createDetails(string $type, array $data, SupplierEntity $supplier): Uuid
-    {
-        foreach ($this->factories as $factory) {
-            if ($factory->supports($type)) {
-                return $factory->create($data, $supplier);
-            }
-        }
-
-        throw new \InvalidArgumentException(sprintf('Unsupported product type: %s', $type));
-    }
-
     public function getDetails(string $type, Uuid $referenceId): ?object
     {
         foreach ($this->factories as $factory) {

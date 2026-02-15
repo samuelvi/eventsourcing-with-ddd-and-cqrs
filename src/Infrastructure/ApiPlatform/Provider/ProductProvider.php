@@ -44,6 +44,7 @@ final readonly class ProductProvider implements ProviderInterface
                 Uuid::fromString(TypeAssert::string($data['id'])),
                 TypeAssert::string($data['name']),
                 TypeAssert::float($data['price']),
+                TypeAssert::string($data['currency']),
                 TypeAssert::string($data['type']),
                 $supplier,
                 $data['external_reference_id'] ? Uuid::fromString(TypeAssert::string($data['external_reference_id'])) : null
@@ -76,6 +77,7 @@ final readonly class ProductProvider implements ProviderInterface
                 Uuid::fromString(TypeAssert::string($data['id'])),
                 TypeAssert::string($data['name']),
                 TypeAssert::float($data['price']),
+                TypeAssert::string($data['currency']),
                 TypeAssert::string($data['type']),
                 $supplier,
                 $data['external_reference_id'] ? Uuid::fromString(TypeAssert::string($data['external_reference_id'])) : null

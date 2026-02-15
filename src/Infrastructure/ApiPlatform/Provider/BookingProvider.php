@@ -7,7 +7,9 @@ namespace App\Infrastructure\ApiPlatform\Provider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Domain\Model\BookingEntity;
+use App\Domain\Model\UserEntity;
 use App\Domain\Repository\BookingReadRepositoryInterface;
+use App\Domain\Repository\UserReadRepositoryInterface;
 use App\Domain\Shared\TypeAssert;
 use Symfony\Component\Uid\Uuid;
 
@@ -18,6 +20,7 @@ final readonly class BookingProvider implements ProviderInterface
 {
     public function __construct(
         private BookingReadRepositoryInterface $repository,
+        private UserReadRepositoryInterface $userRepository,
     ) {}
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
@@ -50,9 +53,23 @@ final readonly class BookingProvider implements ProviderInterface
     {
         /** @var array<string, mixed> $bookingData */
         $bookingData = TypeAssert::array(json_decode(TypeAssert::string($row['data']), true));
+
+        $userId = TypeAssert::string($row['user_id']);
+        $userRow = $this->userRepository->findById($userId);
+        
+        if (!$userRow) {
+            throw new \RuntimeException(sprintf('User %s not found for booking %s', $userId, $row['id']));
+        }
+
+        $user = UserEntity::hydrate(
+            $userRow['name'],
+            $userRow['email'],
+            Uuid::fromString($userRow['id'])
+        );
         
         return BookingEntity::hydrate(
             Uuid::fromString(TypeAssert::string($row['id'])),
+            $user,
             $bookingData,
             new \DateTimeImmutable(TypeAssert::string($row['created_at'])),
             TypeAssert::string($row['status'] ?? BookingEntity::STATUS_PENDING)

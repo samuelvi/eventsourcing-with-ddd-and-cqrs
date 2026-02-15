@@ -41,33 +41,23 @@ class MenuEntity
     #[Groups(['menu:read', 'product:read'])]
     public ?string $description = null;
 
-    #[ORM\Column(type: 'float')]
-    #[Assert\PositiveOrZero]
-    #[Groups(['menu:read', 'product:read'])]
-    public float $price;
-
-    #[ORM\Column(length: 3)]
-    #[Assert\Currency]
-    #[Groups(['menu:read', 'product:read'])]
-    public string $currency;
-
-    #[ORM\ManyToOne(targetEntity: SupplierEntity::class)]
-    #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['menu:read'])]
-    public SupplierEntity $supplier;
-
     private function __construct(
         string $title,
-        float $price,
-        string $currency,
-        SupplierEntity $supplier,
         ?string $description = null
     ) {
         $this->id = Uuid::v7();
         $this->title = $title;
-        $this->price = $price;
-        $this->currency = $currency;
-        $this->supplier = $supplier;
         $this->description = $description;
+    }
+
+    public static function hydrate(
+        Uuid $id,
+        string $title,
+        ?string $description
+    ): self {
+        $menu = new self($title, $description);
+        $menu->id = $id;
+
+        return $menu;
     }
 }

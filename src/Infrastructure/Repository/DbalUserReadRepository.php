@@ -54,4 +54,15 @@ final readonly class DbalUserReadRepository implements UserReadRepositoryInterfa
         $sql = 'SELECT 1 FROM users WHERE id = :id LIMIT 1';
         return (bool) $this->entityManager->fetchOne($sql, ['id' => $id]);
     }
+
+    /**
+     * @return array{id: string, name: string, email: string}|null
+     */
+    public function findByEmail(string $email): ?array
+    {
+        $sql = 'SELECT id, name, email FROM users WHERE email = :email';
+        $result = $this->entityManager->fetchOne($sql, ['email' => $email]);
+        /** @var array{id: string, name: string, email: string}|null $result */
+        return $result;
+    }
 }

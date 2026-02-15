@@ -21,4 +21,9 @@ interface UserReadRepositoryInterface
     public function existsByEmail(string $email): bool;
 
     public function exists(string $id): bool;
+
+    /**
+     * @return array{id: string, name: string, email: string}|null
+     */
+    public function findByEmail(string $email): ?array;
 }

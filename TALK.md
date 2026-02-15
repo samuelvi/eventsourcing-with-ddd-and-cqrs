@@ -42,45 +42,44 @@ La operación comienza en el navegador (`DemoFlow.tsx`). Antes de realizar la pe
 
 El comando llega a `SubmitBookingWizardHandler`, que actúa como el guardián de la integridad. Tras la refactorización purista, el flujo es el siguiente:
 
-1.  **Identidad Determinística**: El sistema ya no pregunta a PostgreSQL "¿existe este usuario?". En su lugar, utiliza un **UUID v5** generado a partir del email del cliente. Esto garantiza que el mismo email siempre resulte en el mismo ID de usuario, asegurando la unicidad sin consultar bases de datos externas.
-2.  **Rehidratación (Reconstitution)**: El repositorio de Event Sourcing recupera todos los eventos pasados de ese Agregado desde **MongoDB** y reconstruye su estado actual en memoria. Esto permite validar reglas de negocio basadas en el historial real.
-3.  **Persistencia del Hecho**: El Agregado registra nuevos eventos (como `BookingWizardCompleted`) y el repositorio los vuelca al Event Store. MongoDB asegura mediante un índice único (`aggregateId` + `version`) que no haya colisiones, implementando un control de concurrencia optimista.
-4.  **Desacoplamiento Total**: El lado de escritura es ahora 100% independiente del lado de lectura. No hay inyecciones de repositorios SQL en los Handlers.
+1.  **Identidad Determinística**: El sistema ya no pregunta a PostgreSQL "¿existe este usuario?". En su lugar, utiliza un **UUID v5** generado a partir del email del cliente. Esto garantiza que el mismo email siempre resulte en el mismo ID de usuario, permitiendo que diferentes proyecciones vinculen datos sin necesidad de consultas cruzadas entre bases de datos.
+2.  **EAFP (Better to Ask Forgiveness than Permission)**: Los Handlers aplican este principio. En lugar de comprobar si un registro existe antes de crearlo (LBYL), intentamos la operación directamente. Si hay una colisión, la infraestructura lanza una `ConcurrencyException` que capturamos silenciosamente, garantizando la idempotencia con el mínimo de lecturas a la DB.
+3.  **Rehidratación Optimizada**: El repositorio recupera el estado del Agregado desde **MongoDB**. Gracias a la implementación de **Snapshots por Agregado**, no siempre leemos todos los eventos. Si hay un snapshot reciente, lo cargamos y solo aplicamos los eventos posteriores (el "delta"), minimizando el uso de CPU e I/O.
+4.  **Bloqueo Optimista (Control de Concurrencia)**: Se ha eliminado la necesidad de bloqueos pesimistas (`LockFactory`). Confiamos en un índice único en MongoDB (`aggregateId` + `version`). Si dos procesos intentan guardar la misma versión de un objeto, el motor de persistencia bloquea el segundo intento atómicamente.
+5.  **Desacoplamiento Total**: El lado de escritura es ahora 100% independiente del lado de lectura. No hay inyecciones de repositorios SQL en los Handlers.
 
 ### Fase 3: La Proyección y la Consistencia Eventual (Read Side)
 
 El sistema utiliza proyecciones especializadas para transformar hechos en vistas útiles:
 
-1.  **Consolidación de Identidad**: `UserProjection` es el único responsable de la tabla de usuarios. Escucha tanto el registro directo de usuarios como los pedidos (`BookingWizardCompleted`). Esto asegura que el usuario exista en SQL antes de que cualquier otra proyección intente usar su clave foránea.
+1.  **Garantía de Integridad (Prioridades)**: En arquitecturas SQL con claves foráneas, el orden importa. `UserProjection` tiene asignada una **prioridad alta (10)** en el bus de Symfony, mientras que `BookingProjection` tiene la prioridad por defecto (0). Esto garantiza que, en un flujo síncrono, el Usuario siempre "nazca" en SQL antes de que la Reserva intente referenciarlo.
 
-2.  **Polimorfismo en Lectura (Generalista vs Especialista)**:
+    **Nota sobre el Escalamiento Asíncrono:** Es fundamental entender que en un entorno de producción con colas de mensajes (donde cada proyección corre en un worker distinto), **las prioridades de Symfony ya no garantizan el orden**. El mensaje del Booking podría procesarse antes que el del Usuario. Para manejar esto, la industria utiliza las siguientes estrategias:
+    - **Reintento con Re-encolado (Retry with Delay):** Si la `BookingProjection` falla porque el usuario no existe, se lanza una excepción que devuelve el mensaje a la cola con un pequeño retardo. Se espera que para el segundo o tercer intento, el usuario ya haya sido creado por su propio worker.
+    - **Consolidación de Proyectores (Atomic Projection):** Crear un único listener que gestione ambas entidades en una única transacción SQL, asegurando el orden correcto de inserción.
+    - **Look-ahead Logic:** La `BookingProjection` comprueba si el usuario existe y, si no, lo crea ella misma con los datos mínimos disponibles en el evento (gracias a que el ID es determinista).
+    - **Relajación de Constraints (Eventual Consistency):** Eliminar las Foreign Keys físicas en las tablas de lectura, confiando en que la integridad ya se ha validado en el Write Model (MongoDB) y aceptando una inconsistencia temporal de milisegundos en la vista SQL.
+
+2.  **Checkpointing**: Cada proyección guarda su propio "marcador" en MongoDB. Esto permite saber qué evento fue el último procesado con éxito, facilitando la recuperación tras un fallo y asegurando que ningún evento se procese dos veces.
+
+3.  **Polimorfismo en Lectura (Generalista vs Especialista)**:
     - `ProductProjection` (Generalista): Gestiona el catálogo comercial (nombres, precios, monedas).
-
     - `MenuProjection` (Especialista): Gestiona el detalle técnico del producto (platos, descripción).
-
-    - Esta separación permite que un solo evento de escritura alimente múltiples tablas optimizadas, permitiendo que el sistema escale a nuevos tipos de productos (ej. "Cooking Classes") sin modificar la estructura comercial base.
-
-3.  **Idempotencia en SQL**: El proyector verifica si el registro ya existe antes de insertarlo, permitiendo que el sistema sea **re-ejecutable** sin generar duplicados.
-
-4.  **Checkpoint**: Una vez guardado, se actualiza el "marcador" en MongoDB para saber por dónde va cada proyector.
-
-### ¿Cómo se gestiona la reconstrucción del historial?
-
-En esta arquitectura pura, la reconstrucción ocurre en dos lugares con propósitos distintos:
-
-1.  **Rehidratación en Caliente (Write Side)**: Ocurre cada vez que un Agregado es invocado. Se leen sus eventos específicos para tomar decisiones de negocio consistentes al 100% (ej. `AggregateRoot::reconstituteFromHistory`).
-2.  **Replay Global (Read Side)**: Se lleva a cabo en `ArchitectureControlService::rebuild()`. Recupera el flujo completo de todos los eventos del sistema para reconstruir las tablas de consulta desde cero en caso de desastre o cambio de esquema.
-
-### Optimización: Snapshots y Estado Puro
-
-Reconstruir un estado a partir de miles de eventos puede ser costoso.
-
-1.  **Snapshots**: El sistema puede capturar una "foto" del estado rehidratado. En lugar de leer 1000 eventos, carga el último Snapshot y aplica solo los eventos posteriores.
-2.  **Pureza de Dominio**: Los Agregados (`User`, `Product`, `Booking`) son ahora objetos de PHP puros. Todo el código de la aplicación se ha centralizado en `src/App/`, aislando por completo la lógica de negocio de la infraestructura de soporte y testing. Esto facilita enormemente el testeo unitario y asegura que la lógica de negocio esté blindada contra cambios tecnológicos.
+    - Esta separación permite que un solo evento de escritura alimente múltiples tablas optimizadas sin modificar la estructura comercial base.
 
 ---
 
-## 3. Resiliencia y Consistencia Eventual
+## 3. Optimización Avanzada: El Ciclo de Vida del Snapshot
+
+Reconstruir un estado a partir de miles de eventos puede ser costoso. Hemos implementado una estrategia profesional de **Snapshotting**:
+
+1.  **Snapshots por Agregado**: Cada objeto de negocio (Booking, User, Product) decide cuándo necesita un snapshot (ej. cada 5 eventos en esta demo).
+2.  **Persistencia Atómica**: El snapshot guarda el estado interno completo del objeto en una colección dedicada en MongoDB, indexada por ID y Versión.
+3.  **Evolución hacia el Segundo Plano**: Aunque actualmente el snapshotting ocurre durante el `save()` para este POC, en sistemas de gran escala esta tarea se delega a procesos asíncronos o tareas programadas (**CRON**). Esto permite que el usuario reciba una respuesta instantánea mientras el sistema se optimiza en segundo plano.
+
+---
+
+## 4. Resiliencia y Consistencia Eventual
 
 La separación entre la escritura y la lectura introduce la **Consistencia Eventual**: un breve periodo de tiempo (milisegundos) en el que el evento ya existe en MongoDB pero aún no se ha reflejado en PostgreSQL.
 
@@ -100,39 +99,17 @@ Si la base de datos de lectura se pierde o queremos cambiar su estructura, podem
 2.  **Re-procesamiento**: El sistema lee todos los eventos guardados en MongoDB desde el primer día.
 3.  **Restauración**: Los proyectores vuelven a ejecutar cada evento en orden, reconstruyendo la base de datos de PostgreSQL exactamente como estaba, o con un nuevo formato si fuera necesario.
 
-### Evolución: Del Pragmatismo a la Pureza
-
-Este proyecto comenzó con un enfoque pragmático para ser didáctico, pero ha evolucionado hacia un modelo **Purista** por las siguientes razones:
-
-#### 1. Eliminación del "Leak" de Lectura
-
-- **Antes**: El Handler consultaba PostgreSQL para validar usuarios. Esto creaba una dependencia peligrosa: si PostgreSQL fallaba, la escritura fallaba.
-- **Ahora (Puro)**: Usamos **Identidades Determinísticas** (UUID v5). El Handler sabe qué ID le toca a un email por pura matemática. La escritura es ahora autónoma y resiliente.
-
-#### 2. Agregados como Fuente de Verdad
-
-- **Antes**: Los eventos se guardaban casi como logs de una operación SQL.
-- **Ahora (Puro)**: El Agregado es el que manda. Solo si el Agregado acepta el cambio y genera el evento, la operación es válida. Se ha implementado el patrón **State-Event Application**, donde el estado interno del objeto se deriva exclusivamente de sus eventos.
-
-#### 3. Control de Concurrencia
-
-- **Mecánica**: Cada evento tiene una versión secuencial. Si dos procesos intentan guardar la versión 5 del mismo Agregado, el motor de persistencia bloquea el segundo intento. Esto garantiza integridad total en entornos distribuidos sin necesidad de bloqueos de base de datos globales y pesados.
-
 ---
 
-## 4. Decisiones de Ingeniería y Casos de Borde
+## 5. Decisiones de Ingeniería y Casos de Borde
 
 ### Idempotencia en Proyecciones
 
-Es posible que un proyector reciba el mismo evento más de una vez debido a reintentos de red. El sistema está diseñado para manejar esto: si el proyector intenta crear un registro que ya existe en PostgreSQL, simplemente lo ignora y continúa. Esto hace que el proceso de lectura sea seguro y repetible.
+Es posible que un proyector reciba el mismo evento más de una vez debido a reintentos de red. El sistema está diseñado para manejar esto: si el proyector intenta crear un registro que ya existe en PostgreSQL, simplemente lo ignora (usando bloques try-catch o verificaciones de existencia) y continúa.
 
 ### ¿Dónde consultar la información?
 
 Es vital entender qué base de datos usar según el objetivo:
 
 - **Para mostrar datos (Lectura)**: Se usa PostgreSQL. Es extremadamente rápido para realizar búsquedas y filtros complejos.
-- **Para validar reglas (Negocio)**: Si la decisión depende de una validación crítica (ej. "¿tiene el usuario saldo suficiente?"), debemos consultar el estado que ofrece el Agregado o el Event Store, ya que es la única fuente que garantiza tener el dato exacto al milisegundo.
-
-### Evolución y Flexibilidad
-
-Event Sourcing permite responder a preguntas que no nos hicimos al principio. Si dentro de un año el negocio necesita saber "cuántos usuarios abandonaron el carrito en el paso 2", no necesitamos haber guardado ese dato en una tabla específica desde el primer día; simplemente creamos un proyector que analice los eventos pasados y genere esa estadística retrospectivamente.
+- **Para validar reglas (Negocio)**: Debemos consultar el estado que ofrece el Agregado (rehidratado desde MongoDB), ya que es la única fuente que garantiza tener el dato exacto al milisegundo.

@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Model;
+
+use Symfony\Component\Uid\Uuid;
+
+interface AggregateRootInterface
+{
+    public function getAggregateId(): Uuid;
+    public function getVersion(): int;
+    
+    /** @return object[] */
+    public function getRecordedEvents(): array;
+    public function clearRecordedEvents(): void;
+    
+    /** @param object[] $events */
+    public static function reconstituteFromHistory(Uuid $id, array $events): self;
+}

@@ -5,100 +5,131 @@ declare(strict_types=1);
 namespace App\Application\Handler;
 
 use App\Application\Command\SubmitBookingWizardCommand;
-use App\Domain\Event\BookingWizardCompleted;
-use App\Infrastructure\EventSourcing\StoredEvent;
-use App\Infrastructure\EventSourcing\Snapshot;
-use App\Domain\Repository\BookingReadRepositoryInterface;
-use App\Domain\Repository\UserReadRepositoryInterface;
-use App\Infrastructure\Persistence\Mongo\MongoStore;
+
+use App\Domain\Model\Booking;
+
+use App\Domain\Repository\BookingEventStoreRepositoryInterface;
+
+use App\Domain\Shared\Constants;
+
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+
 use Symfony\Component\Messenger\MessageBusInterface;
+
 use Symfony\Component\Uid\Uuid;
+
 use Symfony\Component\Lock\LockFactory;
-use Symfony\Contracts\Cache\CacheInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
+
+
 
 #[AsMessageHandler]
+
 final readonly class SubmitBookingWizardHandler
+
 {
+
     public function __construct(
-        private UserReadRepositoryInterface $userRepository,
-        private BookingReadRepositoryInterface $bookingRepository,
-        private MongoStore $mongoStore,
-        private MessageBusInterface $eventBus,
+
+        private BookingEventStoreRepositoryInterface $bookingRepository,
+
         private LockFactory $lockFactory,
-        private CacheInterface $cache,
-        #[Autowire(env: 'int:SNAPSHOT_THRESHOLD')]
-        private int $snapshotThreshold,
+
+        private MessageBusInterface $eventBus,
+
     ) {}
 
+
+
     public function __invoke(SubmitBookingWizardCommand $command): void
+
     {
+
         $aggregateId = Uuid::fromString($command->id);
+
         $lock = $this->lockFactory->createLock('booking_init_' . $aggregateId->toRfc4122());
 
+
+
         if (!$lock->acquire(true)) {
+
             return;
+
         }
+
+
+
+        $events = [];
 
         try {
-            // Idempotency check in Mongo
-            $exists = $this->mongoStore->findEventByAggregateId($aggregateId);
 
-            if ($exists) {
+            // Idempotency check: try to load the booking
+
+            $booking = $this->bookingRepository->get($aggregateId);
+
+
+
+            if ($booking) {
+
                 return;
+
             }
 
-            $occurredOn = new \DateTimeImmutable();
 
-            // 1. Create the Domain Event
-            $event = BookingWizardCompleted::occur(
-                bookingId: $aggregateId->toRfc4122(),
+
+            // Resolve User ID deterministically (No DB call!)
+
+            $userId = Uuid::v5(Uuid::fromString(Constants::USER_NAMESPACE), strtolower(trim($command->clientEmail)));
+
+
+
+            // 1. Create the Aggregate
+
+            $booking = Booking::submit(
+
+                id: $aggregateId,
+
+                userId: $userId->toRfc4122(),
+
                 pax: $command->pax,
+
                 budget: $command->budget,
+
                 clientName: $command->clientName,
-                clientEmail: $command->clientEmail,
-                occurredOn: $occurredOn
+
+                clientEmail: $command->clientEmail
+
             );
 
-            // 2. Persist to Event Store (Mongo)
-            $storedEvent = StoredEvent::commit(
-                aggregateId: $aggregateId,
-                eventType: BookingWizardCompleted::class,
-                payload: [
-                    'bookingId' => $aggregateId->toRfc4122(),
-                    'pax' => $command->pax,
-                    'budget' => $command->budget,
-                    'clientName' => $command->clientName,
-                    'clientEmail' => $command->clientEmail,
-                    'occurredOn' => $occurredOn->format(\DateTimeInterface::ATOM)
-                ],
-                occurredOn: $occurredOn
-            );
 
-            $this->mongoStore->saveEvent($storedEvent);
 
-            // --- AUTOMATIC SNAPSHOT LOGIC ---
-            $eventCount = $this->mongoStore->countEvents();
-            if ($eventCount > 0 && $eventCount % $this->snapshotThreshold === 0) {
-                $userCount = $this->userRepository->countAll();
-                $bookingCount = $this->bookingRepository->countAll();
+            $events = $booking->getRecordedEvents();
 
-                $snapshot = Snapshot::take(
-                    $aggregateId,
-                    $eventCount,
-                    ['users' => $userCount, 'bookings' => $bookingCount, 'auto' => true]
-                );
-                $this->mongoStore->saveSnapshot($snapshot);
-            }
 
-            // 3. Dispatch to Async Bus (for Projections)
-            $projectionsEnabled = $this->cache->get('demo_projections_enabled', fn() => true);
-            if ($projectionsEnabled) {
-                $this->eventBus->dispatch($event);
-            }
+
+            // 2. Persist Aggregate (saves to Mongo)
+
+            $this->bookingRepository->save($booking);
+
+
+
         } finally {
+
             $lock->release();
+
         }
+
+
+
+        // 3. Dispatch events after lock is released
+
+        foreach ($events as $event) {
+
+            $this->eventBus->dispatch($event);
+
+        }
+
     }
+
 }
+
+

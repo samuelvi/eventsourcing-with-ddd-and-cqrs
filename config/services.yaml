@@ -48,6 +48,11 @@ services:
             $uri: '%env(MONGODB_URL)%'
             $dbName: '%env(MONGODB_DB)%'
 
+    # Event Sourcing Repositories
+    App\Domain\Repository\UserEventStoreRepositoryInterface: '@App\Infrastructure\Repository\UserEventSourcingRepository'
+    App\Domain\Repository\BookingEventStoreRepositoryInterface: '@App\Infrastructure\Repository\BookingEventSourcingRepository'
+    App\Domain\Repository\ProductEventStoreRepositoryInterface: '@App\Infrastructure\Repository\ProductEventSourcingRepository'
+
     # --- Application Handlers ---
     App\Application\Handler\:
         resource: '../src/Application/Handler'

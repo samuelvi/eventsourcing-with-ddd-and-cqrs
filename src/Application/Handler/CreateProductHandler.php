@@ -5,42 +5,40 @@ declare(strict_types=1);
 namespace App\Application\Handler;
 
 use App\Application\Command\CreateProductCommand;
-use App\Domain\Model\ProductEntity;
-use App\Domain\Model\SupplierEntity;
-use App\Domain\Repository\ProductWriteRepositoryInterface;
-use App\Domain\Repository\SupplierWriteRepositoryInterface;
-use App\Domain\Service\ProductDetailOrchestrator;
+use App\Domain\Model\Product;
+use App\Domain\Repository\ProductEventStoreRepositoryInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler]
 final readonly class CreateProductHandler
 {
     public function __construct(
-        private SupplierWriteRepositoryInterface $supplierRepository,
-        private ProductDetailOrchestrator $orchestrator,
-        private ProductWriteRepositoryInterface $productRepository,
+        private ProductEventStoreRepositoryInterface $productRepository,
+        private MessageBusInterface $eventBus,
     ) {}
 
     public function __invoke(CreateProductCommand $command): void
     {
-        $supplier = $this->supplierRepository->getById($command->supplierId);
-
-        // 1. Create the specific details (Menu, etc.) and get the ID
-        $referenceId = $this->orchestrator->createDetails(
-            $command->type,
-            $command->detailsData,
-            $supplier
-        );
-
-        // 2. Create the generic Product linked to that ID
-        $product = ProductEntity::create(
+        // 1. Create the Aggregate (it records the ProductRegistered event)
+        $product = Product::register(
+            id: \Symfony\Component\Uid\Uuid::v7(),
             name: $command->name,
             price: $command->price,
-            supplier: $supplier,
+            currency: $command->currency,
             type: $command->type,
-            externalReferenceId: $referenceId
+            supplierId: $command->supplierId,
+            details: $command->detailsData
         );
 
+        $events = $product->getRecordedEvents();
+
+        // 2. Persist to Event Store
         $this->productRepository->save($product);
+
+        // 3. Dispatch events after persistence
+        foreach ($events as $event) {
+            $this->eventBus->dispatch($event);
+        }
     }
 }

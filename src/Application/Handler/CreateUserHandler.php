@@ -5,76 +5,65 @@ declare(strict_types=1);
 namespace App\Application\Handler;
 
 use App\Application\Command\CreateUserCommand;
-use App\Domain\Event\UserRegistered;
-use App\Infrastructure\EventSourcing\StoredEvent;
-use App\Infrastructure\Persistence\Mongo\MongoStore;
+use App\Domain\Model\User;
+use App\Domain\Repository\UserEventStoreRepositoryInterface;
+use App\Domain\Shared\Constants;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Lock\LockFactory;
-use Symfony\Contracts\Cache\CacheInterface;
 
 #[AsMessageHandler]
 final readonly class CreateUserHandler
 {
+    private const USER_NAMESPACE = '6ba7b812-9bad-11d1-80b4-00c04fd430c8'; // Namespace OID
+
     public function __construct(
-        private MongoStore $mongoStore,
-        private MessageBusInterface $eventBus,
+        private UserEventStoreRepositoryInterface $userRepository,
         private LockFactory $lockFactory,
-        private CacheInterface $cache,
+        private MessageBusInterface $eventBus,
     ) {}
 
     public function __invoke(CreateUserCommand $command): void
     {
-        $aggregateId = Uuid::fromString($command->id);
+        $email = strtolower(trim($command->email));
+        // Deterministic ID based on email
+        $aggregateId = Uuid::v5(Uuid::fromString(Constants::USER_NAMESPACE), $email);
+        
         $lock = $this->lockFactory->createLock('user_creation_' . $aggregateId->toRfc4122());
 
         if (!$lock->acquire(true)) {
             return;
         }
 
+        $events = [];
         try {
-            // Idempotency check in Mongo
-            $exists = $this->mongoStore->findEventByAggregateId($aggregateId);
+            // Check if user already exists in Event Store
+            $user = $this->userRepository->get($aggregateId);
 
-            if ($exists) {
+            if ($user) {
                 return;
             }
 
-            $occurredOn = new \DateTimeImmutable();
-
-            $email = strtolower(trim($command->email));
-
-            // 1. Create the Domain Event
-            $event = new UserRegistered(
-                userId: $aggregateId->toRfc4122(),
-                name: $command->name,
-                email: $email,
-                occurredOn: $occurredOn
+            // 1. Create the Aggregate (it records the UserRegistered event)
+            $user = User::register(
+                $aggregateId,
+                $command->name,
+                $email
             );
 
-            // 2. Persist to Event Store (Mongo)
-            $storedEvent = StoredEvent::commit(
-                aggregateId: $aggregateId,
-                eventType: UserRegistered::class,
-                payload: [
-                    'userId' => $aggregateId->toRfc4122(),
-                    'name' => $command->name,
-                    'email' => $email,
-                    'occurredOn' => $occurredOn->format(\DateTimeInterface::ATOM)
-                ],
-                occurredOn: $occurredOn
-            );
+            $events = $user->getRecordedEvents();
 
-            $this->mongoStore->saveEvent($storedEvent);
+            // 2. Persist Aggregate (saves events to Mongo)
+            $this->userRepository->save($user);
 
-            // 3. Dispatch to Async Bus (for Projections)
-            $projectionsEnabled = $this->cache->get('demo_projections_enabled', fn() => true);
-            if ($projectionsEnabled) {
-                $this->eventBus->dispatch($event);
-            }
         } finally {
             $lock->release();
+        }
+
+        // 3. Dispatch events after lock is released to avoid deadlocks with projections
+        foreach ($events as $event) {
+            $this->eventBus->dispatch($event);
         }
     }
 }

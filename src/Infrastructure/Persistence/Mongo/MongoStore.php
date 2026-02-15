@@ -83,6 +83,24 @@ final readonly class MongoStore
         return $doc ? StoredEvent::fromArray($this->toArrayFromDoc($doc)) : null;
     }
 
+    /**
+     * @return array<StoredEvent>
+     */
+    public function findAllEventsByAggregateId(Uuid $aggregateId): array
+    {
+        $cursor = $this->mongoClient->getDatabase()->selectCollection('events')->find(
+            ['aggregateId' => $aggregateId->toRfc4122()],
+            ['sort' => ['version' => 1]]
+        );
+        
+        $events = [];
+        foreach ($cursor as $doc) {
+            $events[] = StoredEvent::fromArray($this->toArrayFromDoc($doc));
+        }
+        
+        return $events;
+    }
+
     // --- Snapshots ---
 
     public function saveSnapshot(Snapshot $snapshot): void

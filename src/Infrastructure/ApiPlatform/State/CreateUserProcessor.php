@@ -9,6 +9,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Application\Command\CreateUserCommand;
 use App\Application\Dto\CreateUserDto;
 use App\Domain\Model\UserEntity;
+use App\Domain\Shared\Constants;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -26,7 +27,7 @@ final readonly class CreateUserProcessor implements ProcessorInterface
      */
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): UserEntity
     {
-        $id = Uuid::v7();
+        $id = Uuid::v5(Uuid::fromString(Constants::USER_NAMESPACE), strtolower(trim($data->email)));
         
         $command = new CreateUserCommand(
             id: $id->toRfc4122(),

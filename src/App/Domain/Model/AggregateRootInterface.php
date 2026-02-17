@@ -16,11 +16,11 @@ interface AggregateRootInterface
     public function clearRecordedEvents(): void;
     
     /** @param object[] $events */
-    public static function reconstituteFromHistory(Uuid $id, array $events, ?self $aggregate = null): self;
+    public static function reconstituteFromHistory(Uuid $id, array $events, ?AggregateRootInterface $aggregate = null): AggregateRootInterface;
 
     /** @return array<string, mixed> */
     public function getSnapshotState(): array;
 
     /** @param array<string, mixed> $state */
-    public static function reconstituteFromSnapshot(Uuid $id, int $version, array $state): self;
+    public static function reconstituteFromSnapshot(Uuid $id, int $version, array $state): AggregateRootInterface;
 }

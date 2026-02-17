@@ -45,8 +45,9 @@ abstract class AggregateRoot implements AggregateRootInterface
 
     abstract protected function apply(object $event): void;
 
-    public static function reconstituteFromHistory(Uuid $id, array $events, ?self $aggregate = null): static
+    public static function reconstituteFromHistory(Uuid $id, array $events, ?AggregateRootInterface $aggregate = null): static
     {
+        /** @var static $aggregate */
         $aggregate = $aggregate ?? new static($id);
         foreach ($events as $event) {
             $aggregate->apply($event);

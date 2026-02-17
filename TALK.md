@@ -9,6 +9,23 @@ Para entenderlo con una analogía:
 
 ---
 
+## Arquitectura del Proyecto
+
+El proyecto sigue un enfoque **API-First** con un frontend en **React** desacoplado del backend. La comunicación se realiza a través de una API HTTP, que actúa como la interfaz principal del sistema.
+
+Utilizamos **Domain-Driven Design (DDD)** para organizar el código en torno al negocio. Los **Agregados** son clave para mantener la integridad de las reglas. La **Arquitectura Hexagonal** asegura que la lógica de dominio sea independiente de la infraestructura, usando "puertos" y "adaptadores".
+
+La arquitectura se basa en **CQRS (Command Query Responsibility Segregation)**, con una clara separación entre:
+
+- **Lado de Escritura**: Recibe comandos y produce eventos, garantizando la integridad de los datos.
+- **Lado de Lectura**: Proporciona vistas optimizadas de los datos para consultas rápidas.
+
+La persistencia se implementa mediante **Event Sourcing**, donde almacenamos la secuencia completa de eventos que representan cada cambio. Esto ofrece un historial inmutable y reconstruible, y una completa trazabilidad del sistema.
+
+Esta combinación de patrones fomenta un sistema robusto, escalable y con responsabilidades bien definidas.
+
+---
+
 ## 1. Conceptos Fundamentales
 
 ### El Estado vs. El Hecho
@@ -25,11 +42,13 @@ Para que este sistema sea eficiente, dividimos las responsabilidades:
 - **Agregado (Escritura)**: Es el encargado de tomar decisiones. Recibe una petición, valida que cumpla las reglas de negocio y, si todo es correcto, genera un nuevo evento. Su fuente de verdad es el Event Store (en este proyecto, MongoDB).
 - **Proyección (Lectura)**: Es una vista de los datos optimizada para ser consultada. Escucha los eventos que genera el Agregado y actualiza tablas tradicionales (en este proyecto, PostgreSQL) para que la aplicación pueda mostrar la información rápidamente.
 
+![Conceptos Fundamentales de Event Sourcing](docs/images/event_sourcing_fundamentos.png)
+
 ---
 
 ## 2. Recorrido Técnico: Anatomía de una Reserva
 
-Para entender cómo funciona el sistema, seguiremos el rastro de una operación desde que el usuario pulsa el botón "Generate New Event" en la pantalla de monitorización hasta que el dato aparece en las tablas de consulta.
+Para entender cómo funciona el sistema, seguiremos el rastro de una operación desde que el usuario pulsa el botón "Generate new booking" en la pantalla de monitorización hasta que el dato aparece en las tablas de consulta.
 
 ### Fase 1: Identidad en el Origen (Frontend)
 
@@ -40,7 +59,7 @@ La operación comienza en el navegador (`DemoFlow.tsx`). Antes de realizar la pe
 
 ### Fase 2: El Agregado y la Verdad (Write Side)
 
-El comando llega a `SubmitBookingWizardHandler`, que actúa como el guardián de la integridad. Tras la refactorización purista, el flujo es el siguiente:
+El comando llega a `SubmitBookingWizardHandler`, que actúa como el guardián de la integridad. El flujo es el siguiente:
 
 1.  **Identidad Determinística**: El sistema ya no pregunta a PostgreSQL "¿existe este usuario?". En su lugar, utiliza un **UUID v5** generado a partir del email del cliente. Esto garantiza que el mismo email siempre resulte en el mismo ID de usuario, permitiendo que diferentes proyecciones vinculen datos sin necesidad de consultas cruzadas entre bases de datos.
 2.  **EAFP (Better to Ask Forgiveness than Permission)**: Los Handlers aplican este principio. En lugar de comprobar si un registro existe antes de crearlo (LBYL), intentamos la operación directamente. Si hay una colisión, la infraestructura lanza una `ConcurrencyException` que capturamos silenciosamente, garantizando la idempotencia con el mínimo de lecturas a la DB.
@@ -66,6 +85,8 @@ El sistema utiliza proyecciones especializadas para transformar hechos en vistas
     - `ProductProjection` (Generalista): Gestiona el catálogo comercial (nombres, precios, monedas).
     - `MenuProjection` (Especialista): Gestiona el detalle técnico del producto (platos, descripción).
     - Esta separación permite que un solo evento de escritura alimente múltiples tablas optimizadas sin modificar la estructura comercial base.
+
+![Flujo de Reserva](docs/images/booking_flow.png)
 
 ---
 
@@ -113,3 +134,43 @@ Es vital entender qué base de datos usar según el objetivo:
 
 - **Para mostrar datos (Lectura)**: Se usa PostgreSQL. Es extremadamente rápido para realizar búsquedas y filtros complejos.
 - **Para validar reglas (Negocio)**: Debemos consultar el estado que ofrece el Agregado (rehidratado desde MongoDB), ya que es la única fuente que garantiza tener el dato exacto al milisegundo.
+
+---
+
+## 6. El Futuro: Orquestación con Sagas (Process Managers)
+
+Aunque el núcleo del sistema (PHP) es agnóstico y puramente reactivo, un proceso de negocio real necesita un "director de orquesta" que coordine los pasos entre diferentes dominios. En DDD y Event Sourcing, este rol lo cumple la **Saga**.
+
+### ¿Por qué no hay una Saga en el código PHP?
+
+Actualmente no existe una clase `BookingSaga` en el backend. Esto es intencional para mantener el **Desacoplamiento Total**. El módulo de Reservas no debe conocer la existencia del módulo de Cotizaciones.
+
+### La Visión: n8n como Motor de Sagas
+
+El objetivo arquitectónico es delegar la orquestación a una herramienta externa especializada (**n8n**). Este actuará como una Saga asíncrona que gestiona el workflow completo "End-to-End":
+
+1.  **Detectar**: Escuchar que ha entrado un nuevo pedido (polling o webhook del evento `BookingWizardCompleted`).
+2.  **Actuar**: Disparar la generación de cotizaciones (`GenerateQuotesCommand`).
+3.  **Comunicar**: Orquestar el envío de e-mails con las propuestas al cliente.
+4.  **Finalizar**: Actualizar el estado del pedido a "Procesado" una vez completado el ciclo.
+
+Este enfoque permite modificar el flujo de negocio (ej. añadir retardos, condiciones o ramas) visualmente sin necesidad de re-desplegar los microservicios del backend.
+
+---
+
+## 7. Listado de Acrónimos
+
+- **API**: Application Programming Interface
+- **CQRS**: Command Query Responsibility Segregation
+- **CRON**: Command Run On (utilidad para programar tareas)
+- **CRUD**: Create, Read, Update, Delete
+- **DDD**: Domain-Driven Design
+- **EAFP**: Better to Ask Forgiveness than Permission (Es Mejor Pedir Perdón que Pedir Permiso)
+- **HTTP**: Hypertext Transfer Protocol
+- **I/O**: Input/Output (Entrada/Salida)
+- **LBYL**: Look Before You Leap (Es Mejor Preguntar Antes de Saltar)
+- **PHP**: PHP: Hypertext Preprocessor (en sus inicios: Personal Home Page)
+- **POC**: Proof Of Concept (Prueba de Concepto)
+- **SQL**: Structured Query Language
+- **UI**: User Interface (Interfaz de Usuario)
+- **UUID**: Universally Unique Identifier

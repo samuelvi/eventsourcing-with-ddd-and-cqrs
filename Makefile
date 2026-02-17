@@ -43,7 +43,7 @@ init-front:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T node npm install --quiet
 
 load-fixtures:
-	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T symfony-api bin/console app:system:reset --no-interaction
+	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T symfony-api sh -lc 'if bin/console list --raw | grep -q "^app:system:reset$$"; then bin/console app:system:reset --no-interaction; else echo "app:system:reset no disponible. Usando doctrine:fixtures:load."; bin/console doctrine:fixtures:load --no-interaction --append; fi'
 
 # --- Inicialización TEST (de arriba a abajo) ---
 
@@ -68,7 +68,7 @@ setup-api-test:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:migrations:migrate --no-interaction
 
 load-fixtures-test:
-	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console app:system:reset --no-interaction
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test sh -lc 'if bin/console list --raw | grep -q "^app:system:reset$$"; then bin/console app:system:reset --no-interaction; else echo "app:system:reset no disponible en test. Usando doctrine:fixtures:load."; bin/console doctrine:fixtures:load --no-interaction --append; fi'
 
 build-front:
 	npx vite build
@@ -82,22 +82,22 @@ test-unit: test-init
 
 test-e2e: test-init ## Run Playwright E2E tests (Headless)
 	@echo "Running E2E Tests (Headless)..."
-	PLAYWRIGHT_BASE_URL=http://localhost:9080 npx bddgen && npx playwright test
+	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx bddgen && PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx playwright test
 
 test-e2e-ui: test-init ## Run Playwright E2E tests (UI Mode)
 	@echo "Running E2E Tests (UI Mode)..."
-	PLAYWRIGHT_BASE_URL=http://localhost:9080 npx bddgen && npx playwright test --ui
+	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx bddgen && PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx playwright test --ui
 
 test-e2e-debug: test-init ## Run Playwright E2E tests (Debug Mode)
 	@echo "Running E2E Tests (Debug Mode)..."
-	PLAYWRIGHT_BASE_URL=http://localhost:9080 npx bddgen && npx playwright test --debug
+	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx bddgen && PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx playwright test --debug
 
 test-e2e-report: ## Show Playwright E2E report
 	npx playwright show-report var/log/playwright/report
 
 test-all: test-init
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/phpunit
-	PLAYWRIGHT_BASE_URL=http://localhost:9080 npx bddgen && npx playwright test
+	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx bddgen && PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx playwright test
 
 phpstan:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T symfony-api vendor/bin/phpstan analyse --memory-limit=1G

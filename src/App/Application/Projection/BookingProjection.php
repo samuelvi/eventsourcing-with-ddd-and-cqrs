@@ -6,17 +6,14 @@ namespace App\Application\Projection;
 
 use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\BookingEntity;
-use App\Domain\Model\UserEntity;
 use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
 use App\Domain\Repository\BookingWriteRepositoryInterface;
 use App\Domain\Repository\BookingReadRepositoryInterface;
 use App\Domain\Repository\UserWriteRepositoryInterface;
-use App\Domain\Repository\UserReadRepositoryInterface;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Cache\CacheInterface;
-use Symfony\Component\Lock\LockFactory;
 
 #[AsMessageHandler]
 final readonly class BookingProjection
@@ -25,10 +22,8 @@ final readonly class BookingProjection
         private BookingWriteRepositoryInterface $bookingWriteRepository,
         private BookingReadRepositoryInterface $bookingReadRepository,
         private UserWriteRepositoryInterface $userWriteRepository,
-        private UserReadRepositoryInterface $userReadRepository,
         private MongoStore $mongoStore,
-        private CacheInterface $cache,
-        private LockFactory $lockFactory,
+        private CacheInterface $cache
     ) {}
 
     public function __invoke(BookingWizardCompleted $event): void

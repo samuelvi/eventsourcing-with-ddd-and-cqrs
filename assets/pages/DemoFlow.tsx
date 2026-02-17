@@ -141,7 +141,20 @@ export function DemoFlow() {
         refetchInterval: 2000
     });
 
-    const isInconsistent = stats.events > stats.bookings || stats.events > stats.users;
+    const eventTypeCounts = events.reduce(
+        (acc, event) => {
+            const rawType = String(event.eventType || '');
+            const eventType = rawType.split('\\').pop() || rawType;
+            acc[eventType] = (acc[eventType] || 0) + 1;
+            return acc;
+        },
+        {} as Record<string, number>
+    );
+
+    const expectedUserRecords = eventTypeCounts.UserRegistered || 0;
+    const expectedBookingRecords = eventTypeCounts.BookingWizardCompleted || 0;
+    const isInconsistent =
+        stats.users < expectedUserRecords || stats.bookings < expectedBookingRecords;
 
     // --- Mutations ---
 
@@ -259,6 +272,7 @@ export function DemoFlow() {
     const loading =
         toggleMutation.isPending ||
         createBookingMutation.isPending ||
+        createUserMutation.isPending ||
         rebuildMutation.isPending ||
         resetMutation.isPending;
 
@@ -827,7 +841,9 @@ export function DemoFlow() {
                                         style={{
                                             fontWeight: 700,
                                             color:
-                                                stats.users < stats.events ? '#f43f5e' : '#111827'
+                                                stats.users < expectedUserRecords
+                                                    ? '#f43f5e'
+                                                    : '#111827'
                                         }}
                                     >
                                         {stats.users}
@@ -845,7 +861,7 @@ export function DemoFlow() {
                                         style={{
                                             fontWeight: 700,
                                             color:
-                                                stats.bookings < stats.events
+                                                stats.bookings < expectedBookingRecords
                                                     ? '#f43f5e'
                                                     : '#111827'
                                         }}

@@ -62,6 +62,7 @@ docker/test/n8n/data
 /tmp/
 /config/jwt/*.pem
 .last-backup
+.features-gen/*
 
 ###> phpunit/phpunit ###
 /phpunit.xml

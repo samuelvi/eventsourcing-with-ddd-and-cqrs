@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 type EntityType =
     | 'users'
@@ -12,9 +12,23 @@ type EntityType =
     | 'checkpoints'
     | 'snapshots';
 
+const ALL_TABS: EntityType[] = [
+    'event-store',
+    'checkpoints',
+    'snapshots',
+    'users',
+    'bookings',
+    'suppliers',
+    'quotes',
+    'products',
+    'menus',
+    'products-catalog'
+];
+
 export function DataExplorer() {
     const [activeTab, setActiveTab] = useState<EntityType>('event-store');
     const [data, setData] = useState<Record<string, unknown>[]>([]);
+    const [counts, setCounts] = useState<Partial<Record<EntityType, number>>>({});
     const [loading, setLoading] = useState(false);
 
     const fetchData = async (type: EntityType) => {
@@ -36,6 +50,38 @@ export function DataExplorer() {
     useEffect(() => {
         fetchData(activeTab);
     }, [activeTab]);
+
+    const fetchCount = async (type: EntityType): Promise<number> => {
+        const response = await fetch(`/api/${type}?t=${Date.now()}`, {
+            headers: { Accept: 'application/ld+json' }
+        });
+
+        if (!response.ok) {
+            return 0;
+        }
+
+        const result = await response.json();
+        if (typeof result['hydra:totalItems'] === 'number') {
+            return result['hydra:totalItems'] as number;
+        }
+
+        return Array.isArray(result['hydra:member']) ? result['hydra:member'].length : 0;
+    };
+
+    const fetchAllCounts = useCallback(async () => {
+        try {
+            const entries = await Promise.all(
+                ALL_TABS.map(async (type) => [type, await fetchCount(type)] as const)
+            );
+            setCounts(Object.fromEntries(entries) as Partial<Record<EntityType, number>>);
+        } catch (error) {
+            console.error('Error fetching counts:', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchAllCounts();
+    }, [fetchAllCounts]);
 
     const mongoTabs: Partial<Record<EntityType, string>> = {
         'event-store': 'Event Store',
@@ -70,9 +116,9 @@ export function DataExplorer() {
             <div
                 style={{
                     display: 'flex',
-                    gap: '4px',
+                    gap: '2px',
                     backgroundColor: '#f3f4f6',
-                    padding: '4px',
+                    padding: '3px',
                     borderRadius: '12px'
                 }}
             >
@@ -81,7 +127,7 @@ export function DataExplorer() {
                         key={id}
                         onClick={() => setActiveTab(id as EntityType)}
                         style={{
-                            padding: '8px 16px',
+                            padding: '6px 10px',
                             cursor: 'pointer',
                             backgroundColor: activeTab === id ? '#fff' : 'transparent',
                             color: activeTab === id ? '#111827' : '#6b7280',
@@ -94,7 +140,20 @@ export function DataExplorer() {
                             whiteSpace: 'nowrap'
                         }}
                     >
-                        {label}
+                        <span>{label}</span>
+                        <span
+                            style={{
+                                marginLeft: '6px',
+                                backgroundColor: activeTab === id ? '#f3f4f6' : '#e5e7eb',
+                                color: '#374151',
+                                borderRadius: '999px',
+                                padding: '1px 6px',
+                                fontSize: '10px',
+                                fontWeight: 700
+                            }}
+                        >
+                            {counts[id as EntityType] ?? 0}
+                        </span>
                     </button>
                 ))}
             </div>
@@ -118,7 +177,10 @@ export function DataExplorer() {
                     </p>
                 </div>
                 <button
-                    onClick={() => fetchData(activeTab)}
+                    onClick={() => {
+                        fetchData(activeTab);
+                        fetchAllCounts();
+                    }}
                     style={{
                         padding: '10px 16px',
                         cursor: 'pointer',

@@ -66,6 +66,8 @@ test-wait:
 setup-api-test:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:database:create --if-not-exists
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:migrations:migrate --no-interaction
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:clear --env=test --no-warmup
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:warmup --env=test
 
 load-fixtures-test:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test sh -lc 'if bin/console list --raw | grep -q "^app:system:reset$$"; then bin/console app:system:reset --no-interaction; else echo "app:system:reset no disponible en test. Usando doctrine:fixtures:load."; bin/console doctrine:fixtures:load --no-interaction --append; fi'

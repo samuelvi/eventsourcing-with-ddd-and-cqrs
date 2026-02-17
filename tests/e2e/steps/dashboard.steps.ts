@@ -14,6 +14,11 @@ Then(
                 .last();
             const valueLocator = card.locator('div').filter({ hasText: /^\d+$/ });
             await expect(valueLocator).toHaveText(value, { timeout: 15000 });
+        } else if (label === 'Snapshots') {
+            const labelLocator = page.getByText('Snapshots', { exact: true });
+            const container = page.locator('div').filter({ has: labelLocator }).last();
+            const valueLocator = container.locator('div').filter({ hasText: /^\d+$/ }).first();
+            await expect(valueLocator).toHaveText(value, { timeout: 15000 });
         } else {
             // For User Records: or Booking Records:
             const labelLocator = page.getByText(label, { exact: false });

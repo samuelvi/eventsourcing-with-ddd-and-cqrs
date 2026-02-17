@@ -19,7 +19,8 @@ final readonly class ProductEventSourcingRepository extends EventSourcingReposit
         MongoStore $mongoStore,
         SerializerInterface $serializer,
         MessageBusInterface $eventBus,
+        int $snapshotThreshold,
     ) {
-        parent::__construct(Product::class, $mongoStore, $serializer, $eventBus);
+        parent::__construct(Product::class, $mongoStore, $serializer, $eventBus, $snapshotThreshold);
     }
 }

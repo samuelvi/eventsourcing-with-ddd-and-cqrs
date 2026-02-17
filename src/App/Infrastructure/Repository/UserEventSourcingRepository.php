@@ -19,7 +19,8 @@ final readonly class UserEventSourcingRepository extends EventSourcingRepository
         MongoStore $mongoStore,
         SerializerInterface $serializer,
         MessageBusInterface $eventBus,
+        int $snapshotThreshold,
     ) {
-        parent::__construct(User::class, $mongoStore, $serializer, $eventBus);
+        parent::__construct(User::class, $mongoStore, $serializer, $eventBus, $snapshotThreshold);
     }
 }

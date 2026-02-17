@@ -18,8 +18,6 @@ use Symfony\Component\Messenger\MessageBusInterface;
  */
 readonly class EventSourcingRepository implements EventStoreRepositoryInterface
 {
-    private const SNAPSHOT_THRESHOLD = 5;
-
     /**
      * @param class-string<T> $aggregateClass
      */
@@ -28,6 +26,7 @@ readonly class EventSourcingRepository implements EventStoreRepositoryInterface
         private MongoStore $mongoStore,
         private SerializerInterface $serializer,
         private MessageBusInterface $eventBus,
+        private int $snapshotThreshold,
     ) {}
 
     public function save(AggregateRootInterface $aggregate): void
@@ -47,8 +46,10 @@ readonly class EventSourcingRepository implements EventStoreRepositoryInterface
             $this->mongoStore->saveEvent($storedEvent);
         }
 
-        // Snapshotting logic: Every X versions
-        if ($aggregate->getVersion() % self::SNAPSHOT_THRESHOLD === 0) {
+        $shouldSnapshotByAggregateVersion = $aggregate->getVersion() % $this->snapshotThreshold === 0;
+        $shouldSnapshotByGlobalEventCount = $this->mongoStore->countEvents() % $this->snapshotThreshold === 0;
+
+        if ($shouldSnapshotByAggregateVersion || $shouldSnapshotByGlobalEventCount) {
             $snapshot = SnapshotEntity::take(
                 $aggregate->getAggregateId(),
                 $aggregate->getVersion(),

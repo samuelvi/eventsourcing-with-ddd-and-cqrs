@@ -19,7 +19,8 @@ final readonly class BookingEventSourcingRepository extends EventSourcingReposit
         MongoStore $mongoStore,
         SerializerInterface $serializer,
         MessageBusInterface $eventBus,
+        int $snapshotThreshold,
     ) {
-        parent::__construct(Booking::class, $mongoStore, $serializer, $eventBus);
+        parent::__construct(Booking::class, $mongoStore, $serializer, $eventBus, $snapshotThreshold);
     }
 }

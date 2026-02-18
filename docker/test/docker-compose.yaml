@@ -59,6 +59,7 @@ services:
     mongodb-test:
         image: mongodb/mongodb-community-server:7.0-ubuntu2204
         container_name: mongodb-test
+        user: '0:0'
         ports:
             - '27018:27017'
         environment:

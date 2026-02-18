@@ -9,4 +9,5 @@ Feature: Snapshot Generation
     When I submit 5 booking requests
     And I navigate to "/demo"
     Then I should see "5" in the "Historical Facts" counter
+    And the event store total items should be 5
     And the snapshot count should be 1

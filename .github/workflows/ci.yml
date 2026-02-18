@@ -51,6 +51,18 @@ jobs:
             - name: Install Composer Dependencies
               run: composer install --no-progress --prefer-dist
 
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
+
+            - name: Install Frontend Dependencies
+              run: npm ci
+
+            - name: Build Frontend Assets for Functional Tests
+              run: npx vite build
+
             - name: PHPStan Analysis (Level 9)
               run: vendor/bin/phpstan analyse --memory-limit=1G
 

@@ -22,9 +22,13 @@ When('I submit a valid booking through the API', async ({ request }) => {
     lastResponseStatus = response.status();
 });
 
-Then('the last API response status should be {int}', async (_, expectedStatus: number) => {
-    expect(lastResponseStatus).toBe(expectedStatus);
-});
+Then(
+    'the last API response status should be {int}',
+    async ({ request }, expectedStatus: number) => {
+        void request;
+        expect(lastResponseStatus).toBe(expectedStatus);
+    }
+);
 
 Then('the event store total items should be {int}', async ({ request }, expected: number) => {
     await spin(async () => {
@@ -37,9 +41,11 @@ Then('the event store total items should be {int}', async ({ request }, expected
 });
 
 Then('the page source should contain {string}', async ({ page }, fragment: string) => {
-    await expect(page.locator('html')).toContainText(fragment);
+    const html = await page.content();
+    expect(html).toContain(fragment);
 });
 
 Then('the page source should not contain {string}', async ({ page }, fragment: string) => {
-    await expect(page.locator('html')).not.toContainText(fragment);
+    const html = await page.content();
+    expect(html).not.toContain(fragment);
 });

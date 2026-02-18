@@ -75,7 +75,7 @@ load-fixtures-test:
 build-front:
 	npx vite build
 
-# --- Tests (unitarios + e2e) ---
+# --- Tests (suite PHP + e2e) ---
 
 test: test-unit
 

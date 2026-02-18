@@ -74,7 +74,7 @@ Nota importante:
 
 ## 3) Ejecución de tests
 
-Unitarios (PHPUnit):
+Suite PHP (PHPUnit: unitarios + funcionales):
 
 ```bash
 make test-unit
@@ -104,7 +104,7 @@ E2E modo debug:
 make test-e2e-debug
 ```
 
-Todo (unitarios + e2e):
+Todo (suite PHP + e2e):
 
 ```bash
 make test-all
@@ -153,7 +153,7 @@ make phpstan
 DEV:
 
 - Frontend: http://localhost:8080/
-- Demo: http://localhost:8080/demo
+- Architecture Monitor: http://localhost:8080/demo
 - Explorer: http://localhost:8080/explorer
 - API Docs: http://localhost:8080/docs
 - Adminer: http://localhost:8081/

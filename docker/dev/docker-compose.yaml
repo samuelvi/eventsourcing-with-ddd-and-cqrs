@@ -116,19 +116,7 @@ services:
         networks:
             - app-network
         healthcheck:
-            test:
-                [
-                    'CMD',
-                    'mongosh',
-                    '--username',
-                    'root',
-                    '--password',
-                    'password',
-                    '--authenticationDatabase',
-                    'admin',
-                    '--eval',
-                    "db.adminCommand('ping')"
-                ]
+            test: ['CMD', 'mongosh', '--norc', '--quiet', '--eval', 'quit()']
             interval: 5s
             timeout: 5s
             retries: 30

@@ -181,6 +181,17 @@ Este enfoque permite modificar el flujo de negocio (ej. añadir retardos, condic
 
 Este proyecto usa versionado optimista por agregado y no hace una consulta previa tipo "SELECT MAX(version)" antes de guardar.
 
+### En simple (muy importante)
+
+- **Al guardar (WRITE)**: no se hace `SELECT MAX(version)` ni `SELECT COUNT(*)`.
+- **Al cargar (READ/rehidratación)**: sí se hacen queries en MongoDB para saber desde qué versión continuar.
+- **Tras reiniciar el sistema**: la memoria se pierde, así que la versión se recupera leyendo MongoDB (snapshot + eventos).
+
+Piensa en esto:
+
+- Guardar = "escribo el siguiente número que ya traigo en el agregado".
+- Cargar = "leo Mongo para reconstruir en qué número iba".
+
 ### Regla exacta usada al persistir
 
 En `EventSourcingRepository::save()` la versión base se calcula así:

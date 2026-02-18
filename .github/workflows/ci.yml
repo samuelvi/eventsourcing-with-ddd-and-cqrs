@@ -106,3 +106,29 @@ jobs:
 
             - name: Type Check (TypeScript)
               run: npx tsc --noEmit
+
+    e2e:
+        name: E2E (Playwright)
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
+
+            - name: Install Dependencies
+              run: npm ci
+
+            - name: Install Playwright Browsers
+              run: npx playwright install --with-deps chromium
+
+            - name: Run E2E Tests
+              run: make test-e2e
+
+            - name: Teardown Test Environment
+              if: always()
+              run: make test-down

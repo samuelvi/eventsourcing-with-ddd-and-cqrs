@@ -58,7 +58,7 @@ final readonly class BookingProvider implements ProviderInterface
         $userRow = $this->userRepository->findById($userId);
         
         if (!$userRow) {
-            throw new \RuntimeException(sprintf('User %s not found for booking %s', $userId, $row['id']));
+            throw new \RuntimeException(sprintf('User %s not found for booking %s', $userId, TypeAssert::string($row['id'] ?? null)));
         }
 
         $user = UserEntity::hydrate(

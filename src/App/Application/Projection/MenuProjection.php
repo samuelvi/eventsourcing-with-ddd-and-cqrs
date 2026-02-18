@@ -9,6 +9,7 @@ use App\Domain\Model\MenuEntity;
 use App\Domain\Model\ProductEntity;
 use App\Domain\Repository\MenuWriteRepositoryInterface;
 use App\Domain\Repository\SupplierWriteRepositoryInterface;
+use App\Domain\Shared\TypeAssert;
 use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -31,11 +32,13 @@ final readonly class MenuProjection
 
         $supplier = $this->supplierRepository->getById($event->supplierId);
 
-        // Los datos específicos del menú vienen en $event->details
+        $title = isset($event->details['title']) ? TypeAssert::string($event->details['title']) : $event->name;
+        $description = isset($event->details['description']) ? TypeAssert::string($event->details['description']) : null;
+
         $menu = MenuEntity::hydrate(
             id: Uuid::fromString($event->productId),
-            title: $event->details['title'] ?? $event->name,
-            description: $event->details['description'] ?? null
+            title: $title,
+            description: $description
         );
 
         $this->menuWriteRepository->save($menu);

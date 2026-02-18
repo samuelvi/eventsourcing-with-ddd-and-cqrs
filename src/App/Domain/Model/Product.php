@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Model;
 
 use App\Domain\Event\ProductRegistered;
+use App\Domain\Shared\TypeAssert;
 use Symfony\Component\Uid\Uuid;
 
 final class Product extends AggregateRoot
@@ -14,8 +15,12 @@ final class Product extends AggregateRoot
     private string $currency;
     private string $type;
     private string $supplierId;
+    /** @var array<string, mixed> */
     private array $details;
 
+    /**
+     * @param array<string, mixed> $details
+     */
     public static function register(
         Uuid $id,
         string $name,
@@ -66,11 +71,11 @@ final class Product extends AggregateRoot
 
     protected function applySnapshot(array $state): void
     {
-        $this->name = $state['name'];
-        $this->price = $state['price'];
-        $this->currency = $state['currency'];
-        $this->type = $state['type'];
-        $this->supplierId = $state['supplierId'];
-        $this->details = $state['details'];
+        $this->name = TypeAssert::string($state['name'] ?? null);
+        $this->price = TypeAssert::float($state['price'] ?? null);
+        $this->currency = TypeAssert::string($state['currency'] ?? null);
+        $this->type = TypeAssert::string($state['type'] ?? null);
+        $this->supplierId = TypeAssert::string($state['supplierId'] ?? null);
+        $this->details = TypeAssert::array($state['details'] ?? null);
     }
 }

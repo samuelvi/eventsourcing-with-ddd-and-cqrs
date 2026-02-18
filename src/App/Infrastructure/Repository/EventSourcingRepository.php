@@ -6,15 +6,16 @@ namespace App\Infrastructure\Repository;
 
 use App\Domain\Model\AggregateRootInterface;
 use App\Domain\Repository\EventStoreRepositoryInterface;
+use App\Domain\Shared\TypeAssert;
 use App\Infrastructure\EventSourcing\StoredEvent;
 use App\Infrastructure\EventSourcing\Snapshot as SnapshotEntity;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
-use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * @template T of AggregateRootInterface
+ * @implements EventStoreRepositoryInterface<T>
  */
 readonly class EventSourcingRepository implements EventStoreRepositoryInterface
 {
@@ -25,10 +26,12 @@ readonly class EventSourcingRepository implements EventStoreRepositoryInterface
         private string $aggregateClass,
         private MongoStore $mongoStore,
         private SerializerInterface $serializer,
-        private MessageBusInterface $eventBus,
         private int $snapshotThreshold,
     ) {}
 
+    /**
+     * @param T $aggregate
+     */
     public function save(AggregateRootInterface $aggregate): void
     {
         $events = $aggregate->getRecordedEvents();
@@ -39,7 +42,7 @@ readonly class EventSourcingRepository implements EventStoreRepositoryInterface
             $storedEvent = StoredEvent::commit(
                 aggregateId: $aggregate->getAggregateId(),
                 eventType: get_class($event),
-                payload: json_decode($this->serializer->serialize($event, 'json'), true),
+                payload: TypeAssert::array(json_decode($this->serializer->serialize($event, 'json'), true)),
                 version: $version
             );
 
@@ -61,9 +64,12 @@ readonly class EventSourcingRepository implements EventStoreRepositoryInterface
         $aggregate->clearRecordedEvents();
     }
 
+    /**
+     * @return T|null
+     */
     public function get(Uuid $id): ?AggregateRootInterface
     {
-        /** @var class-string<AggregateRootInterface> $class */
+        /** @var class-string<T> $class */
         $class = $this->aggregateClass;
 
         // 1. Try to load the latest snapshot
@@ -94,7 +100,7 @@ readonly class EventSourcingRepository implements EventStoreRepositoryInterface
         $domainEvents = [];
         foreach ($storedEvents as $storedEvent) {
             $domainEvents[] = $this->serializer->deserialize(
-                json_encode($storedEvent->payload),
+                json_encode($storedEvent->payload, JSON_THROW_ON_ERROR),
                 $storedEvent->eventType,
                 'json'
             );

@@ -9,17 +9,14 @@ use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\UserEntity;
 use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
 use App\Domain\Repository\UserWriteRepositoryInterface;
-use App\Domain\Repository\UserReadRepositoryInterface;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Lock\LockFactory;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class UserProjection
 {
     public function __construct(
-        private UserReadRepositoryInterface $userReadRepository,
         private UserWriteRepositoryInterface $userWriteRepository,
         private MongoStore $mongoStore,
         private CacheInterface $cache,

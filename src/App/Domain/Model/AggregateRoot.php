@@ -6,6 +6,9 @@ namespace App\Domain\Model;
 
 use Symfony\Component\Uid\Uuid;
 
+/**
+ * @phpstan-consistent-constructor
+ */
 abstract class AggregateRoot implements AggregateRootInterface
 {
     /** @var object[] */

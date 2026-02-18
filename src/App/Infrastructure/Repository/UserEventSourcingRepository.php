@@ -8,7 +8,6 @@ use App\Domain\Model\User;
 use App\Domain\Repository\UserEventStoreRepositoryInterface;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * @extends EventSourcingRepository<User>
@@ -18,9 +17,8 @@ final readonly class UserEventSourcingRepository extends EventSourcingRepository
     public function __construct(
         MongoStore $mongoStore,
         SerializerInterface $serializer,
-        MessageBusInterface $eventBus,
         int $snapshotThreshold,
     ) {
-        parent::__construct(User::class, $mongoStore, $serializer, $eventBus, $snapshotThreshold);
+        parent::__construct(User::class, $mongoStore, $serializer, $snapshotThreshold);
     }
 }

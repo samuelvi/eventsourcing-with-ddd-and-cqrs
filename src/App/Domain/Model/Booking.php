@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Model;
 
 use App\Domain\Event\BookingWizardCompleted;
+use App\Domain\Shared\TypeAssert;
 use Symfony\Component\Uid\Uuid;
 
 final class Booking extends AggregateRoot
@@ -61,10 +62,10 @@ final class Booking extends AggregateRoot
 
     protected function applySnapshot(array $state): void
     {
-        $this->userId = $state['userId'];
-        $this->pax = $state['pax'];
-        $this->budget = $state['budget'];
-        $this->clientName = $state['clientName'];
-        $this->clientEmail = $state['clientEmail'];
+        $this->userId = TypeAssert::string($state['userId'] ?? null);
+        $this->pax = TypeAssert::int($state['pax'] ?? null);
+        $this->budget = TypeAssert::float($state['budget'] ?? null);
+        $this->clientName = TypeAssert::string($state['clientName'] ?? null);
+        $this->clientEmail = TypeAssert::string($state['clientEmail'] ?? null);
     }
 }

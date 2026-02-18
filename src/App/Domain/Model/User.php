@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Model;
 
 use App\Domain\Event\UserRegistered;
+use App\Domain\Shared\TypeAssert;
 use Symfony\Component\Uid\Uuid;
 
 final class User extends AggregateRoot
@@ -43,8 +44,8 @@ final class User extends AggregateRoot
 
     protected function applySnapshot(array $state): void
     {
-        $this->name = $state['name'];
-        $this->email = $state['email'];
+        $this->name = TypeAssert::string($state['name'] ?? null);
+        $this->email = TypeAssert::string($state['email'] ?? null);
     }
 
     // Getters para lógica interna si fuera necesaria

@@ -35,3 +35,7 @@ Adhere to modern PHP 8.4+ standards.
 - **No Getters/Setters:** Do not generate boilerplate `getFoo()`/`setFoo()` methods. Use public properties with hooks or asymmetric visibility.
 - **Composition:** Prefer composition over inheritance.
 - **Immutability:** Use `readonly` classes for DTOs.
+
+## Project Companion Skills
+
+- If the task touches DDD/Event Sourcing code with static analysis constraints, also apply `phpstan-ddd-guardrails`.

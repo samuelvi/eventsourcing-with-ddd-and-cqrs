@@ -66,6 +66,10 @@ public function __invoke(CreateEntityCommand $command): void
 - Audit trail comes for free
 - Time travel debugging possible
 
+## Project Companion Skills
+
+- For implementation/fixes under strict static analysis, apply `phpstan-ddd-guardrails` together with this skill.
+
 ## References
 
 - [Event Sourcing by Martin Fowler](https://martinfowler.com/eaaDev/EventSourcing.html)

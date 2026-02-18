@@ -80,7 +80,7 @@ function App() {
                 />
                 <NavButton
                     target="demo"
-                    label="System Monitor"
+                    label="Architecture Monitor"
                     icon={Icons.Demo}
                     currentPage={page}
                     onNavigate={navigateTo}

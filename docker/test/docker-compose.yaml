@@ -51,7 +51,8 @@ services:
             test: ['CMD-SHELL', 'pg_isready -U user -d event_sourcing_test']
             interval: 5s
             timeout: 5s
-            retries: 5
+            retries: 30
+            start_period: 120s
         restart: unless-stopped
 
     # MongoDB for Event Store
@@ -68,10 +69,23 @@ services:
         networks:
             - app-network-test
         healthcheck:
-            test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+            test:
+                [
+                    'CMD',
+                    'mongosh',
+                    '--username',
+                    'root',
+                    '--password',
+                    'password',
+                    '--authenticationDatabase',
+                    'admin',
+                    '--eval',
+                    "db.adminCommand('ping')"
+                ]
             interval: 5s
             timeout: 5s
-            retries: 5
+            retries: 30
+            start_period: 120s
         restart: unless-stopped
 
     # n8n Automation Tool

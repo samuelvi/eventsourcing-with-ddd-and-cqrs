@@ -174,3 +174,43 @@ Este enfoque permite modificar el flujo de negocio (ej. añadir retardos, condic
 - **SQL**: Structured Query Language
 - **UI**: User Interface (Interfaz de Usuario)
 - **UUID**: Universally Unique Identifier
+
+---
+
+## 8. Anexo: Cómo se calcula la versión previa del Agregado
+
+Este proyecto usa versionado optimista por agregado y no hace una consulta previa tipo "SELECT MAX(version)" antes de guardar.
+
+### Regla exacta usada al persistir
+
+En `EventSourcingRepository::save()` la versión base se calcula así:
+
+`versionBase = aggregate.getVersion() - count(aggregate.getRecordedEvents())`
+
+Después, por cada evento nuevo en memoria:
+
+1. Se incrementa `versionBase` en 1.
+2. Ese valor se asigna como `version` del `StoredEvent`.
+3. Se inserta el evento en MongoDB.
+
+### Qué significa en la práctica
+
+- **Agregado nuevo**: arranca en versión `0`. Si genera 1 evento de creación, se guarda como versión `1`.
+- **Agregado existente**: se rehidrata con su versión actual (desde snapshot + delta de eventos). Si estaba en versión `N`, los nuevos eventos se guardan como `N+1`, `N+2`, etc.
+
+### Dónde se garantiza la concurrencia
+
+MongoDB tiene índice único por `(aggregateId, version)`.
+
+- Si dos procesos intentan guardar la misma versión del mismo agregado, uno inserta y el otro falla con duplicado de clave.
+- Esa colisión se traduce a `ConcurrencyException`, lo que implementa control de concurrencia optimista e idempotencia.
+
+### Quién define el `aggregateId` en cada caso
+
+En este proyecto, el origen del `aggregateId` depende del agregado:
+
+- **Booking**: viene del cliente (UUID enviado en el comando de creación).
+- **User**: lo calcula el backend como UUID v5 determinístico a partir del email normalizado.
+- **Product**: lo genera el backend como UUID v7 al crear el producto.
+
+Importante: en la colección de eventos, `aggregateId` por sí solo no es único (debe permitir múltiples eventos por agregado). La unicidad se garantiza por la pareja `(aggregateId, version)`.

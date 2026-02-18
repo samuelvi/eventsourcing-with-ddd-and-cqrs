@@ -1,4 +1,4 @@
-# Event Sourcing Demo
+# Event Sourcing With DDD & CQRS
 
 POC de reservas con Event Sourcing usando Symfony 7.2, PHP 8.4, API Platform 3.4, React 18 (Vite), PostgreSQL, MongoDB y n8n.
 

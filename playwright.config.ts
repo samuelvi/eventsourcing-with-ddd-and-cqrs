@@ -23,9 +23,9 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 1,
 
-    reporter: [['html', { outputFolder: './var/log/playwright/report', open: 'never' }], ['list']],
+    reporter: [['html', { outputFolder: './.playwright/report', open: 'never' }], ['list']],
 
-    outputDir: './var/log/playwright/test-results',
+    outputDir: './.playwright/test-results',
 
     use: {
         baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9080',

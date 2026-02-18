@@ -96,7 +96,7 @@ test-e2e-debug: test-init ## Run Playwright E2E tests (Debug Mode)
 	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx bddgen && PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx playwright test --debug
 
 test-e2e-report: ## Show Playwright E2E report
-	npx playwright show-report var/log/playwright/report
+	npx playwright show-report .playwright/report
 
 test-all: test-init
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/phpunit

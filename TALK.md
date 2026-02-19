@@ -98,6 +98,12 @@ Reconstruir un estado a partir de miles de eventos puede ser costoso. Hemos impl
 2.  **Persistencia Atómica**: El snapshot guarda el estado interno completo del objeto en una colección dedicada en MongoDB, indexada por ID y Versión.
 3.  **Evolución hacia el Segundo Plano**: Aunque actualmente el snapshotting ocurre durante el `save()` para este POC, en sistemas de gran escala esta tarea se delega a procesos asíncronos o tareas programadas (**CRON**). Esto permite que el usuario reciba una respuesta instantánea mientras el sistema se optimiza en segundo plano.
 
+Nota didáctica importante:
+
+- El threshold de snapshot se aplica por **agregado** (mismo `aggregateId`), no por número global de eventos del sistema.
+- Por eso, crear 5 bookings distintos (5 IDs distintos con 1 evento cada uno) no genera snapshots.
+- En cambio, un mismo usuario que acumula 5 eventos sobre su propio `aggregateId` sí dispara snapshot.
+
 ---
 
 ## 4. Resiliencia y Consistencia Eventual

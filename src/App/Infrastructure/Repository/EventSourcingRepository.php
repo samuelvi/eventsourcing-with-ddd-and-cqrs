@@ -49,10 +49,11 @@ readonly class EventSourcingRepository implements EventStoreRepositoryInterface
             $this->mongoStore->saveEvent($storedEvent);
         }
 
-        $shouldSnapshotByAggregateVersion = $aggregate->getVersion() % $this->snapshotThreshold === 0;
-        $shouldSnapshotByGlobalEventCount = $this->mongoStore->countEvents() % $this->snapshotThreshold === 0;
+        $shouldSnapshotByAggregateVersion =
+            $aggregate->getVersion() >= $this->snapshotThreshold
+            && $aggregate->getVersion() % $this->snapshotThreshold === 0;
 
-        if ($shouldSnapshotByAggregateVersion || $shouldSnapshotByGlobalEventCount) {
+        if ($shouldSnapshotByAggregateVersion) {
             $snapshot = SnapshotEntity::take(
                 $aggregate->getAggregateId(),
                 $aggregate->getVersion(),

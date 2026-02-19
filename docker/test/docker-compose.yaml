@@ -1,4 +1,4 @@
-name: event-sourcing-test
+name: event-sourcing-test-v2
 
 services:
     # Symfony Backend Service (FrankenPHP)

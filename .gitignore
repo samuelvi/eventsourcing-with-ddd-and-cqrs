@@ -40,6 +40,7 @@ private/*
 /dist/
 
 /playwright-report/
+/.playwright/
 /test-results/
 /.phpunit.cache/
 

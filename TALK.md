@@ -137,24 +137,103 @@ Es vital entender qué base de datos usar según el objetivo:
 
 ---
 
-## 6. El Futuro: Orquestación con Sagas (Process Managers)
+## 6. Anexo: Cómo se calcula la versión del Agregado (y cómo evita duplicados)
 
-Aunque el núcleo del sistema (PHP) es agnóstico y puramente reactivo, un proceso de negocio real necesita un "director de orquesta" que coordine los pasos entre diferentes dominios. En DDD y Event Sourcing, este rol lo cumple la **Saga**.
+Este proyecto aplica **concurrencia optimista** por agregado. No usa bloqueos pesimistas ni contadores globales en memoria para coordinar escrituras entre peticiones.
 
-### ¿Por qué no hay una Saga en el código PHP?
+### Idea clave en una frase
 
-Actualmente no existe una clase `BookingSaga` en el backend. Esto es intencional para mantener el **Desacoplamiento Total**. El módulo de Reservas no debe conocer la existencia del módulo de Cotizaciones.
+- La versión "de verdad" vive en el **Event Store (MongoDB)**.
+- La memoria del proceso solo vive durante la request.
+- El control final lo hace Mongo con índice único por `(aggregateId, version)`.
 
-### La Visión: n8n como Motor de Sagas
+### WRITE vs READ (la confusión más habitual)
 
-El objetivo arquitectónico es delegar la orquestación a una herramienta externa especializada (**n8n**). Este actuará como una Saga asíncrona que gestiona el workflow completo "End-to-End":
+- **Al guardar (WRITE)**: no se hace `SELECT MAX(version)` antes de insertar.
+- **Al cargar (READ/rehidratación)**: sí se consulta MongoDB para reconstruir el agregado (snapshot + eventos).
+- **Tras reiniciar servidores**: no se pierde la versión real, porque se recupera al rehidratar desde MongoDB.
 
-1.  **Detectar**: Escuchar que ha entrado un nuevo pedido (polling o webhook del evento `BookingWizardCompleted`).
-2.  **Actuar**: Disparar la generación de cotizaciones (`GenerateQuotesCommand`).
-3.  **Comunicar**: Orquestar el envío de e-mails con las propuestas al cliente.
-4.  **Finalizar**: Actualizar el estado del pedido a "Procesado" una vez completado el ciclo.
+Piensa en esto:
 
-Este enfoque permite modificar el flujo de negocio (ej. añadir retardos, condiciones o ramas) visualmente sin necesidad de re-desplegar los microservicios del backend.
+- Guardar = "intento escribir el siguiente evento con una versión concreta".
+- Cargar = "reconstruyo en qué versión iba este agregado".
+
+### Regla exacta usada al persistir en este código
+
+En `EventSourcingRepository::save()`:
+
+`versionBase = aggregate.getVersion() - count(aggregate.getRecordedEvents())`
+
+Después, por cada evento nuevo:
+
+1. `versionBase++`
+2. esa versión se asigna al `StoredEvent`
+3. se hace `insertOne` en MongoDB
+
+Si Mongo devuelve duplicado (`11000`) por el índice único `(aggregateId, version)`, se traduce a `ConcurrencyException`.
+
+### Caso real de esta demo: `BookingWizardCompleted`
+
+Para `Booking`, el `aggregateId` es el `bookingId` que manda el cliente.
+
+Flujo cuando llega una petición nueva:
+
+1. El agregado `Booking` nace en versión `0`.
+2. `Booking::submit(...)` genera 1 evento (`BookingWizardCompleted`) y en memoria queda versión `1`.
+3. Al guardar, se intenta insertar `(aggregateId=bookingId, version=1)`.
+
+Si llega la **misma petición** otra vez (mismo `bookingId`):
+
+1. Se vuelve a construir un agregado nuevo en memoria.
+2. Se vuelve a intentar insertar `version=1` para ese mismo `aggregateId`.
+3. Mongo rechaza por índice único.
+4. El handler captura `ConcurrencyException` y sale en silencio (idempotencia EAFP).
+
+Conclusión para este caso de uso actual:
+
+- Para un `bookingId` concreto, en eventos de `Booking` queda como máximo la versión `1`.
+- El reintento **no** se convierte en versión `2`.
+
+### ¿Y si entran dos requests a dos servidores distintos?
+
+Mismo resultado: ambos servidores pueden intentar escribir `(aggregateId, version=1)` casi a la vez, pero solo uno gana.
+
+- Nodo A inserta primero: OK.
+- Nodo B inserta después: duplicado de clave.
+- Nodo B recibe `ConcurrencyException` y se descarta.
+
+No hace falta bloqueo en memoria compartida: la arbitrariedad la hace la base de datos de forma atómica.
+
+### ¿Cuándo sí verías versión 2, 3, ... en el mismo `Booking`?
+
+Cuando añadas **más comandos/eventos sobre el mismo agregado** (mismo `bookingId`).
+
+Ejemplo didáctico (paso a paso):
+
+1. Ya existe `BookingWizardCompleted` en `version=1` para `bookingId=ABC`.
+2. Llega un nuevo comando para ese mismo agregado: `ConfirmBookingPaymentCommand(bookingId=ABC)`.
+3. El sistema rehidrata `Booking(ABC)` desde eventos y evalúa su estado actual.
+4. Si la regla de negocio se cumple, emite `BookingPaymentConfirmed`.
+5. Ese evento se guarda con `version=2` (mismo `aggregateId=ABC`).
+
+Resultado:
+
+- Primer hecho del agregado: versión `1`.
+- Segundo hecho del mismo agregado: versión `2`.
+- Tercer hecho del mismo agregado: versión `3`.
+
+Si repites el comando de pago por error de red:
+
+- Lo correcto es bloquearlo por regla de dominio ("ya está pagado") o por idempotencia de comando.
+- En ambos casos, no debería aparecer un segundo `BookingPaymentConfirmed`.
+
+### Quién define el `aggregateId` en cada agregado (en esta POC)
+
+- **Booking**: UUID enviado por cliente.
+- **User**: UUID v5 determinístico a partir de email normalizado.
+- **Product**: UUID v7 generado en backend.
+
+Recordatorio final: `aggregateId` por sí solo **no** es único en `events` (debe permitir múltiples eventos por agregado). La unicidad que protege concurrencia es la pareja `(aggregateId, version)`.
 
 ---
 
@@ -177,51 +256,21 @@ Este enfoque permite modificar el flujo de negocio (ej. añadir retardos, condic
 
 ---
 
-## 8. Anexo: Cómo se calcula la versión previa del Agregado
+## 8. El Futuro: Orquestación con Sagas (Process Managers)
 
-Este proyecto usa versionado optimista por agregado y no hace una consulta previa tipo "SELECT MAX(version)" antes de guardar.
+Aunque el núcleo del sistema (PHP) es agnóstico y puramente reactivo, un proceso de negocio real necesita un "director de orquesta" que coordine pasos entre dominios. En DDD y Event Sourcing, ese rol lo cumple la **Saga**.
 
-### En simple (muy importante)
+### ¿Por qué no hay una Saga en el código PHP?
 
-- **Al guardar (WRITE)**: no se hace `SELECT MAX(version)` ni `SELECT COUNT(*)`.
-- **Al cargar (READ/rehidratación)**: sí se hacen queries en MongoDB para saber desde qué versión continuar.
-- **Tras reiniciar el sistema**: la memoria se pierde, así que la versión se recupera leyendo MongoDB (snapshot + eventos).
+Actualmente no existe una clase `BookingSaga` en el backend. Es intencional para mantener el **desacoplamiento total**: el módulo de Reservas no debe conocer al módulo de Cotizaciones.
 
-Piensa en esto:
+### La visión: n8n como motor de Sagas
 
-- Guardar = "escribo el siguiente número que ya traigo en el agregado".
-- Cargar = "leo Mongo para reconstruir en qué número iba".
+El objetivo arquitectónico es delegar la orquestación a una herramienta externa especializada (**n8n**). Actuaría como una Saga asíncrona para gestionar el flujo end-to-end:
 
-### Regla exacta usada al persistir
+1.  **Detectar**: escuchar un nuevo pedido (polling o webhook de `BookingWizardCompleted`).
+2.  **Actuar**: disparar la generación de cotizaciones (`GenerateQuotesCommand`).
+3.  **Comunicar**: orquestar el envío de e-mails al cliente.
+4.  **Finalizar**: actualizar el estado del pedido a "Procesado" al completar el ciclo.
 
-En `EventSourcingRepository::save()` la versión base se calcula así:
-
-`versionBase = aggregate.getVersion() - count(aggregate.getRecordedEvents())`
-
-Después, por cada evento nuevo en memoria:
-
-1. Se incrementa `versionBase` en 1.
-2. Ese valor se asigna como `version` del `StoredEvent`.
-3. Se inserta el evento en MongoDB.
-
-### Qué significa en la práctica
-
-- **Agregado nuevo**: arranca en versión `0`. Si genera 1 evento de creación, se guarda como versión `1`.
-- **Agregado existente**: se rehidrata con su versión actual (desde snapshot + delta de eventos). Si estaba en versión `N`, los nuevos eventos se guardan como `N+1`, `N+2`, etc.
-
-### Dónde se garantiza la concurrencia
-
-MongoDB tiene índice único por `(aggregateId, version)`.
-
-- Si dos procesos intentan guardar la misma versión del mismo agregado, uno inserta y el otro falla con duplicado de clave.
-- Esa colisión se traduce a `ConcurrencyException`, lo que implementa control de concurrencia optimista e idempotencia.
-
-### Quién define el `aggregateId` en cada caso
-
-En este proyecto, el origen del `aggregateId` depende del agregado:
-
-- **Booking**: viene del cliente (UUID enviado en el comando de creación).
-- **User**: lo calcula el backend como UUID v5 determinístico a partir del email normalizado.
-- **Product**: lo genera el backend como UUID v7 al crear el producto.
-
-Importante: en la colección de eventos, `aggregateId` por sí solo no es único (debe permitir múltiples eventos por agregado). La unicidad se garantiza por la pareja `(aggregateId, version)`.
+Este enfoque permite cambiar el flujo de negocio (retardos, condiciones, ramas) de forma visual sin re-desplegar los microservicios del backend.

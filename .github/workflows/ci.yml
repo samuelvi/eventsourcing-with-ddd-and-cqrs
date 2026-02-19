@@ -60,9 +60,6 @@ jobs:
             - name: Install Frontend Dependencies
               run: npm ci
 
-            - name: Build Frontend Assets for Functional Tests
-              run: npx vite build
-
             - name: PHPStan Analysis (Level 9)
               run: vendor/bin/phpstan analyse --memory-limit=1G
 
@@ -77,7 +74,7 @@ jobs:
                   APP_ENV: test
                   APP_SECRET: 'c0d3b4s3'
 
-            - name: Run Unit & Functional Tests
+            - name: Run Unit Tests
               run: bin/phpunit
               env:
                   SYMFONY_DEPRECATIONS_HELPER: 'max[self]=0'

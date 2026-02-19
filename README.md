@@ -74,7 +74,7 @@ Nota importante:
 
 ## 3) Ejecución de tests
 
-Suite PHP (PHPUnit: unitarios + funcionales):
+Suite PHP (PHPUnit: unitarios):
 
 ```bash
 make test-unit
@@ -91,6 +91,12 @@ E2E headless (Playwright + Gherkin):
 ```bash
 make test-e2e
 ```
+
+Nota sobre `npx bddgen`:
+
+- Los targets E2E ejecutan internamente `npx bddgen` antes de `playwright test`.
+- `bddgen` transforma los `.feature` (Gherkin) + `*.steps.ts` en tests ejecutables para Playwright.
+- Sin ese paso de generación, Playwright no ejecuta escenarios BDD.
 
 E2E modo UI:
 
@@ -115,6 +121,12 @@ Reporte Playwright:
 ```bash
 make test-e2e-report
 ```
+
+Comportamientos implícitos de la suite E2E (aprendizaje rápido):
+
+- Los escenarios con etiqueta `@reset` limpian el estado vía `/api/test/reset-db-empty` antes de ejecutarse.
+- La URL base se toma de `PLAYWRIGHT_BASE_URL` (si no existe, usa `http://localhost:9080`).
+- En CI hay reintentos automáticos y las features se ejecutan de forma secuencial dentro del worker configurado.
 
 ## 4) Comandos Docker y utilidades
 

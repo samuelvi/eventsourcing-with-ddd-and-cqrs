@@ -8,31 +8,43 @@ POC de reservas con Event Sourcing usando Symfony 7.2, PHP 8.4, API Platform 3.4
 - Frontend SPA servido por Symfony con assets Vite.
 - Entornos Docker separados para `dev` y `test`.
 
-## Documentación técnica ampliada
+## Documentación técnica
 
-Para explicación profunda de arquitectura, decisiones técnicas, flujo de reservas, snapshots, consistencia eventual y roadmap de sagas/orquestación:
+Para arquitectura, decisiones técnicas, flujo de reservas, snapshots, consistencia eventual y roadmap de sagas/orquestación:
 
 - `TALK.md`
 
 Este `README.md` está enfocado en operación diaria (arranque, tests y comandos).
 
-## Quick start
+## Flujo recomendado (rápido)
 
-Inicialización completa de desarrollo:
+1. Levantar entorno de desarrollo:
 
 ```bash
 make dev-init
 ```
 
-Alias compatible:
+2. Levantar entorno de pruebas:
 
 ```bash
-make init
+make test-init
 ```
 
-## Flujo recomendado de inicialización
+3. Ejecutar tests unitarios:
 
-## 1) Desarrollo (DEV)
+```bash
+make test
+```
+
+4. Ejecutar E2E:
+
+```bash
+make test-e2e
+```
+
+## Inicialización de entornos
+
+### DEV
 
 Comando principal:
 
@@ -40,7 +52,13 @@ Comando principal:
 make dev-init
 ```
 
-Qué ejecuta (en orden):
+Alias equivalente:
+
+```bash
+make init
+```
+
+Secuencia:
 
 1. `dev-down`
 2. `dev-build`
@@ -50,7 +68,7 @@ Qué ejecuta (en orden):
 6. `init-front`
 7. `load-fixtures`
 
-## 2) Pruebas (TEST)
+### TEST
 
 Comando principal:
 
@@ -58,23 +76,23 @@ Comando principal:
 make test-init
 ```
 
-Qué ejecuta (en orden):
+Secuencia:
 
 1. `test-down`
 2. `test-build`
-3. `test-up` (incluye `build-front` para compilar assets Vite de producción)
+3. `test-up` (incluye `build-front`)
 4. `test-wait`
 5. `setup-api-test`
 6. `load-fixtures-test`
 
-Nota importante:
+Nota:
 
-- En el entorno `test` (http://localhost:9080) no existe Vite dev server.
+- En `test` (`http://localhost:9080`) no hay Vite dev server.
 - Por eso `test-up` compila frontend con `npx vite build` antes de levantar contenedores.
 
-## 3) Ejecución de tests
+## Ejecución de tests
 
-Suite PHP (PHPUnit: unitarios):
+PHPUnit (unitarios):
 
 ```bash
 make test-unit
@@ -86,17 +104,11 @@ Alias corto:
 make test
 ```
 
-E2E headless (Playwright + Gherkin):
+E2E headless (Playwright + Gherkin + Playwright BDD):
 
 ```bash
 make test-e2e
 ```
-
-Nota sobre `npx bddgen`:
-
-- Los targets E2E ejecutan internamente `npx bddgen` antes de `playwright test`.
-- `bddgen` transforma los `.feature` (Gherkin) + `*.steps.ts` en tests ejecutables para Playwright.
-- Sin ese paso de generación, Playwright no ejecuta escenarios BDD.
 
 E2E modo UI:
 
@@ -110,7 +122,7 @@ E2E modo debug:
 make test-e2e-debug
 ```
 
-Todo (suite PHP + e2e):
+Suite completa (PHP + E2E):
 
 ```bash
 make test-all
@@ -122,13 +134,21 @@ Reporte Playwright:
 make test-e2e-report
 ```
 
-Comportamientos implícitos de la suite E2E (aprendizaje rápido):
+### Cómo encaja `npx bddgen`
 
-- Los escenarios con etiqueta `@reset` limpian el estado vía `/api/test/reset-db-empty` antes de ejecutarse.
-- La URL base se toma de `PLAYWRIGHT_BASE_URL` (si no existe, usa `http://localhost:9080`).
-- En CI hay reintentos automáticos y las features se ejecutan de forma secuencial dentro del worker configurado.
+Los targets E2E ejecutan internamente `npx bddgen` antes de `playwright test`.
 
-## 4) Comandos Docker y utilidades
+- `bddgen` transforma los `.feature` (Gherkin) y `*.steps.ts` en tests ejecutables para Playwright.
+- Sin ese paso de generación, Playwright no ejecuta escenarios BDD.
+
+### Comportamientos implícitos en E2E
+
+- `@reset`: limpia estado vía `/api/test/reset-db-empty` antes del escenario.
+- `@no-reset`: fuerza reutilizar estado (sin limpieza), útil para escenarios encadenados.
+- `PLAYWRIGHT_BASE_URL`: define la base URL (fallback: `http://localhost:9080`).
+- En CI hay reintentos automáticos y ejecución secuencial según la configuración de workers/features.
+
+## Comandos Docker y utilidades
 
 Entorno dev:
 
@@ -174,11 +194,11 @@ DEV:
 
 TEST:
 
-- App/API test: http://localhost:9080/
-- Adminer test: http://localhost:9081/
-- n8n test: http://localhost:9082/
+- App/API: http://localhost:9080/
+- Adminer: http://localhost:9081/
+- n8n: http://localhost:9082/
 
 ## Notas
 
-- Si cambias assets/frontend y vas a validar en `:9080`, usa `make test-init` o al menos `make test-up` para asegurar build Vite actualizado.
+- Si cambias frontend y validas en `:9080`, usa `make test-init` o al menos `make test-up` para asegurar build Vite actualizado.
 - La referencia arquitectónica principal para sesiones técnicas y de presentación es `TALK.md`.

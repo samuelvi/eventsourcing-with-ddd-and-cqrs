@@ -64,7 +64,8 @@ final readonly class BookingProvider implements ProviderInterface
         $user = UserEntity::hydrate(
             $userRow['name'],
             $userRow['email'],
-            Uuid::fromString($userRow['id'])
+            Uuid::fromString($userRow['id']),
+            isset($userRow['created_at']) ? new \DateTimeImmutable(TypeAssert::string($userRow['created_at'])) : null
         );
         
         return BookingEntity::hydrate(

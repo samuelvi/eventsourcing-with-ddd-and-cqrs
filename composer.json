@@ -46,7 +46,8 @@
         "phpstan/phpstan-doctrine": "^2.0",
         "phpstan/phpstan-symfony": "^2.0",
         "phpunit/phpunit": "^13.0",
-        "symfony/maker-bundle": "^1.60"
+        "symfony/maker-bundle": "^1.60",
+        "symfony/web-profiler-bundle": "^7.4"
     },
     "config": {
         "allow-plugins": {

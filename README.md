@@ -16,6 +16,46 @@ Para arquitectura, decisiones técnicas, flujo de reservas, snapshots, consisten
 
 Este `README.md` está enfocado en operación diaria (arranque, tests y comandos).
 
+## Herramienta Symfony (CLI)
+
+La tool de Symfony que buscas es la CLI `symfony`.
+
+En este proyecto no viene instalada por defecto, así que si quieres usarla:
+
+```bash
+curl -sS https://get.symfony.com/cli/installer | bash
+export PATH="$HOME/.symfony5/bin:$PATH"
+```
+
+Comprueba que quedó disponible con:
+
+```bash
+symfony --version
+```
+
+Si quieres, también la puedo integrar con un target del `Makefile` para lanzarla desde aquí.
+
+## Symfony Profiler (DEV)
+
+Ya instalé el Web Profiler para `dev` (`symfony/web-profiler-bundle`) y quedaron sus rutas/ajustes en:
+
+- `config/bundles.php`
+- `config/packages/web_profiler.yaml`
+- `config/routes/web_profiler.yaml`
+
+Con `APP_ENV=dev` y `APP_DEBUG=1` (como en `docker/dev/docker-compose.yaml`), debes ver la barra en respuestas HTML:
+
+- Toolbar: `http://localhost:8080/_wdt/{token}` (el token lo da la barra o entra por `_profiler`)
+- Panel: `http://localhost:8080/_profiler`
+
+Si no aparece, intenta:
+
+```bash
+make dev-down && make dev-up
+```
+
+y vuelve a abrir una respuesta HTML desde la app (el profiler no suele mostrarse en respuestas JSON crudas de API).
+
 ## Flujo recomendado (rápido)
 
 1. Levantar entorno de desarrollo:

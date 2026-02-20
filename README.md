@@ -197,8 +197,15 @@ TEST:
 - App/API: http://localhost:9080/
 - Adminer: http://localhost:9081/
 - n8n: http://localhost:9082/
+- Mongo Express: http://localhost:9083/
+
+Credenciales Mongo Express (dev y test):
+
+- Usuario: `user`
+- Password: `password`
 
 ## Notas
 
 - Si cambias frontend y validas en `:9080`, usa `make test-init` o al menos `make test-up` para asegurar build Vite actualizado.
+- Si necesitas levantar solo Mongo Express en test: `docker compose -f docker/test/docker-compose.yaml up -d mongo-express-test`.
 - La referencia arquitectónica principal para sesiones técnicas y de presentación es `TALK.md`.

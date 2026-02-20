@@ -41,8 +41,22 @@ final class DemoControlController extends AbstractController
     #[Route('/api/demo/rebuild', methods: ['POST'])]
     public function rebuild(): Response
     {
-        $processedCount = $this->architectureService->rebuild();
+        $processedCount = $this->architectureService->rebuildFromMongo();
         return new JsonResponse(['status' => 'success', 'processed' => $processedCount]);
+    }
+
+    #[Route('/api/demo/rebuild-from-mongo', methods: ['POST'])]
+    public function rebuildFromMongo(): Response
+    {
+        $processedCount = $this->architectureService->rebuildFromMongo();
+        return new JsonResponse(['status' => 'success', 'processed' => $processedCount]);
+    }
+
+    #[Route('/api/demo/clear-transactional', methods: ['POST'])]
+    public function clearTransactionalData(): Response
+    {
+        $this->architectureService->clearTransactionalData();
+        return new JsonResponse(['status' => 'success']);
     }
 
     #[Route('/api/demo/stats', methods: ['GET'])]

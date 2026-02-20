@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -141,15 +141,12 @@ export function DemoFlow() {
         refetchInterval: 2000
     });
 
-    const eventTypeCounts = events.reduce(
-        (acc, event) => {
-            const rawType = String(event.eventType || '');
-            const eventType = rawType.split('\\').pop() || rawType;
-            acc[eventType] = (acc[eventType] || 0) + 1;
-            return acc;
-        },
-        {} as Record<string, number>
-    );
+    const eventTypeCounts = events.reduce<Record<string, number>>((acc, event) => {
+        const rawType = String(event.eventType || '');
+        const eventType = rawType.split('\\').pop() || rawType;
+        acc[eventType] = (acc[eventType] || 0) + 1;
+        return acc;
+    }, {});
 
     const expectedUserRecords = eventTypeCounts.UserRegistered || 0;
     const expectedBookingRecords = eventTypeCounts.BookingWizardCompleted || 0;
@@ -202,16 +199,28 @@ export function DemoFlow() {
         onError: () => setMessage('Error registering user')
     });
 
-    const rebuildMutation = useMutation({
+    const rebuildFromMongoMutation = useMutation({
         mutationFn: async () => {
-            const res = await fetch('/api/demo/rebuild', { method: 'POST' });
+            const res = await fetch('/api/demo/rebuild-from-mongo', { method: 'POST' });
             if (!res.ok) throw new Error('Rebuild failed');
         },
         onSuccess: () => {
             queryClient.invalidateQueries();
-            setMessage('Consistency restored');
+            setMessage('PostgreSQL rebuilt from Mongo event history.');
         },
         onError: () => setMessage('Sync failed')
+    });
+
+    const clearTransactionalMutation = useMutation({
+        mutationFn: async () => {
+            const res = await fetch('/api/demo/clear-transactional', { method: 'POST' });
+            if (!res.ok) throw new Error('Clear failed');
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries();
+            setMessage('PostgreSQL transactional data cleared.');
+        },
+        onError: () => setMessage('Clear transactional data failed')
     });
 
     const resetMutation = useMutation({
@@ -248,6 +257,7 @@ export function DemoFlow() {
         const name = `Pure User ${Math.floor(Math.random() * 1000)}`;
         const email = `user${Math.floor(Math.random() * 1000)}@pure.com`;
         createUserMutation.mutate({
+            id: uuidv4(),
             name: name,
             email: email
         });
@@ -255,7 +265,12 @@ export function DemoFlow() {
 
     const runRebuild = () => {
         setMessage('Replaying history...');
-        rebuildMutation.mutate();
+        rebuildFromMongoMutation.mutate();
+    };
+
+    const clearTransactionalData = () => {
+        setMessage('Clearing PostgreSQL transactional data...');
+        clearTransactionalMutation.mutate();
     };
 
     const executeReset = () => {
@@ -273,7 +288,8 @@ export function DemoFlow() {
         toggleMutation.isPending ||
         createBookingMutation.isPending ||
         createUserMutation.isPending ||
-        rebuildMutation.isPending ||
+        rebuildFromMongoMutation.isPending ||
+        clearTransactionalMutation.isPending ||
         resetMutation.isPending;
 
     const DataList = ({
@@ -741,6 +757,67 @@ export function DemoFlow() {
                                 {message}
                             </div>
                         )}
+                    </div>
+
+                    <div
+                        style={{
+                            backgroundColor: '#fff',
+                            padding: '24px',
+                            borderRadius: '24px',
+                            border: '1px solid #e5e7eb',
+                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+                        }}
+                    >
+                        <h3
+                            style={{
+                                marginTop: 0,
+                                marginBottom: '8px',
+                                fontSize: '16px',
+                                fontWeight: 600
+                            }}
+                        >
+                            PostgreSQL Recovery
+                        </h3>
+                        <p style={{ margin: '0 0 16px', color: '#6b7280', fontSize: '13px' }}>
+                            Clear only transactional data in PostgreSQL, then rebuild projections
+                            from Mongo event history.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <button
+                                onClick={clearTransactionalData}
+                                disabled={loading}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    fontSize: '13px',
+                                    backgroundColor: '#fff',
+                                    color: '#111827',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600
+                                }}
+                            >
+                                Clear Transactional Data (Postgres)
+                            </button>
+                            <button
+                                onClick={runRebuild}
+                                disabled={loading}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    fontSize: '13px',
+                                    backgroundColor: '#111827',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600
+                                }}
+                            >
+                                Rebuild from Mongo (Events)
+                            </button>
+                        </div>
                     </div>
                 </div>
 

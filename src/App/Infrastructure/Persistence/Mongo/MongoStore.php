@@ -72,6 +72,24 @@ final readonly class MongoStore
         return $events;
     }
 
+    /**
+     * @return array<StoredEvent>
+     */
+    public function findEventsForReplay(): array
+    {
+        $cursor = $this->mongoClient->getDatabase()->selectCollection('events')->find(
+            [],
+            ['sort' => ['occurredOn' => 1, 'aggregateId' => 1, 'version' => 1]]
+        );
+
+        $events = [];
+        foreach ($cursor as $doc) {
+            $events[] = StoredEvent::fromArray($this->toArrayFromDoc($doc));
+        }
+
+        return $events;
+    }
+
     public function countEvents(): int
     {
         return $this->mongoClient->getDatabase()->selectCollection('events')->countDocuments();

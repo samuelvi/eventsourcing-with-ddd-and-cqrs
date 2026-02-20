@@ -99,17 +99,27 @@ final readonly class ArchitectureControlService
 
     public function rebuild(): int
     {
+        return $this->rebuildFromMongo();
+    }
+
+    public function clearTransactionalData(): void
+    {
+        $this->readEntityManager->execute('TRUNCATE users, bookings, products, menus, suppliers, quotes RESTART IDENTITY CASCADE');
+    }
+
+    public function rebuildFromMongo(): int
+    {
         // 1. Force both toggles back to enabled for the rebuild process
         $this->enableAll();
 
         // 2. Clear SQL Read Models
-        $this->readEntityManager->execute('TRUNCATE users, bookings, quotes RESTART IDENTITY CASCADE');
+        $this->clearTransactionalData();
         
         // 3. Clear Mongo Checkpoints (KEEP EVENTS)
         $this->mongoStore->clearCheckpoints();
 
-        // 4. Fetch all events from Mongo
-        $events = $this->mongoStore->findEvents();
+        // 4. Fetch all events from Mongo in chronological order for deterministic replay
+        $events = $this->mongoStore->findEventsForReplay();
 
         foreach ($events as $storedEvent) {
             $event = $this->serializer->deserialize(

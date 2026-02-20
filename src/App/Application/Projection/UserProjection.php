@@ -18,6 +18,9 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class UserProjection
 {
+    private const CACHE_KEY_MASTER = 'demo_projections_enabled';
+    private const CACHE_KEY_USER = 'demo_user_projections_enabled';
+
     public function __construct(
         private UserWriteRepositoryInterface $userWriteRepository,
         private MongoStore $mongoStore,
@@ -49,8 +52,7 @@ final readonly class UserProjection
     #[AsMessageHandler(priority: 10)]
     public function onUserProfileUpdated(UserProfileUpdated $event): void
     {
-        $enabled = $this->cache->get('demo_user_projections_enabled', fn() => true);
-        if (!$enabled) {
+        if (!$this->isProjectionEnabled()) {
             return;
         }
 
@@ -75,8 +77,7 @@ final readonly class UserProjection
     #[AsMessageHandler(priority: 10)]
     public function onUserDeleted(UserDeleted $event): void
     {
-        $enabled = $this->cache->get('demo_user_projections_enabled', fn() => true);
-        if (!$enabled) {
+        if (!$this->isProjectionEnabled()) {
             return;
         }
 
@@ -90,8 +91,7 @@ final readonly class UserProjection
 
     private function handleUserPersistence(string $userId, string $name, string $email, \DateTimeImmutable $createdAt): void
     {
-        $enabled = $this->cache->get('demo_user_projections_enabled', fn() => true);
-        if (!$enabled) {
+        if (!$this->isProjectionEnabled()) {
             return;
         }
 
@@ -121,5 +121,13 @@ final readonly class UserProjection
         }
         $checkpoint->update(Uuid::fromString($lastEventId));
         $this->mongoStore->saveCheckpoint($checkpoint);
+    }
+
+    private function isProjectionEnabled(): bool
+    {
+        $master = $this->cache->get(self::CACHE_KEY_MASTER, fn() => true);
+        $user = $this->cache->get(self::CACHE_KEY_USER, fn() => true);
+
+        return $master && $user;
     }
 }

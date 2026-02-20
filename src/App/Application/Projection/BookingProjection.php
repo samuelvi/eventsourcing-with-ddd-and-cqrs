@@ -18,6 +18,9 @@ use Symfony\Contracts\Cache\CacheInterface;
 #[AsMessageHandler]
 final readonly class BookingProjection
 {
+    private const CACHE_KEY_MASTER = 'demo_projections_enabled';
+    private const CACHE_KEY_BOOKING = 'demo_booking_projections_enabled';
+
     public function __construct(
         private BookingWriteRepositoryInterface $bookingWriteRepository,
         private BookingReadRepositoryInterface $bookingReadRepository,
@@ -28,9 +31,8 @@ final readonly class BookingProjection
 
     public function __invoke(BookingWizardCompleted $event): void
     {
-        // DEMO MODE: Check if booking projections are enabled
-        $enabled = $this->cache->get('demo_booking_projections_enabled', fn() => true);
-        if (!$enabled) {
+        // DEMO MODE: projection is active only if both master and booking switches are active.
+        if (!$this->isProjectionEnabled()) {
             return;
         }
 
@@ -72,5 +74,13 @@ final readonly class BookingProjection
         }
         $checkpoint->update(Uuid::fromString($event->bookingId));
         $this->mongoStore->saveCheckpoint($checkpoint);
+    }
+
+    private function isProjectionEnabled(): bool
+    {
+        $master = $this->cache->get(self::CACHE_KEY_MASTER, fn() => true);
+        $booking = $this->cache->get(self::CACHE_KEY_BOOKING, fn() => true);
+
+        return $master && $booking;
     }
 }

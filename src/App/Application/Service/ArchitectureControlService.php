@@ -104,7 +104,8 @@ final readonly class ArchitectureControlService
 
     public function clearTransactionalData(): void
     {
-        $this->readEntityManager->execute('TRUNCATE users, bookings, products, menus, suppliers, quotes RESTART IDENTITY CASCADE');
+        // Keep catalog/quote tables intact for demo recovery flows.
+        $this->readEntityManager->execute('TRUNCATE users, bookings RESTART IDENTITY CASCADE');
     }
 
     public function rebuildFromMongo(): int

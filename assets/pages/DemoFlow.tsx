@@ -187,7 +187,10 @@ export function DemoFlow() {
         mutationFn: async (payload: Record<string, unknown>) => {
             const res = await fetch('/api/users', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/ld+json',
+                    Accept: 'application/ld+json'
+                },
                 body: JSON.stringify(payload)
             });
             if (!res.ok) throw new Error('Failed');

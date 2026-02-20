@@ -85,6 +85,20 @@ El sistema utiliza proyecciones especializadas para transformar hechos en vistas
     - **Relajación de Constraints (Eventual Consistency):** Eliminar las Foreign Keys físicas en las tablas de lectura, confiando en que la integridad ya se ha validado en el Write Model (MongoDB) y aceptando una inconsistencia temporal de milisegundos en la vista SQL.
 
 2.  **Checkpointing**: Cada proyección guarda su propio "marcador" en MongoDB. Esto permite saber qué evento fue el último procesado con éxito, facilitando la recuperación tras un fallo y asegurando que ningún evento se procese dos veces.
+    - Qué es exactamente un checkpoint:
+        - Un documento por proyección (ej. `user_projection`, `booking_projection`).
+        - Guarda el identificador del último evento aplicado con éxito por esa proyección.
+        - Vive en la colección `checkpoints` de MongoDB (separado de `events` y `snapshots`).
+        - Punto clave: se actualiza en el **Read Side** (al final de un handler de proyección exitoso), **no** en el `save()` del agregado en el Write Side.
+    - Para qué se usa en operación:
+        - **Reanudación tras caída:** al reiniciar, la proyección continúa desde su último checkpoint.
+        - **Idempotencia operativa:** evita reprocesar trabajo ya confirmado por esa proyección.
+        - **Observabilidad:** permite inspeccionar si una proyección está al día o atrasada.
+    - Ejemplo sencillo:
+        - `user_projection` procesa correctamente `E1`, `E2`, `E3` y actualiza su checkpoint a `E3`.
+        - Durante `E4` hay un fallo (timeout SQL) y el proceso se detiene.
+        - Al recuperarse, el sistema lee checkpoint `E3` y reanuda desde `E4` (no vuelve a ejecutar `E1..E3`).
+        - Resultado: recuperación más rápida y sin duplicar trabajo ya confirmado.
 
 3.  **Polimorfismo en Lectura (Generalista vs Especialista)**:
     - `ProductProjection` (Generalista): Gestiona el catálogo comercial (nombres, precios, monedas).
@@ -148,6 +162,17 @@ Aquí hay dos recorridos distintos y es importante no mezclarlos:
         - Busca el último snapshot de ese `aggregateId`.
         - Si existe, reconstruye desde snapshot (versión N) y aplica solo eventos posteriores (`version > N`).
         - Si no existe snapshot, reconstruye desde todos los eventos de ese agregado.
+    - Ejemplo numérico explícito:
+        - Estado real en `events`: versiones `1..7` del usuario `U1`.
+        - Último snapshot disponible: `version=5` para `U1`.
+        - Rehidratación para procesar un nuevo comando:
+            - Carga snapshot `v5`.
+            - Lee solo eventos con `version > 5` (o sea `v6` y `v7`).
+            - Aplica ese delta y queda en estado/version real `v7`.
+        - Si el comando genera un evento nuevo, se persiste como `v8`.
+
+![Snapshot + Delta por agregado](docs/images/snapshot-delta-diagram.png)
+
     - Resumen: **Snapshot + Delta de Events** (por agregado).
 
 2.  **Regeneración de proyecciones SQL (Read Model recovery)**

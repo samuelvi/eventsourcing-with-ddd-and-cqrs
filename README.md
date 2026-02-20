@@ -204,6 +204,26 @@ Credenciales Mongo Express (dev y test):
 - Usuario: `user`
 - Password: `password`
 
+## Credenciales PostgreSQL
+
+DEV:
+
+- Host: `postgres-db`
+- Puerto: `5432`
+- Base de datos: `event_sourcing_dev`
+- Usuario: `user`
+- Password: `password`
+- `DATABASE_URL`: `postgresql://user:password@postgres-db:5432/event_sourcing_dev?serverVersion=16&charset=utf8`
+
+TEST:
+
+- Host: `postgres-db-test`
+- Puerto: `5432`
+- Base de datos: `event_sourcing_test`
+- Usuario: `user`
+- Password: `password`
+- `DATABASE_URL`: `postgresql://user:password@postgres-db-test:5432/event_sourcing_test?serverVersion=16&charset=utf8`
+
 ## Notas
 
 - Si cambias frontend y validas en `:9080`, usa `make test-init` o al menos `make test-up` para asegurar build Vite actualizado.

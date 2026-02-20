@@ -11,6 +11,24 @@ Principios de Robert C. Martin (Clean Code) y Martin Fowler (Refactoring) adapta
 
 El código debe leerse como un artículo de periódico: de arriba a abajo, de lo general a lo específico. Este principio es vital en los Step Definitions.
 
+### Regla en clases (orden de métodos)
+
+En una clase, si un método `A` llama a otro método `B` de la misma clase, `B` debe implementarse **después** de `A`.
+Así mantenemos lectura descendente: primero la intención, luego el detalle.
+
+```typescript
+class UserService {
+    updateUserProfile(input: UpdateUserInput): void {
+        this.validateInput(input);
+        // ...
+    }
+
+    private validateInput(input: UpdateUserInput): void {
+        // ...
+    }
+}
+```
+
 ### Orden de un módulo de pasos
 
 ```typescript

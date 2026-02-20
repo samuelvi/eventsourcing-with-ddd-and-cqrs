@@ -2,23 +2,19 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Command;
+namespace App\Application\Dto;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-final class CreateUserCommand
+final class UpdateUserDto
 {
     public function __construct(
         #[Assert\NotBlank]
-        #[Assert\Uuid]
-        public readonly string $id,
-
-        #[Assert\NotBlank]
         #[Assert\Length(min: 2, max: 255)]
-        public readonly string $name,
+        public string $name,
 
         #[Assert\NotBlank]
         #[Assert\Email]
-        public readonly string $email,
+        public string $email,
     ) {}
 }

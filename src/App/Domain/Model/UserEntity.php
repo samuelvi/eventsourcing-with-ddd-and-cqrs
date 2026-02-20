@@ -6,10 +6,15 @@ namespace App\Domain\Model;
 
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Patch;
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use App\Application\Dto\CreateUserDto;
+use App\Application\Dto\UpdateUserDto;
 use App\Infrastructure\ApiPlatform\State\CreateUserProcessor;
+use App\Infrastructure\ApiPlatform\State\UpdateUserProcessor;
+use App\Infrastructure\ApiPlatform\State\DeleteUserProcessor;
 use App\Infrastructure\ApiPlatform\Provider\UserProvider;
 use App\Domain\Shared\NamedConstructorTrait;
 use Doctrine\ORM\Mapping as ORM;
@@ -28,6 +33,17 @@ use Symfony\Component\Validator\Constraints as Assert;
             uriTemplate: '/users',
             input: CreateUserDto::class,
             processor: CreateUserProcessor::class,
+            status: 202
+        ),
+        new Patch(
+            uriTemplate: '/users/{id}',
+            input: UpdateUserDto::class,
+            processor: UpdateUserProcessor::class,
+            status: 202
+        ),
+        new Delete(
+            uriTemplate: '/users/{id}',
+            processor: DeleteUserProcessor::class,
             status: 202
         )
     ],
@@ -53,15 +69,20 @@ class UserEntity
     #[Groups(['user:read'])]
     public string $name;
 
-    private function __construct(string $name, string $email, ?Uuid $id = null)
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    #[Groups(['user:read'])]
+    public ?\DateTimeImmutable $createdAt = null;
+
+    private function __construct(string $name, string $email, ?Uuid $id = null, ?\DateTimeImmutable $createdAt = null)
     {
         $this->id = $id ?? Uuid::v7();
         $this->name = $name;
         $this->email = $email;
+        $this->createdAt = $createdAt;
     }
 
-    public static function hydrate(string $name, string $email, Uuid $id): self
+    public static function hydrate(string $name, string $email, Uuid $id, ?\DateTimeImmutable $createdAt = null): self
     {
-        return new self($name, $email, $id);
+        return new self($name, $email, $id, $createdAt);
     }
 }

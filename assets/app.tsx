@@ -4,38 +4,64 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Wizard } from './pages/Wizard';
 import { DataExplorer } from './pages/DataExplorer';
 import { DemoFlow } from './pages/DemoFlow';
+import { UsersManagement } from './pages/UsersManagement';
 import { Icons } from './components/Icons';
 import { NavButton, PageType } from './components/NavButton';
 
 const queryClient = new QueryClient();
 
+type UsersRouteMode = 'list' | 'create' | 'edit';
+
+type RouteState = {
+    page: PageType;
+    usersMode: UsersRouteMode;
+    userId: string | null;
+};
+
+function resolveRoute(pathname: string): RouteState {
+    if (pathname === '/wizard') {
+        return { page: 'wizard', usersMode: 'list', userId: null };
+    }
+
+    if (pathname === '/explorer') {
+        return { page: 'explorer', usersMode: 'list', userId: null };
+    }
+
+    if (pathname === '/demo') {
+        return { page: 'demo', usersMode: 'list', userId: null };
+    }
+
+    if (pathname === '/users') {
+        return { page: 'users', usersMode: 'list', userId: null };
+    }
+
+    if (pathname === '/users/new') {
+        return { page: 'users', usersMode: 'create', userId: null };
+    }
+
+    const editMatch = pathname.match(/^\/users\/([^/]+)\/edit$/);
+    if (editMatch) {
+        return { page: 'users', usersMode: 'edit', userId: editMatch[1] };
+    }
+
+    return { page: 'home', usersMode: 'list', userId: null };
+}
+
 function App() {
-    const [page, setPage] = useState<PageType>(
-        (window.location.pathname === '/wizard'
-            ? 'wizard'
-            : window.location.pathname === '/explorer'
-              ? 'explorer'
-              : window.location.pathname === '/demo'
-                ? 'demo'
-                : 'home') as PageType
-    );
+    const [route, setRoute] = useState<RouteState>(resolveRoute(window.location.pathname));
 
     useEffect(() => {
         const handlePopState = () => {
-            const path = window.location.pathname;
-            setPage(
-                (path === '/wizard'
-                    ? 'wizard'
-                    : path === '/explorer'
-                      ? 'explorer'
-                      : path === '/demo'
-                        ? 'demo'
-                        : 'home') as PageType
-            );
+            setRoute(resolveRoute(window.location.pathname));
         };
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
+
+    const navigateToPath = (path: string) => {
+        window.history.pushState({}, '', path);
+        setRoute(resolveRoute(path));
+    };
 
     const navigateTo = (newPage: PageType) => {
         const url =
@@ -45,9 +71,10 @@ function App() {
                   ? '/explorer'
                   : newPage === 'demo'
                     ? '/demo'
-                    : '/';
-        window.history.pushState({}, '', url);
-        setPage(newPage);
+                    : newPage === 'users'
+                      ? '/users'
+                      : '/';
+        navigateToPath(url);
     };
 
     return (
@@ -75,34 +102,41 @@ function App() {
                     target="home"
                     label="Overview"
                     icon={Icons.Home}
-                    currentPage={page}
+                    currentPage={route.page}
+                    onNavigate={navigateTo}
+                />
+                <NavButton
+                    target="wizard"
+                    label="Booking"
+                    icon={Icons.Wizard}
+                    currentPage={route.page}
+                    onNavigate={navigateTo}
+                />
+                <NavButton
+                    target="users"
+                    label="Users"
+                    icon={Icons.Users}
+                    currentPage={route.page}
                     onNavigate={navigateTo}
                 />
                 <NavButton
                     target="demo"
                     label="Architecture Monitor"
                     icon={Icons.Demo}
-                    currentPage={page}
-                    onNavigate={navigateTo}
-                />
-                <NavButton
-                    target="wizard"
-                    label="Booking Wizard"
-                    icon={Icons.Wizard}
-                    currentPage={page}
+                    currentPage={route.page}
                     onNavigate={navigateTo}
                 />
                 <NavButton
                     target="explorer"
                     label="Data Explorer"
                     icon={Icons.Explorer}
-                    currentPage={page}
+                    currentPage={route.page}
                     onNavigate={navigateTo}
                 />
             </nav>
 
             <main style={{ padding: '40px' }}>
-                {page === 'home' && (
+                {route.page === 'home' && (
                     <div
                         style={{
                             maxWidth: '800px',
@@ -221,9 +255,16 @@ function App() {
                     </div>
                 )}
 
-                {page === 'wizard' && <Wizard />}
-                {page === 'explorer' && <DataExplorer />}
-                {page === 'demo' && <DemoFlow />}
+                {route.page === 'wizard' && <Wizard />}
+                {route.page === 'explorer' && <DataExplorer />}
+                {route.page === 'demo' && <DemoFlow />}
+                {route.page === 'users' && (
+                    <UsersManagement
+                        mode={route.usersMode}
+                        userId={route.userId}
+                        onNavigate={navigateToPath}
+                    />
+                )}
             </main>
         </div>
     );

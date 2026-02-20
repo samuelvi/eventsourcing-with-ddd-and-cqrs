@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Projection;
 
 use App\Domain\Event\UserRegistered;
+use App\Domain\Event\UserProfileUpdated;
+use App\Domain\Event\UserDeleted;
 use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\UserEntity;
 use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
@@ -28,7 +30,8 @@ final readonly class UserProjection
         $this->handleUserPersistence(
             $event->userId,
             $event->name,
-            $event->email
+            $event->email,
+            $event->occurredOn
         );
     }
 
@@ -38,11 +41,54 @@ final readonly class UserProjection
         $this->handleUserPersistence(
             $event->userId,
             $event->clientName,
-            $event->clientEmail
+            $event->clientEmail,
+            $event->occurredOn
         );
     }
 
-    private function handleUserPersistence(string $userId, string $name, string $email): void
+    #[AsMessageHandler(priority: 10)]
+    public function onUserProfileUpdated(UserProfileUpdated $event): void
+    {
+        $enabled = $this->cache->get('demo_user_projections_enabled', fn() => true);
+        if (!$enabled) {
+            return;
+        }
+
+        $user = $this->userWriteRepository->find($event->userId);
+        if (!$user) {
+            $user = UserEntity::hydrate(
+                name: $event->name,
+                email: $event->email,
+                id: Uuid::fromString($event->userId),
+                createdAt: $event->occurredOn
+            );
+        } else {
+            $user->name = $event->name;
+            $user->email = $event->email;
+            $user->createdAt ??= $event->occurredOn;
+        }
+
+        $this->userWriteRepository->save($user);
+        $this->updateCheckpoint($event->userId);
+    }
+
+    #[AsMessageHandler(priority: 10)]
+    public function onUserDeleted(UserDeleted $event): void
+    {
+        $enabled = $this->cache->get('demo_user_projections_enabled', fn() => true);
+        if (!$enabled) {
+            return;
+        }
+
+        $user = $this->userWriteRepository->find($event->userId);
+        if ($user) {
+            $this->userWriteRepository->remove($user);
+        }
+
+        $this->updateCheckpoint($event->userId);
+    }
+
+    private function handleUserPersistence(string $userId, string $name, string $email, \DateTimeImmutable $createdAt): void
     {
         $enabled = $this->cache->get('demo_user_projections_enabled', fn() => true);
         if (!$enabled) {
@@ -53,7 +99,8 @@ final readonly class UserProjection
             $user = UserEntity::hydrate(
                 name: $name,
                 email: $email,
-                id: Uuid::fromString($userId)
+                id: Uuid::fromString($userId),
+                createdAt: $createdAt
             );
             try {
                 $this->userWriteRepository->save($user);

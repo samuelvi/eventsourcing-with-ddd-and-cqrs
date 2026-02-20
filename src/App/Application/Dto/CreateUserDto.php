@@ -10,6 +10,10 @@ final class CreateUserDto
 {
     public function __construct(
         #[Assert\NotBlank]
+        #[Assert\Uuid]
+        public string $id,
+
+        #[Assert\NotBlank]
         #[Assert\Length(min: 2, max: 255)]
         public string $name,
 

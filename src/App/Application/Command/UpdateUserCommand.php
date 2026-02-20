@@ -6,19 +6,19 @@ namespace App\Application\Command;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-final class CreateUserCommand
+final readonly class UpdateUserCommand
 {
     public function __construct(
         #[Assert\NotBlank]
         #[Assert\Uuid]
-        public readonly string $id,
+        public string $id,
 
         #[Assert\NotBlank]
         #[Assert\Length(min: 2, max: 255)]
-        public readonly string $name,
+        public string $name,
 
         #[Assert\NotBlank]
         #[Assert\Email]
-        public readonly string $email,
+        public string $email,
     ) {}
 }

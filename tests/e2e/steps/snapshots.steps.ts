@@ -28,6 +28,7 @@ When('I create a user aggregate with 5 events', async ({ request }) => {
             Accept: 'application/ld+json'
         },
         data: {
+            id: crypto.randomUUID(),
             name: 'Snapshot User 1',
             email
         }

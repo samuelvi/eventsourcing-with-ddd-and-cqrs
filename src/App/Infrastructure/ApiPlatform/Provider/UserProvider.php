@@ -23,13 +23,14 @@ final readonly class UserProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
         if (isset($uriVariables['id'])) {
-            $data = $this->repository->findById(TypeAssert::string($uriVariables['id']));
+            $data = $this->repository->findById($this->resolveUserId($uriVariables['id']));
             if (!$data) return null;
             
             return UserEntity::hydrate(
                 TypeAssert::string($data['name']), 
                 TypeAssert::string($data['email']), 
-                Uuid::fromString(TypeAssert::string($data['id']))
+                Uuid::fromString(TypeAssert::string($data['id'])),
+                isset($data['created_at']) ? new \DateTimeImmutable(TypeAssert::string($data['created_at'])) : null
             );
         }
 
@@ -39,8 +40,22 @@ final readonly class UserProvider implements ProviderInterface
             return UserEntity::hydrate(
                 TypeAssert::string($row['name']),
                 TypeAssert::string($row['email']),
-                Uuid::fromString(TypeAssert::string($row['id']))
+                Uuid::fromString(TypeAssert::string($row['id'])),
+                isset($row['created_at']) ? new \DateTimeImmutable(TypeAssert::string($row['created_at'])) : null
             );
         }, $data);
+    }
+
+    private function resolveUserId(mixed $id): string
+    {
+        if (is_string($id)) {
+            return $id;
+        }
+
+        if ($id instanceof Uuid) {
+            return $id->toRfc4122();
+        }
+
+        throw new \InvalidArgumentException('User id must be a string or UUID.');
     }
 }

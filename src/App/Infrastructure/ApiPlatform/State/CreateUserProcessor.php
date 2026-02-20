@@ -9,7 +9,6 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Application\Command\CreateUserCommand;
 use App\Application\Dto\CreateUserDto;
 use App\Domain\Model\UserEntity;
-use App\Domain\Shared\Constants;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -27,8 +26,8 @@ final readonly class CreateUserProcessor implements ProcessorInterface
      */
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): UserEntity
     {
-        $id = Uuid::v5(Uuid::fromString(Constants::USER_NAMESPACE), strtolower(trim($data->email)));
-        
+        $id = Uuid::fromString($data->id);
+
         $command = new CreateUserCommand(
             id: $id->toRfc4122(),
             name: $data->name,
@@ -37,13 +36,11 @@ final readonly class CreateUserProcessor implements ProcessorInterface
 
         $this->commandBus->dispatch($command);
 
-        // We return a "Shell" entity. 
-        // Note: The actual entity might not be in DB yet due to async projection.
-        // But for the API response, we return what we know.
         return UserEntity::hydrate(
-            name: $data->name,
-            email: $data->email,
-            id: $id
+            name: trim($data->name),
+            email: strtolower(trim($data->email)),
+            id: $id,
+            createdAt: new \DateTimeImmutable()
         );
     }
 }

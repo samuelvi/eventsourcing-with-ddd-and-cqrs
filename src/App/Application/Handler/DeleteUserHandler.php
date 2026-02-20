@@ -4,39 +4,39 @@ declare(strict_types=1);
 
 namespace App\Application\Handler;
 
-use App\Application\Command\CreateUserCommand;
+use App\Application\Command\DeleteUserCommand;
 use App\Domain\Exception\ConcurrencyException;
 use App\Domain\Model\User;
 use App\Domain\Repository\UserEventStoreRepositoryInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 #[AsMessageHandler]
-final readonly class CreateUserHandler
+final readonly class DeleteUserHandler
 {
     public function __construct(
         private UserEventStoreRepositoryInterface $userRepository,
         private MessageBusInterface $eventBus,
     ) {}
 
-    public function __invoke(CreateUserCommand $command): void
+    public function __invoke(DeleteUserCommand $command): void
     {
-        $email = strtolower(trim($command->email));
         $aggregateId = Uuid::fromString($command->id);
+        $aggregate = $this->userRepository->get($aggregateId);
 
-        $user = User::register(
-            $aggregateId,
-            $command->name,
-            $email
-        );
+        if (!$aggregate instanceof User) {
+            throw new NotFoundHttpException(sprintf('User %s not found.', $command->id));
+        }
 
-        $events = $user->getRecordedEvents();
+        $aggregate->delete();
+        $events = $aggregate->getRecordedEvents();
 
         try {
-            $this->userRepository->save($user);
+            $this->userRepository->save($aggregate);
         } catch (ConcurrencyException) {
-            return;
+            throw new \RuntimeException('Concurrent deletion detected for user aggregate.');
         }
 
         foreach ($events as $event) {

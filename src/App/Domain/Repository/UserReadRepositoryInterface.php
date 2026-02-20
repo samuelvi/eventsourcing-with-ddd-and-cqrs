@@ -7,12 +7,12 @@ namespace App\Domain\Repository;
 interface UserReadRepositoryInterface
 {
     /**
-     * @return array<array{id: string, name: string, email: string}>
+     * @return array<array{id: string, name: string, email: string, created_at: string|null}>
      */
     public function findAllForList(): array;
 
     /**
-     * @return array{id: string, name: string, email: string}|null
+     * @return array{id: string, name: string, email: string, created_at: string|null}|null
      */
     public function findById(string $id): ?array;
 
@@ -23,7 +23,7 @@ interface UserReadRepositoryInterface
     public function exists(string $id): bool;
 
     /**
-     * @return array{id: string, name: string, email: string}|null
+     * @return array{id: string, name: string, email: string, created_at: string|null}|null
      */
     public function findByEmail(string $email): ?array;
 }

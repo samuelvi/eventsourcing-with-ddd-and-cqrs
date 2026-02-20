@@ -17,10 +17,15 @@ Utilizamos **Domain-Driven Design (DDD)** para organizar el código en torno al 
 
 La arquitectura se basa en **CQRS (Command Query Responsibility Segregation)**, con una clara separación entre:
 
-- **Lado de Escritura**: Recibe comandos y produce eventos, garantizando la integridad de los datos.
-- **Lado de Lectura**: Proporciona vistas optimizadas de los datos para consultas rápidas.
+- **Lado de Escritura (Event Store en MongoDB)**: Recibe comandos y produce eventos, garantizando la integridad de los datos.
+- **Lado de Lectura (Vistas en PostgreSQL; checkpoints en MongoDB)**: Proporciona vistas optimizadas de los datos para consultas rápidas.
 
 La persistencia se implementa mediante **Event Sourcing**, donde almacenamos la secuencia completa de eventos que representan cada cambio. Esto ofrece un historial inmutable y reconstruible, y una completa trazabilidad del sistema.
+
+Lectura didáctica útil para este diseño:
+
+- **Escritura (más cerca de ACID)**: Priorizamos la integridad de la decisión de negocio y del evento persistido.
+- **Lectura (más cerca de BASE)**: Priorizamos disponibilidad y rendimiento, aceptando desfases temporales entre MongoDB y PostgreSQL.
 
 Esta combinación de patrones fomenta un sistema robusto, escalable y con responsabilidades bien definidas.
 
@@ -110,6 +115,13 @@ Nota didáctica importante:
 
 La separación entre la escritura y la lectura introduce la **Consistencia Eventual**: un breve periodo de tiempo (milisegundos) en el que el evento ya existe en MongoDB pero aún no se ha reflejado en PostgreSQL.
 
+### ACID vs BASE en esta arquitectura
+
+En esta implementación, no hablamos de "todo ACID" o "todo BASE", sino de un equilibrio:
+
+- **En el Event Store (MongoDB)**: se protege la coherencia del flujo de escritura (hechos inmutables + control de concurrencia optimista).
+- **En las proyecciones (PostgreSQL)**: se acepta una convergencia eventual de la vista para ganar resiliencia y escalabilidad operativa.
+
 ### Gestión de Fallos de Infraestructura
 
 En la pantalla **Architecture Monitor**, podemos simular qué ocurre cuando el sistema de lectura falla:
@@ -125,6 +137,37 @@ Si la base de datos de lectura se pierde o queremos cambiar su estructura, podem
 1.  **Vaciado**: Se borran las tablas de PostgreSQL.
 2.  **Re-procesamiento**: El sistema lee todos los eventos guardados en MongoDB desde el primer día.
 3.  **Restauración**: Los proyectores vuelven a ejecutar cada evento en orden, reconstruyendo la base de datos de PostgreSQL exactamente como estaba, o con un nuevo formato si fuera necesario.
+
+### Detalle exacto: ¿cuándo usamos Snapshots y cuándo Events?
+
+Aquí hay dos recorridos distintos y es importante no mezclarlos:
+
+1.  **Recuperación del estado de un agregado (Write Model, MongoDB)**
+    - Ocurre cuando un handler necesita cargar un agregado para decidir (por ejemplo, actualizar un usuario).
+    - Algoritmo:
+        - Busca el último snapshot de ese `aggregateId`.
+        - Si existe, reconstruye desde snapshot (versión N) y aplica solo eventos posteriores (`version > N`).
+        - Si no existe snapshot, reconstruye desde todos los eventos de ese agregado.
+    - Resumen: **Snapshot + Delta de Events** (por agregado).
+
+2.  **Regeneración de proyecciones SQL (Read Model recovery)**
+    - Ocurre en el flujo de `clear transactional + rebuild from mongo`.
+    - Algoritmo:
+        - Limpia tablas de lectura en PostgreSQL.
+        - Limpia checkpoints de proyección.
+        - Reproduce **todos los eventos** de Mongo en orden cronológico estable.
+    - En este flujo no se parte de snapshots para “atajar” la reconstrucción de SQL; la fuente de verdad para replay es el stream de eventos completo.
+    - Resumen: **Events only** para reconstruir lecturas.
+
+#### Orden temporal en replay: regla crítica
+
+Para que el estado final sea correcto, los eventos deben reprocesarse en orden temporal ascendente y de forma determinista:
+
+- `occurredOn ASC`
+- `aggregateId ASC`
+- `version ASC`
+
+Si se reprocesan al revés (descendente), un evento antiguo puede pisar un estado más nuevo (por ejemplo, terminar en `bb2` en vez de `bb5` para el mismo email).
 
 ---
 
@@ -246,6 +289,8 @@ Recordatorio final: `aggregateId` por sí solo **no** es único en `events` (deb
 ## 7. Listado de Acrónimos
 
 - **API**: Application Programming Interface
+- **ACID**: Atomicity, Consistency, Isolation, Durability
+- **BASE**: Basically Available, Soft state, Eventual consistency
 - **CQRS**: Command Query Responsibility Segregation
 - **CRON**: Command Run On (utilidad para programar tareas)
 - **CRUD**: Create, Read, Update, Delete

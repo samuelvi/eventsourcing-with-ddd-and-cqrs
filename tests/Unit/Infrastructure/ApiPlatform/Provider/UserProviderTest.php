@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Infrastructure\ApiPlatform\Provider;
 
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use App\Domain\Model\UserEntity;
 use App\Domain\Repository\UserReadRepositoryInterface;
 use App\Infrastructure\ApiPlatform\Provider\UserProvider;
 use PHPUnit\Framework\TestCase;
@@ -33,6 +34,7 @@ final class UserProviderTest extends TestCase
 
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
+        $this->assertInstanceOf(UserEntity::class, $result[0]);
         $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]->createdAt);
         $this->assertSame('2026-02-19T10:15:00+00:00', $result[0]->createdAt->format(\DateTimeInterface::ATOM));
     }
@@ -56,6 +58,7 @@ final class UserProviderTest extends TestCase
         $result = $provider->provide(new Get(), ['id' => '01951b27-4f10-7a6c-aea9-d57dc89656f2']);
 
         $this->assertNotNull($result);
+        $this->assertInstanceOf(UserEntity::class, $result);
         $this->assertInstanceOf(\DateTimeImmutable::class, $result->createdAt);
         $this->assertSame('2026-02-19T10:15:00+00:00', $result->createdAt->format(\DateTimeInterface::ATOM));
     }
@@ -80,13 +83,11 @@ final class UserProviderTest extends TestCase
         $result = $provider->provide(new Get(), ['id' => $id]);
 
         $this->assertNotNull($result);
+        $this->assertInstanceOf(UserEntity::class, $result);
         $this->assertSame($id->toRfc4122(), $result->id->toRfc4122());
     }
 }
 
-/**
- * @implements UserReadRepositoryInterface
- */
 final readonly class InMemoryUserReadRepository implements UserReadRepositoryInterface
 {
     /**

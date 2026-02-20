@@ -35,7 +35,7 @@ final readonly class UpdateUserHandler
 
         $nextEmail = strtolower(trim($command->email));
         $duplicate = $this->userReadRepository->findByEmail($nextEmail);
-        if ($duplicate && ($duplicate['id'] ?? null) !== $command->id) {
+        if ($duplicate !== null && $duplicate['id'] !== $command->id) {
             throw new ConflictHttpException('Email is already in use by another user.');
         }
 

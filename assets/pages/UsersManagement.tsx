@@ -53,6 +53,7 @@ export function UsersManagement({ mode, userId, onNavigate }: UsersManagementPro
     const usersQuery = useQuery<UserRow[]>({
         queryKey: ['users-management'],
         enabled: mode === 'list',
+        refetchInterval: mode === 'list' ? 2000 : false,
         queryFn: async () => {
             const response = await fetch('/api/users?t=' + Date.now(), {
                 headers: { Accept: 'application/ld+json' }
@@ -115,7 +116,8 @@ export function UsersManagement({ mode, userId, onNavigate }: UsersManagementPro
                 throw await toApiError(response, 'Unable to create user.');
             }
         },
-        onSuccess: async () => {
+        onSuccess: async (_data, payload) => {
+            await waitForProjectedUser(payload.id, payload.name, payload.email);
             setFlashMessage('User created through event stream.');
             await invalidateUsersData(queryClient);
             onNavigate('/users');
@@ -138,7 +140,8 @@ export function UsersManagement({ mode, userId, onNavigate }: UsersManagementPro
                 throw await toApiError(response, 'Unable to update user.');
             }
         },
-        onSuccess: async () => {
+        onSuccess: async (_data, payload) => {
+            await waitForProjectedUser(payload.id, payload.name, payload.email);
             setFlashMessage('User updated through event stream.');
             await invalidateUsersData(queryClient);
             onNavigate('/users');
@@ -157,7 +160,8 @@ export function UsersManagement({ mode, userId, onNavigate }: UsersManagementPro
                 throw await toApiError(response, 'Unable to delete user.');
             }
         },
-        onSuccess: async () => {
+        onSuccess: async (_data, userId) => {
+            await waitForUserAbsenceInProjection(userId);
             setMessage('User deleted through event stream.');
             await invalidateUsersData(queryClient);
         },
@@ -494,6 +498,54 @@ function getReadableError(error: unknown, fallbackMessage: string): string {
     }
 
     return fallbackMessage;
+}
+
+async function waitForProjectedUser(
+    userId: string,
+    expectedName: string,
+    expectedEmail: string,
+    timeoutMs = 30000
+): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+        try {
+            const response = await fetch(`/api/users/${userId}?t=${Date.now()}`, {
+                headers: { Accept: 'application/ld+json' }
+            });
+
+            if (response.ok) {
+                const user = (await response.json()) as UserRow;
+                if (user.name === expectedName && user.email === expectedEmail) {
+                    return;
+                }
+            }
+        } catch {
+            // Ignore transient network/read-model errors while waiting for async projection.
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+}
+
+async function waitForUserAbsenceInProjection(userId: string, timeoutMs = 30000): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+        try {
+            const response = await fetch(`/api/users/${userId}?t=${Date.now()}`, {
+                headers: { Accept: 'application/ld+json' }
+            });
+
+            if (response.status === 404) {
+                return;
+            }
+        } catch {
+            // Ignore transient network/read-model errors while waiting for async projection.
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
+    }
 }
 
 const sectionHeaderStyle: CSSProperties = {

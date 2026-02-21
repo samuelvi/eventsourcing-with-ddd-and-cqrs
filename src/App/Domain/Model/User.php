@@ -104,4 +104,9 @@ final class User extends AggregateRoot
     {
         return $this->email;
     }
+
+    public function isDeleted(): bool
+    {
+        return $this->deleted;
+    }
 }

@@ -30,3 +30,16 @@ Feature: Users UI Management
     When I click the "Delete User" button
     Then I should see "No users in projection."
     And the event store should contain an event of type "App\\Domain\\Event\\UserDeleted" for that user
+
+  Scenario: Edit user generated from demo booking keeps latest name in users list
+    Given I am on the "/demo" page
+    And I remember the current demo stats
+    When I click the "Generate New Booking" button
+    Then the users count should increase by 1
+
+    When I navigate to "/users"
+    Then I should see "Users Management"
+    When I click the "Edit User" button
+    And I fill in "Name" with "Edited From Demo Flow"
+    And I click the "Save User Changes" button
+    Then the table should contain "Edited From Demo Flow"

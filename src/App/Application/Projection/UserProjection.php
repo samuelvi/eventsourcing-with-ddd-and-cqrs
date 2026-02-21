@@ -8,7 +8,9 @@ use App\Domain\Event\UserRegistered;
 use App\Domain\Event\UserProfileUpdated;
 use App\Domain\Event\UserDeleted;
 use App\Domain\Event\BookingWizardCompleted;
+use App\Domain\Model\User;
 use App\Domain\Model\UserEntity;
+use App\Domain\Repository\UserEventStoreRepositoryInterface;
 use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
 use App\Domain\Repository\UserWriteRepositoryInterface;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
@@ -23,6 +25,7 @@ final readonly class UserProjection
 
     public function __construct(
         private UserWriteRepositoryInterface $userWriteRepository,
+        private UserEventStoreRepositoryInterface $userEventStoreRepository,
         private MongoStore $mongoStore,
         private CacheInterface $cache,
     ) {}
@@ -30,86 +33,57 @@ final readonly class UserProjection
     #[AsMessageHandler(priority: 10)]
     public function onUserRegistered(UserRegistered $event): void
     {
-        $this->handleUserPersistence(
-            $event->userId,
-            $event->name,
-            $event->email,
-            $event->occurredOn
-        );
+        $this->synchronizeFromAggregate($event->userId, $event->occurredOn);
     }
 
     #[AsMessageHandler(priority: 10)]
     public function onBookingWizardCompleted(BookingWizardCompleted $event): void
     {
-        $this->handleUserPersistence(
-            $event->userId,
-            $event->clientName,
-            $event->clientEmail,
-            $event->occurredOn
-        );
+        $this->synchronizeFromAggregate($event->userId, $event->occurredOn);
     }
 
     #[AsMessageHandler(priority: 10)]
     public function onUserProfileUpdated(UserProfileUpdated $event): void
     {
-        if (!$this->isProjectionEnabled()) {
-            return;
-        }
-
-        $user = $this->userWriteRepository->find($event->userId);
-        if (!$user) {
-            $user = UserEntity::hydrate(
-                name: $event->name,
-                email: $event->email,
-                id: Uuid::fromString($event->userId),
-                createdAt: $event->occurredOn
-            );
-        } else {
-            $user->name = $event->name;
-            $user->email = $event->email;
-            $user->createdAt ??= $event->occurredOn;
-        }
-
-        $this->userWriteRepository->save($user);
-        $this->updateCheckpoint($event->userId);
+        $this->synchronizeFromAggregate($event->userId, $event->occurredOn);
     }
 
     #[AsMessageHandler(priority: 10)]
     public function onUserDeleted(UserDeleted $event): void
     {
-        if (!$this->isProjectionEnabled()) {
-            return;
-        }
-
-        $user = $this->userWriteRepository->find($event->userId);
-        if ($user) {
-            $this->userWriteRepository->remove($user);
-        }
-
-        $this->updateCheckpoint($event->userId);
+        $this->synchronizeFromAggregate($event->userId, $event->occurredOn);
     }
 
-    private function handleUserPersistence(string $userId, string $name, string $email, \DateTimeImmutable $createdAt): void
+    private function synchronizeFromAggregate(string $userId, \DateTimeImmutable $fallbackCreatedAt): void
     {
         if (!$this->isProjectionEnabled()) {
             return;
         }
 
-        if (!$this->userWriteRepository->find($userId)) {
-            $user = UserEntity::hydrate(
-                name: $name,
-                email: $email,
-                id: Uuid::fromString($userId),
-                createdAt: $createdAt
-            );
-            try {
-                $this->userWriteRepository->save($user);
-            } catch (\Throwable $e) {
-                // Ignore duplicate key errors at the DB level
+        $aggregate = $this->userEventStoreRepository->get(Uuid::fromString($userId));
+        $existing = $this->userWriteRepository->find($userId);
+
+        if (!$aggregate instanceof User || $aggregate->isDeleted()) {
+            if ($existing) {
+                $this->userWriteRepository->remove($existing);
             }
+
+            $this->updateCheckpoint($userId);
+            return;
         }
 
-        // Update Checkpoint
+        $projected = $existing ?? UserEntity::hydrate(
+            name: $aggregate->getName(),
+            email: $aggregate->getEmail(),
+            id: Uuid::fromString($userId),
+            createdAt: $fallbackCreatedAt
+        );
+
+        $projected->name = $aggregate->getName();
+        $projected->email = $aggregate->getEmail();
+        $projected->createdAt ??= $fallbackCreatedAt;
+
+        $this->userWriteRepository->save($projected);
         $this->updateCheckpoint($userId);
     }
 

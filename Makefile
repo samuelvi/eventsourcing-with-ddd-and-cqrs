@@ -68,9 +68,9 @@ setup-api-test:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test composer install --no-interaction --prefer-dist --no-progress --no-scripts
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:database:create --if-not-exists
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:migrations:migrate --no-interaction
-	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console messenger:setup-transports --no-interaction
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:clear --env=test --no-warmup
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:warmup --env=test
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console messenger:setup-transports --no-interaction
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) restart messenger-worker-test
 
 load-fixtures-test:
@@ -136,6 +136,9 @@ dev-clean:
 	rm -rf docker/dev/postgres/data/*
 	rm -rf docker/dev/postgres-queue/data/*
 	rm -rf docker/dev/mongodb/data/*
+	rm -rf docker/dev/redis/data/*
+	rm -rf docker/dev/kafka/data/*
+	rm -rf docker/dev/redisinsight/data/*
 	@echo "Entorno dev limpiado."
 
 test-logs:
@@ -152,4 +155,7 @@ test-clean:
 	rm -rf docker/test/postgres/data/*
 	rm -rf docker/test/postgres-queue/data/*
 	rm -rf docker/test/mongodb/data/*
+	rm -rf docker/test/redis/data/*
+	rm -rf docker/test/kafka/data/*
+	rm -rf docker/test/redisinsight/data/*
 	@echo "Entorno test limpiado."

@@ -1,10 +1,17 @@
 import React from 'react';
+import { useEffect, useState } from 'react';
 
 type ToolInfo = {
     name: string;
     url: string;
     description: string;
     credentials?: string;
+};
+
+type QueueStats = {
+    backend?: string;
+    async?: number | null;
+    failed?: number | null;
 };
 
 const TOOLS: ToolInfo[] = [
@@ -21,6 +28,18 @@ const TOOLS: ToolInfo[] = [
         description: 'Gestor de base de datos para PostgreSQL (Dominio y Mensajería).',
         credentials:
             'Dominio (postgres-db): user / password. Colas (queue-db): queue_user / queue_password'
+    },
+    {
+        name: 'RedisInsight',
+        url: 'http://localhost:8084/',
+        description: 'Observabilidad de colas Redis Streams.',
+        credentials: 'Sin autenticación (Local Dev). Host Redis: redis, puerto 6379.'
+    },
+    {
+        name: 'Kafka UI',
+        url: 'http://localhost:8085/',
+        description: 'Inspección de topics, consumidores y lag en Kafka.',
+        credentials: 'Sin autenticación (Local Dev). Cluster: local (kafka:9092).'
     },
     {
         name: 'Mongo Express',
@@ -52,6 +71,25 @@ const TOOLS: ToolInfo[] = [
 ];
 
 export function DashboardPanel() {
+    const [queueStats, setQueueStats] = useState<QueueStats | null>(null);
+
+    useEffect(() => {
+        const loadStats = async () => {
+            try {
+                const res = await fetch('/api/demo/stats');
+                if (!res.ok) {
+                    return;
+                }
+                const payload = (await res.json()) as { queue?: QueueStats };
+                setQueueStats(payload.queue ?? null);
+            } catch {
+                // Panel should keep rendering even if stats endpoint is unavailable.
+            }
+        };
+
+        void loadStats();
+    }, []);
+
     return (
         <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '60px' }}>
             <div style={{ marginBottom: '56px' }}>
@@ -69,6 +107,25 @@ export function DashboardPanel() {
                 <p style={{ color: '#78716c', fontSize: '19px' }}>
                     Centralized access to infrastructure, monitoring, and debugging tools.
                 </p>
+                <div
+                    style={{
+                        marginTop: '20px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        background: '#fafaf9',
+                        border: '1px solid #e7e5e4',
+                        borderRadius: '14px',
+                        padding: '10px 14px',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        color: '#44403c',
+                        fontSize: '13px'
+                    }}
+                >
+                    <span>queue.backend={queueStats?.backend ?? 'unknown'}</span>
+                    <span>async={queueStats?.async ?? 'n/a'}</span>
+                    <span>failed={queueStats?.failed ?? 'n/a'}</span>
+                </div>
             </div>
 
             <div

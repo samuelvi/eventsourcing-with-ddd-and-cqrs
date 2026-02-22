@@ -3,6 +3,7 @@ FROM dunglas/frankenphp:php8.4
 # Install supervisor and other system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     supervisor \
+    librdkafka-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install system dependencies and PHP extensions
@@ -11,7 +12,9 @@ RUN install-php-extensions \
     intl \
     zip \
     opcache \
-    mongodb
+    mongodb \
+    redis \
+    rdkafka
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

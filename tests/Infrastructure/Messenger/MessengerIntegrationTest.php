@@ -19,6 +19,7 @@ final class MessengerIntegrationTest extends KernelTestCase
     private AsyncCommandBusInterface $asyncCommandBus;
     private SyncCommandBusInterface $syncCommandBus;
     private Connection $queueConnection;
+    private string $queueBackend;
 
     protected function setUp(): void
     {
@@ -35,6 +36,13 @@ final class MessengerIntegrationTest extends KernelTestCase
         $syncCommandBus = self::getContainer()->get(SyncCommandBusInterface::class);
         self::assertInstanceOf(SyncCommandBusInterface::class, $syncCommandBus);
         $this->syncCommandBus = $syncCommandBus;
+        $rawBackend = $_SERVER['QUEUE_BACKEND'] ?? $_ENV['QUEUE_BACKEND'] ?? 'postgres';
+        $this->queueBackend = strtolower(is_string($rawBackend) ? $rawBackend : 'postgres');
+
+        if ($this->queueBackend !== 'postgres') {
+            $this->markTestSkipped('SQL queue assertions are only valid for QUEUE_BACKEND=postgres.');
+        }
+
         /** @var Connection $connection */
         $connection = self::getContainer()->get('doctrine.dbal.messaging_connection');
         $this->queueConnection = $connection;

@@ -49,12 +49,18 @@ docker/dev/mongodb/data
 docker/dev/symfony/caddy_data
 docker/dev/symfony/caddy_config
 docker/dev/n8n/data
+docker/dev/redis/data
+docker/dev/redisinsight/data
+docker/dev/kafka/data
 
 docker/test/postgres/data
 docker/test/mongodb/data
 docker/test/symfony/caddy_data
 docker/test/symfony/caddy_config
 docker/test/n8n/data
+docker/test/redis/data
+docker/test/redisinsight/data
+docker/test/kafka/data
 
 *.log
 

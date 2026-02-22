@@ -62,10 +62,8 @@ services:
         resource: '../src/App/Application/Handler'
         tags: ['messenger.message_handler']
 
-    App\Infrastructure\ApiPlatform\Provider\QueueMessageProvider:
-        arguments:
-            $connection: '@doctrine.dbal.messaging_connection'
+    App\Infrastructure\Messenger\Transport\RedisTransportFactory:
+        tags: ['messenger.transport_factory']
 
-    App\Application\Service\ArchitectureControlService:
-        arguments:
-            $messagingConnection: '@doctrine.dbal.messaging_connection'
+    App\Infrastructure\Messenger\Transport\KafkaTransportFactory:
+        tags: ['messenger.transport_factory']

@@ -223,7 +223,16 @@ make phpstan
 
 ## Mensajería, Reintentos y Dead Letter (failed)
 
-Configuración activa en `config/packages/messenger.yaml` para transporte `async`:
+Configuración activa en `config/packages/messenger.php` con switch por entorno:
+
+- `QUEUE_BACKEND=postgres|redis|kafka`
+- Transportes activos:
+    - `postgres` -> `doctrine://` (tabla `messenger_messages`)
+    - `redis` -> `appredis://` (listas/sets Redis)
+    - `kafka` -> `appkafka://` (topics Kafka)
+- Transporte `failed` dedicado para DLQ en los tres backends.
+
+Parámetros de reintento (`async`):
 
 - `max_retries: 5`
 - `delay: 1000ms`
@@ -252,11 +261,13 @@ docker compose -f docker/test/docker-compose.yaml --env-file .env --env-file .en
 Observabilidad rápida:
 
 - UI: `http://localhost:8080/demo` muestra `Queue Pending` y `Failed`.
+- Panel de control: `http://localhost:8080/panel` (accesos a Adminer, RedisInsight, Kafka UI, Mongo Express y Supervisor).
 - API: `GET /api/demo/stats` devuelve:
+    - `queue.backend`
     - `queue.async`
     - `queue.failed`
 
-Consulta SQL directa (DB de mensajería):
+Consulta SQL directa (solo backend `postgres`):
 
 ```bash
 # DEV
@@ -264,6 +275,19 @@ docker compose -f docker/dev/docker-compose.yaml --env-file .env --env-file .env
 
 # TEST
 docker compose -f docker/test/docker-compose.yaml --env-file .env --env-file .env.test exec -T queue-db-test psql -U queue_user -d messenger_queue_test -c "SELECT queue_name, COUNT(*) FROM messenger_messages GROUP BY queue_name ORDER BY queue_name;"
+```
+
+Cambio rápido de backend:
+
+```bash
+# Edita QUEUE_BACKEND en .env.dev o .env.test (postgres|redis|kafka)
+# Ejemplo DEV:
+# QUEUE_BACKEND=redis
+make dev-down && make dev-up
+
+# Ejemplo TEST:
+# QUEUE_BACKEND=kafka
+make test-down && make test-up
 ```
 
 ## URLs de servicios
@@ -275,6 +299,8 @@ DEV:
 - Explorer: http://localhost:8080/explorer
 - API Docs: http://localhost:8080/docs
 - Adminer: http://localhost:8081/ (Servidores: `postgres-db`, `queue-db`)
+- RedisInsight: http://localhost:8084/
+- Kafka UI: http://localhost:8085/
 - Supervisor Web UI: http://localhost:9001/ (Gestión de workers)
 - Mongo Express: http://localhost:8082/
 - n8n: http://localhost:5678/
@@ -283,6 +309,8 @@ TEST:
 
 - App/API: http://localhost:9080/
 - Adminer: http://localhost:9081/ (Servidores: `postgres-db-test`, `queue-db-test`)
+- RedisInsight: http://localhost:9084/
+- Kafka UI: http://localhost:9085/
 - Supervisor Web UI: http://localhost:9002/ (Gestión de workers test)
 - n8n: http://localhost:9082/
 - Mongo Express: http://localhost:9083/
@@ -329,6 +357,30 @@ TEST:
 - Base de datos: `messenger_queue_test`
 - Usuario: `queue_user`
 - Password: `queue_password`
+
+### Redis Queue Backend
+
+DEV:
+
+- Host: `redis`
+- Puerto: `6379`
+
+TEST:
+
+- Host: `redis-test`
+- Puerto: `6379`
+
+### Kafka Queue Backend
+
+DEV:
+
+- Broker: `kafka:9092`
+- Topics usados: `async`, `failed`
+
+TEST:
+
+- Broker: `kafka-test:9092`
+- Topics usados: `async`, `failed`
 
 ## Gestión de Mensajería Asíncrona (Messenger)
 

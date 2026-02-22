@@ -9,6 +9,7 @@ use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\State\ProviderInterface;
 use App\Infrastructure\ApiPlatform\Resource\QueueMessage;
 use Doctrine\DBAL\Connection;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 
 /**
@@ -17,12 +18,18 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
 final readonly class QueueMessageProvider implements ProviderInterface
 {
     public function __construct(
-        #[Target('messaging')]
+        #[Target('messaging.connection')]
         private Connection $connection,
+        #[Autowire('%env(string:QUEUE_BACKEND)%')]
+        private string $queueBackend,
     ) {}
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
+        if ($this->queueBackend !== 'postgres') {
+            return isset($uriVariables['id']) ? null : [];
+        }
+
         $uriTemplate = $operation instanceof HttpOperation ? $operation->getUriTemplate() : null;
         $filterQueue = null;
         if ($uriTemplate === '/messages-async') {

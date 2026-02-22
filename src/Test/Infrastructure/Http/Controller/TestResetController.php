@@ -8,6 +8,7 @@ use App\Application\Service\ArchitectureControlService;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Doctrine\DBAL\Connection;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,8 +27,10 @@ final class TestResetController
         ReadEntityManager $readEntityManager,
         MongoStore $mongoStore,
         ArchitectureControlService $architectureControlService,
-        #[Target('messaging')]
+        #[Target('messaging.connection')]
         Connection $messagingConnection,
+        #[Autowire('%env(string:QUEUE_BACKEND)%')]
+        string $queueBackend,
     ): Response
     {
         // Reset projection toggles to avoid cross-scenario state leakage.
@@ -41,10 +44,12 @@ final class TestResetController
 
         // 3. Clear messenger queues (async + failed) in test environment.
         // Table might not exist yet in very early test bootstrap.
-        try {
-            $messagingConnection->executeStatement('TRUNCATE messenger_messages RESTART IDENTITY');
-        } catch (\Throwable) {
-            // Ignore missing table/connection issues in reset helper.
+        if ($queueBackend === 'postgres') {
+            try {
+                $messagingConnection->executeStatement('TRUNCATE messenger_messages RESTART IDENTITY');
+            } catch (\Throwable) {
+                // Ignore missing table/connection issues in reset helper.
+            }
         }
 
         return new JsonResponse(['status' => 'success']);

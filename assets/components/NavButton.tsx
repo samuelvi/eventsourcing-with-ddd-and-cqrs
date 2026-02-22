@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type PageType = 'home' | 'wizard' | 'explorer' | 'demo' | 'users';
+export type PageType = 'home' | 'wizard' | 'explorer' | 'demo' | 'users' | 'panel';
 
 export const NavButton = ({
     target,
@@ -20,15 +20,15 @@ export const NavButton = ({
         style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
+            gap: '10px',
+            padding: '10px 20px',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            borderRadius: '8px',
-            color: currentPage === target ? '#111827' : '#6b7280',
-            backgroundColor: currentPage === target ? '#f3f4f6' : 'transparent',
-            fontWeight: currentPage === target ? 600 : 500,
+            borderRadius: '12px',
+            color: currentPage === target ? '#b45309' : '#78716c',
+            backgroundColor: currentPage === target ? '#fffbeb' : 'transparent',
+            fontWeight: currentPage === target ? 700 : 600,
             transition: 'all 0.2s',
             fontSize: '14px'
         }}

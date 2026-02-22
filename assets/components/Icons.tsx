@@ -77,6 +77,23 @@ export const Icons: Record<string, React.FC> = {
             <path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
     ),
+    Dashboard: () => (
+        <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+        </svg>
+    ),
     ArrowRight: () => (
         <svg
             width="18"

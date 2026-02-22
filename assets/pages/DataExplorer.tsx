@@ -10,12 +10,16 @@ type EntityType =
     | 'quotes'
     | 'event-store'
     | 'checkpoints'
-    | 'snapshots';
+    | 'snapshots'
+    | 'messages-async'
+    | 'messages-failed';
 
 const ALL_TABS: EntityType[] = [
     'event-store',
     'checkpoints',
     'snapshots',
+    'messages-async',
+    'messages-failed',
     'users',
     'bookings',
     'suppliers',
@@ -87,6 +91,11 @@ export function DataExplorer() {
         'event-store': 'Event Store',
         checkpoints: 'Checkpoints',
         snapshots: 'Snapshots'
+    };
+
+    const messagingTabs: Partial<Record<EntityType, string>> = {
+        'messages-async': 'Async Queue',
+        'messages-failed': 'Failed (DLQ)'
     };
 
     const postgresTabs: Partial<Record<EntityType, string>> = {
@@ -215,6 +224,7 @@ export function DataExplorer() {
             {/* Grouped Tabs */}
             <div style={{ display: 'flex', gap: '32px', marginBottom: '32px', flexWrap: 'wrap' }}>
                 <TabGroup title="MongoDB (Source of Truth)" tabs={mongoTabs} />
+                <TabGroup title="PostgreSQL (Messaging)" tabs={messagingTabs} />
                 <TabGroup title="PostgreSQL (Read Models)" tabs={postgresTabs} />
             </div>
 

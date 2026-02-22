@@ -5,6 +5,7 @@ import { Wizard } from './pages/Wizard';
 import { DataExplorer } from './pages/DataExplorer';
 import { DemoFlow } from './pages/DemoFlow';
 import { UsersManagement } from './pages/UsersManagement';
+import { DashboardPanel } from './pages/DashboardPanel';
 import { Icons } from './components/Icons';
 import { NavButton, PageType } from './components/NavButton';
 
@@ -33,6 +34,10 @@ function resolveRoute(pathname: string): RouteState {
 
     if (pathname === '/users') {
         return { page: 'users', usersMode: 'list', userId: null };
+    }
+
+    if (pathname === '/panel') {
+        return { page: 'panel', usersMode: 'list', userId: null };
     }
 
     if (pathname === '/users/new') {
@@ -73,7 +78,9 @@ function App() {
                     ? '/demo'
                     : newPage === 'users'
                       ? '/users'
-                      : '/';
+                      : newPage === 'panel'
+                        ? '/panel'
+                        : '/';
         navigateToPath(url);
     };
 
@@ -81,21 +88,22 @@ function App() {
         <div
             style={{
                 minHeight: '100vh',
-                backgroundColor: '#f9fafb',
-                color: '#111827',
+                backgroundColor: '#fafaf9', // bone white
+                color: '#1c1917', // warm charcoal
                 fontFamily: 'Inter, system-ui, sans-serif'
             }}
         >
             <nav
                 style={{
                     backgroundColor: '#fff',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid #e7e5e4',
                     padding: '12px 40px',
                     display: 'flex',
                     gap: '8px',
                     position: 'sticky',
                     top: 0,
-                    zIndex: 100
+                    zIndex: 100,
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                 }}
             >
                 <NavButton
@@ -133,6 +141,13 @@ function App() {
                     currentPage={route.page}
                     onNavigate={navigateTo}
                 />
+                <NavButton
+                    target="panel"
+                    label="Control Panel"
+                    icon={Icons.Dashboard}
+                    currentPage={route.page}
+                    onNavigate={navigateTo}
+                />
             </nav>
 
             <main style={{ padding: '40px' }}>
@@ -147,19 +162,20 @@ function App() {
                     >
                         <h1
                             style={{
-                                fontSize: '48px',
-                                fontWeight: 800,
-                                letterSpacing: '-0.025em',
-                                marginBottom: '16px'
+                                fontSize: '56px',
+                                fontWeight: 900,
+                                letterSpacing: '-0.04em',
+                                marginBottom: '24px',
+                                color: '#1c1917'
                             }}
                         >
                             Modern Event Sourcing
                         </h1>
                         <p
                             style={{
-                                fontSize: '20px',
-                                color: '#6b7280',
-                                marginBottom: '40px',
+                                fontSize: '22px',
+                                color: '#57534e',
+                                marginBottom: '48px',
                                 lineHeight: '1.6'
                             }}
                         >
@@ -167,21 +183,22 @@ function App() {
                             reliable state reconstruction through historical facts.
                         </p>
 
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
                             <button
                                 onClick={() => navigateTo('wizard')}
                                 style={{
-                                    padding: '12px 24px',
-                                    backgroundColor: '#111827',
+                                    padding: '14px 32px',
+                                    background: 'linear-gradient(135deg, #1c1917 0%, #44403c 100%)',
                                     color: 'white',
                                     border: 'none',
-                                    borderRadius: '10px',
+                                    borderRadius: '14px',
                                     cursor: 'pointer',
-                                    fontSize: '16px',
-                                    fontWeight: 600,
+                                    fontSize: '17px',
+                                    fontWeight: 700,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '8px'
+                                    gap: '10px',
+                                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)'
                                 }}
                             >
                                 Start Wizard <Icons.ArrowRight />
@@ -189,14 +206,15 @@ function App() {
                             <button
                                 onClick={() => navigateTo('demo')}
                                 style={{
-                                    padding: '12px 24px',
+                                    padding: '14px 32px',
                                     backgroundColor: '#fff',
-                                    color: '#111827',
-                                    border: '1px solid #e5e7eb',
-                                    borderRadius: '10px',
+                                    color: '#1c1917',
+                                    border: '1px solid #e7e5e4',
+                                    borderRadius: '14px',
                                     cursor: 'pointer',
-                                    fontSize: '16px',
-                                    fontWeight: 600
+                                    fontSize: '17px',
+                                    fontWeight: 700,
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                                 }}
                             >
                                 Open Architecture Monitor
@@ -205,10 +223,10 @@ function App() {
 
                         <div
                             style={{
-                                marginTop: '80px',
+                                marginTop: '100px',
                                 display: 'grid',
                                 gridTemplateColumns: '1fr 1fr 1fr',
-                                gap: '24px',
+                                gap: '32px',
                                 textAlign: 'left'
                             }}
                         >
@@ -229,22 +247,31 @@ function App() {
                                 <div
                                     key={i}
                                     style={{
-                                        padding: '24px',
+                                        padding: '32px',
                                         backgroundColor: '#fff',
-                                        borderRadius: '16px',
-                                        border: '1px solid #e5e7eb'
+                                        borderRadius: '24px',
+                                        border: '1px solid #e7e5e4',
+                                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.03)'
                                     }}
                                 >
-                                    <div style={{ color: '#111827', marginBottom: '12px' }}>
+                                    <div style={{ color: '#b45309', marginBottom: '16px' }}>
                                         <Icons.CheckCircle />
                                     </div>
-                                    <h4 style={{ margin: '0 0 8px', fontWeight: 700 }}>{f.t}</h4>
+                                    <h4
+                                        style={{
+                                            margin: '0 0 12px',
+                                            fontSize: '18px',
+                                            fontWeight: 800
+                                        }}
+                                    >
+                                        {f.t}
+                                    </h4>
                                     <p
                                         style={{
                                             margin: 0,
-                                            color: '#6b7280',
-                                            fontSize: '14px',
-                                            lineHeight: '1.5'
+                                            color: '#78716c',
+                                            fontSize: '15px',
+                                            lineHeight: '1.6'
                                         }}
                                     >
                                         {f.d}
@@ -258,6 +285,7 @@ function App() {
                 {route.page === 'wizard' && <Wizard />}
                 {route.page === 'explorer' && <DataExplorer />}
                 {route.page === 'demo' && <DemoFlow />}
+                {route.page === 'panel' && <DashboardPanel />}
                 {route.page === 'users' && (
                     <UsersManagement
                         mode={route.usersMode}

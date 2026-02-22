@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
 
-// Professional monotone icons
+// Warm professional icons
 const IconOn = () => (
     <svg
         width="18"
@@ -10,7 +10,7 @@ const IconOn = () => (
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
     >
@@ -25,7 +25,7 @@ const IconOff = () => (
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
     >
@@ -73,21 +73,33 @@ const IconCpu = () => (
 
 export function DemoFlow() {
     const queryClient = useQueryClient();
-    const [message, setMessage] = useState('');
+    const [toast, setToast] = useState<{ text: string; type: 'info' | 'error' } | null>(null);
     const [showResetModal, setShowResetModal] = useState(false);
 
-    // --- Queries ---
+    const showToast = (text: string, type: 'info' | 'error' = 'info') => {
+        setToast({ text, type });
+        setTimeout(() => setToast(null), 4000);
+    };
 
-    const { data: stats = { events: 0, users: 0, bookings: 0, snapshots: 0, checkpoints: {} } } =
-        useQuery({
-            queryKey: ['stats'],
-            queryFn: async () => {
-                const res = await fetch('/api/demo/stats');
-                if (!res.ok) throw new Error('Stats error');
-                return res.json();
-            },
-            refetchInterval: 2000
-        });
+    // --- Queries ---
+    const {
+        data: stats = {
+            events: 0,
+            users: 0,
+            bookings: 0,
+            snapshots: 0,
+            checkpoints: {},
+            queue: { async: 0, failed: 0 }
+        }
+    } = useQuery({
+        queryKey: ['stats'],
+        queryFn: async () => {
+            const res = await fetch('/api/demo/stats');
+            if (!res.ok) throw new Error('Stats error');
+            return res.json();
+        },
+        refetchInterval: 2000
+    });
 
     const {
         data: status = {
@@ -154,7 +166,6 @@ export function DemoFlow() {
         stats.users < expectedUserRecords || stats.bookings < expectedBookingRecords;
 
     // --- Mutations ---
-
     const toggleMutation = useMutation({
         mutationFn: async (type: 'master' | 'user' | 'booking') => {
             await fetch(`/api/demo/toggle/${type}`, { method: 'POST' });
@@ -162,9 +173,9 @@ export function DemoFlow() {
         },
         onSuccess: (type) => {
             queryClient.invalidateQueries({ queryKey: ['status'] });
-            setMessage(`${type.toUpperCase()} state updated`);
+            showToast(`${type.toUpperCase()} updated successfully`);
         },
-        onError: () => setMessage('Error toggling status')
+        onError: () => showToast('Update failed', 'error')
     });
 
     const createBookingMutation = useMutation({
@@ -178,28 +189,25 @@ export function DemoFlow() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries();
-            setMessage('Fact recorded');
+            showToast('New fact recorded in history');
         },
-        onError: () => setMessage('Error creating entry')
+        onError: () => showToast('Creation failed', 'error')
     });
 
     const createUserMutation = useMutation({
         mutationFn: async (payload: Record<string, unknown>) => {
             const res = await fetch('/api/users', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/ld+json',
-                    Accept: 'application/ld+json'
-                },
+                headers: { 'Content-Type': 'application/ld+json', Accept: 'application/ld+json' },
                 body: JSON.stringify(payload)
             });
             if (!res.ok) throw new Error('Failed');
         },
         onSuccess: () => {
             queryClient.invalidateQueries();
-            setMessage('User fact recorded');
+            showToast('User registration recorded');
         },
-        onError: () => setMessage('Error registering user')
+        onError: () => showToast('Registration failed', 'error')
     });
 
     const rebuildFromMongoMutation = useMutation({
@@ -209,9 +217,9 @@ export function DemoFlow() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries();
-            setMessage('PostgreSQL rebuilt from Mongo event history.');
+            showToast('SQL models synchronized with history');
         },
-        onError: () => setMessage('Sync failed')
+        onError: () => showToast('Sync failed', 'error')
     });
 
     const clearTransactionalMutation = useMutation({
@@ -221,9 +229,9 @@ export function DemoFlow() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries();
-            setMessage('PostgreSQL transactional data cleared.');
+            showToast('SQL projection tables cleared');
         },
-        onError: () => setMessage('Clear transactional data failed')
+        onError: () => showToast('Clear failed', 'error')
     });
 
     const resetMutation = useMutation({
@@ -232,55 +240,38 @@ export function DemoFlow() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries();
-            setMessage('Lab reset complete');
+            showToast('Lab reset complete');
             setShowResetModal(false);
         },
-        onError: () => setMessage('Reset failed')
+        onError: () => showToast('Reset failed', 'error')
     });
 
     // --- Actions ---
-
-    const toggleProjections = (type: 'master' | 'user' | 'booking') => {
-        toggleMutation.mutate(type);
-    };
-
-    const submitRandomBooking = () => {
-        const name = `Demo ${Math.floor(Math.random() * 1000)}`;
-        const email = `client${Math.floor(Math.random() * 1000)}@test.com`;
+    const toggleProjections = (type: 'master' | 'user' | 'booking') => toggleMutation.mutate(type);
+    const submitRandomBooking = () =>
         createBookingMutation.mutate({
             bookingId: uuidv4(),
             pax: Math.floor(Math.random() * 5) + 1,
             budget: 100,
-            clientName: name,
-            clientEmail: email
+            clientName: `Demo ${Math.floor(Math.random() * 1000)}`,
+            clientEmail: `client${Math.floor(Math.random() * 1000)}@test.com`
         });
-    };
-
-    const registerRandomUser = () => {
-        const name = `Pure User ${Math.floor(Math.random() * 1000)}`;
-        const email = `user${Math.floor(Math.random() * 1000)}@pure.com`;
+    const registerRandomUser = () =>
         createUserMutation.mutate({
             id: uuidv4(),
-            name: name,
-            email: email
+            name: `Pure User ${Math.floor(Math.random() * 1000)}`,
+            email: `user${Math.floor(Math.random() * 1000)}@pure.com`
         });
-    };
-
     const runRebuild = () => {
-        setMessage('Replaying history...');
+        showToast('Syncing history...');
         rebuildFromMongoMutation.mutate();
     };
-
     const clearTransactionalData = () => {
-        setMessage('Clearing PostgreSQL transactional data...');
+        showToast('Clearing read models...');
         clearTransactionalMutation.mutate();
     };
+    const executeReset = () => resetMutation.mutate();
 
-    const executeReset = () => {
-        resetMutation.mutate();
-    };
-
-    // Derived states for UI from query data
     const projectionsEnabled = status.projectionsEnabled;
     const userProjectionsEnabled = status.userProjectionsEnabled;
     const bookingProjectionsEnabled = status.bookingProjectionsEnabled;
@@ -311,20 +302,20 @@ export function DemoFlow() {
         <div
             style={{
                 backgroundColor: '#fff',
-                borderRadius: '16px',
-                border: '1px solid #e5e7eb',
+                borderRadius: '20px',
+                border: '1px solid #e7e5e4',
                 overflow: 'hidden',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.03)'
             }}
         >
             <div
                 style={{
-                    padding: '12px 16px',
-                    backgroundColor: '#f9fafb',
-                    borderBottom: '1px solid #e5e7eb',
+                    padding: '14px 20px',
+                    backgroundColor: '#fafaf9',
+                    borderBottom: '1px solid #e7e5e4',
                     fontSize: '13px',
-                    fontWeight: 600,
-                    color: '#374151',
+                    fontWeight: 700,
+                    color: '#44403c',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center'
@@ -334,12 +325,12 @@ export function DemoFlow() {
                 {badge !== undefined && (
                     <span
                         style={{
-                            backgroundColor: '#f3f4f6',
-                            color: '#374151',
-                            padding: '2px 8px',
-                            borderRadius: '10px',
-                            fontSize: '10px',
-                            border: '1px solid #e5e7eb'
+                            backgroundColor: '#f5f5f4',
+                            color: '#78716c',
+                            padding: '2px 10px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            border: '1px solid #e7e5e4'
                         }}
                     >
                         {badge}
@@ -350,48 +341,42 @@ export function DemoFlow() {
                 {items.length === 0 ? (
                     <div
                         style={{
-                            padding: '24px',
+                            padding: '32px',
                             textAlign: 'center',
-                            color: '#9ca3af',
-                            fontSize: '12px'
+                            color: '#a8a29e',
+                            fontSize: '13px'
                         }}
                     >
                         {emptyMsg}
                     </div>
                 ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                         <tbody>
                             {items.map((item, i) => (
                                 <tr
                                     key={i}
                                     style={{
                                         borderBottom:
-                                            i === items.length - 1 ? 'none' : '1px solid #f3f4f6',
-                                        backgroundColor: i === 0 ? '#f9fafb' : 'transparent'
+                                            i === items.length - 1 ? 'none' : '1px solid #f5f5f4',
+                                        backgroundColor: i === 0 ? '#fffbeb' : 'transparent'
                                     }}
                                 >
                                     {columns.map((col, j) => {
-                                        let val: unknown = item[col];
+                                        let val: any = item[col];
                                         if (col.includes('.')) {
-                                            const parts = col.split('.');
-                                            const key = parts[0] as keyof typeof item;
-                                            const subItem = item[key];
-                                            val =
-                                                typeof subItem === 'object' && subItem !== null
-                                                    ? (subItem as Record<string, unknown>)[parts[1]]
-                                                    : undefined;
+                                            const [p1, p2] = col.split('.');
+                                            val = (item[p1] as any)?.[p2];
                                         }
-
                                         return (
                                             <td
                                                 key={j}
-                                                style={{ padding: '10px 16px', color: '#4b5563' }}
+                                                style={{ padding: '12px 20px', color: '#57534e' }}
                                             >
                                                 {col.includes('Id') || col === 'id' ? (
                                                     <code
                                                         style={{
-                                                            color: '#111827',
-                                                            fontWeight: 600
+                                                            color: '#b45309',
+                                                            fontWeight: 700
                                                         }}
                                                     >
                                                         ...{String(val || '').slice(-6)}
@@ -403,7 +388,9 @@ export function DemoFlow() {
                                                 ) : col === 'createdAt' || col === 'occurredOn' ? (
                                                     new Date(String(val)).toLocaleTimeString()
                                                 ) : col === 'eventType' ? (
-                                                    String(val).split('\\').pop()
+                                                    <span style={{ fontWeight: 600 }}>
+                                                        {String(val).split('\\').pop()}
+                                                    </span>
                                                 ) : (
                                                     String(val)
                                                 )}
@@ -420,8 +407,48 @@ export function DemoFlow() {
     );
 
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '100px' }}>
-            {/* Modal Overlay */}
+        <div style={{ maxWidth: '1300px', margin: '0 auto', paddingBottom: '100px' }}>
+            {/* Elegant Toast */}
+            {toast && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        bottom: '40px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background:
+                            toast.type === 'error'
+                                ? 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)'
+                                : 'linear-gradient(135deg, #b45309 0%, #78350f 100%)',
+                        color: 'white',
+                        padding: '16px 32px',
+                        borderRadius: '16px',
+                        zIndex: 2000,
+                        fontSize: '15px',
+                        fontWeight: 700,
+                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        animation: 'fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}
+                >
+                    <div
+                        style={{
+                            display: 'flex',
+                            padding: '6px',
+                            backgroundColor: 'rgba(255,255,255,0.2)',
+                            borderRadius: '50%'
+                        }}
+                    >
+                        {toast.type === 'error' ? <IconOff /> : <IconOn />}
+                    </div>
+                    {toast.text}
+                </div>
+            )}
+
+            {/* Warm Modal */}
             {showResetModal && (
                 <div
                     style={{
@@ -430,59 +457,59 @@ export function DemoFlow() {
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: 'rgba(0,0,0,0.4)',
+                        backgroundColor: 'rgba(28, 25, 23, 0.7)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         zIndex: 1000,
-                        backdropFilter: 'blur(4px)'
+                        backdropFilter: 'blur(10px)'
                     }}
                 >
                     <div
                         style={{
                             backgroundColor: 'white',
-                            padding: '32px',
-                            borderRadius: '24px',
-                            maxWidth: '400px',
+                            padding: '48px',
+                            borderRadius: '32px',
+                            maxWidth: '460px',
                             width: '90%',
-                            boxShadow:
-                                '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
+                            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+                            border: '1px solid #e7e5e4'
                         }}
                     >
                         <h2
                             style={{
-                                margin: '0 0 12px',
-                                fontSize: '20px',
-                                fontWeight: 700,
-                                color: '#111827'
+                                margin: '0 0 16px',
+                                fontSize: '26px',
+                                fontWeight: 900,
+                                color: '#1c1917',
+                                letterSpacing: '-0.03em'
                             }}
                         >
-                            Reset Architecture State?
+                            System Hard Reset
                         </h2>
                         <p
                             style={{
-                                margin: '0 0 24px',
-                                color: '#6b7280',
-                                fontSize: '14px',
-                                lineHeight: 1.5
+                                margin: '0 0 32px',
+                                color: '#57534e',
+                                fontSize: '17px',
+                                lineHeight: 1.6
                             }}
                         >
-                            This will permanently delete all events from MongoDB and read models
-                            from PostgreSQL. Base catalogs will be reloaded.
+                            Permanently wipe all facts and projections. This action is destructive.
                         </p>
-                        <div style={{ display: 'flex', gap: '12px' }}>
+                        <div style={{ display: 'flex', gap: '16px' }}>
                             <button
                                 onClick={() => setShowResetModal(false)}
                                 style={{
                                     flex: 1,
-                                    padding: '12px',
-                                    borderRadius: '12px',
-                                    border: '1px solid #e5e7eb',
-                                    backgroundColor: 'white',
-                                    color: '#374151',
+                                    padding: '16px',
+                                    borderRadius: '14px',
+                                    border: '1px solid #e7e5e4',
+                                    backgroundColor: '#fafaf9',
+                                    color: '#57534e',
                                     cursor: 'pointer',
-                                    fontWeight: 600,
-                                    fontSize: '14px'
+                                    fontWeight: 700,
+                                    fontSize: '15px'
                                 }}
                             >
                                 Cancel
@@ -491,17 +518,18 @@ export function DemoFlow() {
                                 onClick={executeReset}
                                 style={{
                                     flex: 1,
-                                    padding: '12px',
-                                    borderRadius: '12px',
+                                    padding: '16px',
+                                    borderRadius: '14px',
                                     border: 'none',
-                                    backgroundColor: '#111827',
+                                    backgroundColor: '#ef4444',
                                     color: 'white',
                                     cursor: 'pointer',
-                                    fontWeight: 600,
-                                    fontSize: '14px'
+                                    fontWeight: 700,
+                                    fontSize: '15px',
+                                    boxShadow: '0 10px 15px -3px rgba(239, 68, 68, 0.3)'
                                 }}
                             >
-                                Execute Reset
+                                Wipe Data
                             </button>
                         </div>
                     </div>
@@ -510,32 +538,41 @@ export function DemoFlow() {
 
             <header
                 style={{
-                    marginBottom: '40px',
+                    marginBottom: '56px',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center'
                 }}
             >
                 <div>
-                    <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 700 }}>
+                    <h1
+                        style={{
+                            margin: 0,
+                            fontSize: '36px',
+                            fontWeight: 900,
+                            color: '#1c1917',
+                            letterSpacing: '-0.04em'
+                        }}
+                    >
                         Architecture Monitor
                     </h1>
-                    <p style={{ margin: '4px 0 0', color: '#6b7280' }}>
-                        Real-time consistency tracking between Event Store and Read Models.
+                    <p style={{ margin: '8px 0 0', color: '#78716c', fontSize: '18px' }}>
+                        Real-time flow through the hybrid storage engine.
                     </p>
                 </div>
                 <button
                     onClick={() => setShowResetModal(true)}
                     disabled={loading}
                     style={{
-                        padding: '8px 16px',
+                        padding: '12px 24px',
                         cursor: 'pointer',
                         backgroundColor: '#fff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        color: '#4b5563',
-                        fontSize: '13px',
-                        fontWeight: 600
+                        border: '1px solid #e7e5e4',
+                        borderRadius: '14px',
+                        color: '#78716c',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                     }}
                 >
                     Reset Lab
@@ -545,51 +582,56 @@ export function DemoFlow() {
             <div
                 style={{
                     display: 'grid',
-                    gridTemplateColumns: '350px 1fr',
-                    gap: '32px',
+                    gridTemplateColumns: '400px 1fr',
+                    gap: '48px',
                     alignItems: 'start'
                 }}
             >
                 {/* INTERACTION ZONE */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                     <div
                         style={{
                             backgroundColor: '#fff',
-                            padding: '32px',
-                            borderRadius: '24px',
-                            border: '1px solid #e5e7eb',
-                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+                            padding: '36px',
+                            borderRadius: '32px',
+                            border: '1px solid #e7e5e4',
+                            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.03)'
                         }}
                     >
                         <h3
                             style={{
                                 marginTop: 0,
-                                fontSize: '16px',
-                                fontWeight: 600,
+                                fontSize: '19px',
+                                fontWeight: 800,
+                                color: '#1c1917',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '8px',
-                                marginBottom: '24px'
+                                gap: '12px',
+                                marginBottom: '32px'
                             }}
                         >
-                            <IconCpu /> Infrastructure Control
+                            <div style={{ color: '#b45309' }}>
+                                <IconCpu />
+                            </div>{' '}
+                            Infrastructure Control
                         </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                             <div
                                 style={{
-                                    padding: '16px',
-                                    backgroundColor: '#f9fafb',
-                                    borderRadius: '12px',
-                                    border: '1px solid #f3f4f6'
+                                    padding: '24px',
+                                    backgroundColor: '#fffbeb',
+                                    borderRadius: '20px',
+                                    border: '1px solid #fef3c7'
                                 }}
                             >
                                 <div
                                     style={{
-                                        fontSize: '11px',
-                                        fontWeight: 700,
-                                        color: '#6b7280',
-                                        marginBottom: '12px',
-                                        textTransform: 'uppercase'
+                                        fontSize: '12px',
+                                        fontWeight: 800,
+                                        color: '#92400e',
+                                        marginBottom: '16px',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.1em'
                                     }}
                                 >
                                     Message Bus Status
@@ -599,22 +641,27 @@ export function DemoFlow() {
                                     disabled={loading}
                                     style={{
                                         width: '100%',
-                                        padding: '10px',
-                                        backgroundColor: projectionsEnabled ? '#111827' : '#f3f4f6',
-                                        color: projectionsEnabled ? 'white' : '#9ca3af',
+                                        padding: '14px',
+                                        background: projectionsEnabled
+                                            ? 'linear-gradient(135deg, #b45309 0%, #92400e 100%)'
+                                            : '#f5f5f4',
+                                        color: projectionsEnabled ? 'white' : '#a8a29e',
                                         border: 'none',
-                                        borderRadius: '8px',
+                                        borderRadius: '12px',
                                         cursor: 'pointer',
-                                        fontSize: '13px',
-                                        fontWeight: 600,
+                                        fontSize: '15px',
+                                        fontWeight: 800,
                                         display: 'flex',
                                         justifyContent: 'center',
                                         alignItems: 'center',
-                                        gap: '8px'
+                                        gap: '12px',
+                                        boxShadow: projectionsEnabled
+                                            ? '0 10px 15px -3px rgba(180, 83, 9, 0.3)'
+                                            : 'none'
                                     }}
                                 >
                                     {projectionsEnabled ? <IconOn /> : <IconOff />}{' '}
-                                    {projectionsEnabled ? 'ACTIVE' : 'PAUSED'}
+                                    {projectionsEnabled ? 'BUS ACTIVE' : 'BUS PAUSED'}
                                 </button>
                             </div>
                             <div
@@ -622,69 +669,55 @@ export function DemoFlow() {
                                     padding: '0 8px',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    gap: '12px'
+                                    gap: '20px'
                                 }}
                             >
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}
-                                >
-                                    <span style={{ fontSize: '13px', fontWeight: 500 }}>
-                                        User Projection
-                                    </span>
-                                    <button
-                                        onClick={() => toggleProjections('user')}
-                                        aria-label="User Projection"
+                                {[
+                                    {
+                                        label: 'User Projection',
+                                        active: userProjectionsEnabled,
+                                        type: 'user'
+                                    },
+                                    {
+                                        label: 'Booking Projection',
+                                        active: bookingProjectionsEnabled,
+                                        type: 'booking'
+                                    }
+                                ].map((p, idx) => (
+                                    <div
+                                        key={idx}
                                         style={{
-                                            padding: '6px 12px',
-                                            backgroundColor: userProjectionsEnabled
-                                                ? '#f9fafb'
-                                                : '#fff1f2',
-                                            color: userProjectionsEnabled ? '#111827' : '#f43f5e',
-                                            border: '1px solid currentColor',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            fontSize: '11px',
-                                            fontWeight: 700
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
                                         }}
                                     >
-                                        {userProjectionsEnabled ? 'ONLINE' : 'OFFLINE'}
-                                    </button>
-                                </div>
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}
-                                >
-                                    <span style={{ fontSize: '13px', fontWeight: 500 }}>
-                                        Booking Projection
-                                    </span>
-                                    <button
-                                        onClick={() => toggleProjections('booking')}
-                                        aria-label="Booking Projection"
-                                        style={{
-                                            padding: '6px 12px',
-                                            backgroundColor: bookingProjectionsEnabled
-                                                ? '#f9fafb'
-                                                : '#fff1f2',
-                                            color: bookingProjectionsEnabled
-                                                ? '#111827'
-                                                : '#f43f5e',
-                                            border: '1px solid currentColor',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            fontSize: '11px',
-                                            fontWeight: 700
-                                        }}
-                                    >
-                                        {bookingProjectionsEnabled ? 'ONLINE' : 'OFFLINE'}
-                                    </button>
-                                </div>
+                                        <span
+                                            style={{
+                                                fontSize: '15px',
+                                                fontWeight: 700,
+                                                color: '#44403c'
+                                            }}
+                                        >
+                                            {p.label}
+                                        </span>
+                                        <button
+                                            onClick={() => toggleProjections(p.type as any)}
+                                            style={{
+                                                padding: '10px 18px',
+                                                backgroundColor: p.active ? '#ecfdf5' : '#fff1f2',
+                                                color: p.active ? '#059669' : '#e11d48',
+                                                border: 'none',
+                                                borderRadius: '10px',
+                                                cursor: 'pointer',
+                                                fontSize: '12px',
+                                                fontWeight: 800
+                                            }}
+                                        >
+                                            {p.active ? 'ONLINE' : 'OFFLINE'}
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -692,39 +725,44 @@ export function DemoFlow() {
                     <div
                         style={{
                             backgroundColor: '#fff',
-                            padding: '32px',
-                            borderRadius: '24px',
-                            border: '1px solid #e5e7eb',
-                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+                            padding: '36px',
+                            borderRadius: '32px',
+                            border: '1px solid #e7e5e4',
+                            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.03)'
                         }}
                     >
                         <h3
                             style={{
                                 marginTop: 0,
-                                fontSize: '16px',
-                                fontWeight: 600,
+                                fontSize: '19px',
+                                fontWeight: 800,
+                                color: '#1c1917',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '8px'
+                                gap: '12px'
                             }}
                         >
-                            <IconActivity /> Event Simulation
+                            <div style={{ color: '#b45309' }}>
+                                <IconActivity />
+                            </div>{' '}
+                            Event Simulation
                         </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <button
                                 onClick={registerRandomUser}
                                 disabled={loading}
                                 style={{
                                     width: '100%',
-                                    marginTop: '16px',
-                                    padding: '12px',
-                                    fontSize: '14px',
+                                    marginTop: '24px',
+                                    padding: '16px',
+                                    fontSize: '15px',
                                     backgroundColor: '#fff',
-                                    color: '#111827',
-                                    border: '1px solid #e5e7eb',
-                                    borderRadius: '12px',
+                                    color: '#1c1917',
+                                    border: '1px solid #e7e5e4',
+                                    borderRadius: '14px',
                                     cursor: 'pointer',
-                                    fontWeight: 600
+                                    fontWeight: 700,
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                                 }}
                             >
                                 Register User Only
@@ -734,146 +772,255 @@ export function DemoFlow() {
                                 disabled={loading}
                                 style={{
                                     width: '100%',
-                                    padding: '16px',
-                                    fontSize: '15px',
-                                    backgroundColor: '#111827',
+                                    padding: '18px',
+                                    fontSize: '16px',
+                                    background: 'linear-gradient(135deg, #1c1917 0%, #44403c 100%)',
                                     color: 'white',
                                     border: 'none',
-                                    borderRadius: '12px',
+                                    borderRadius: '14px',
                                     cursor: 'pointer',
-                                    fontWeight: 600
+                                    fontWeight: 800,
+                                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)'
                                 }}
                             >
-                                Generate New Booking
+                                Generate New Booking Fact
                             </button>
                         </div>
-                        {message && (
-                            <div
-                                style={{
-                                    marginTop: '16px',
-                                    fontSize: '13px',
-                                    color: '#111827',
-                                    textAlign: 'center',
-                                    fontWeight: 500
-                                }}
-                            >
-                                {message}
-                            </div>
-                        )}
                     </div>
 
                     <div
                         style={{
                             backgroundColor: '#fff',
-                            padding: '24px',
-                            borderRadius: '24px',
-                            border: '1px solid #e5e7eb',
-                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+                            padding: '36px',
+                            borderRadius: '32px',
+                            border: '1px solid #e7e5e4',
+                            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.03)'
                         }}
                     >
                         <h3
                             style={{
                                 marginTop: 0,
-                                marginBottom: '8px',
-                                fontSize: '16px',
-                                fontWeight: 600
+                                marginBottom: '12px',
+                                fontSize: '19px',
+                                fontWeight: 800,
+                                color: '#1c1917'
                             }}
                         >
                             PostgreSQL Recovery
                         </h3>
-                        <p style={{ margin: '0 0 16px', color: '#6b7280', fontSize: '13px' }}>
-                            Clear only transactional data in PostgreSQL, then rebuild projections
-                            from Mongo event history.
+                        <p
+                            style={{
+                                margin: '0 0 28px',
+                                color: '#78716c',
+                                fontSize: '15px',
+                                lineHeight: 1.6
+                            }}
+                        >
+                            Sync read models from event history.
                         </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                             <button
                                 onClick={clearTransactionalData}
                                 disabled={loading}
                                 style={{
                                     width: '100%',
-                                    padding: '12px',
-                                    fontSize: '13px',
-                                    backgroundColor: '#fff',
-                                    color: '#111827',
-                                    border: '1px solid #e5e7eb',
-                                    borderRadius: '10px',
+                                    padding: '16px',
+                                    fontSize: '15px',
+                                    backgroundColor: '#fafaf9',
+                                    color: '#44403c',
+                                    border: '1px solid #e7e5e4',
+                                    borderRadius: '14px',
                                     cursor: 'pointer',
-                                    fontWeight: 600
+                                    fontWeight: 700
                                 }}
                             >
-                                Clear Transactional Data (Postgres)
+                                Clear All Read Models
                             </button>
                             <button
                                 onClick={runRebuild}
                                 disabled={loading}
                                 style={{
                                     width: '100%',
-                                    padding: '12px',
-                                    fontSize: '13px',
-                                    backgroundColor: '#111827',
+                                    padding: '16px',
+                                    fontSize: '15px',
+                                    background: 'linear-gradient(135deg, #b45309 0%, #92400e 100%)',
                                     color: 'white',
                                     border: 'none',
-                                    borderRadius: '10px',
+                                    borderRadius: '14px',
                                     cursor: 'pointer',
-                                    fontWeight: 600
+                                    fontWeight: 800,
+                                    boxShadow: '0 10px 15px -3px rgba(180, 83, 9, 0.2)'
                                 }}
                             >
-                                Rebuild from Mongo (Events)
+                                Rebuild SQL from Mongo
                             </button>
                         </div>
                     </div>
                 </div>
 
                 {/* STATUS ZONE */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
+                    <div
+                        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '28px' }}
+                    >
                         <div
                             style={{
-                                backgroundColor: '#fff',
-                                padding: '32px',
-                                borderRadius: '24px',
-                                border: '1px solid #e5e7eb',
-                                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
-                                textAlign: 'center'
+                                background: 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)',
+                                padding: '40px 28px',
+                                borderRadius: '32px',
+                                border: '1px solid #fef3c7',
+                                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.03)',
+                                textAlign: 'center',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center'
                             }}
                         >
                             <div
                                 style={{
-                                    fontSize: '12px',
-                                    fontWeight: 600,
-                                    color: '#9ca3af',
-                                    textTransform: 'uppercase'
+                                    fontSize: '13px',
+                                    fontWeight: 800,
+                                    color: '#92400e',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.1em'
                                 }}
                             >
                                 Historical Facts
                             </div>
-                            <div style={{ fontSize: '48px', fontWeight: 800, color: '#111827' }}>
+                            <div
+                                style={{
+                                    fontSize: '56px',
+                                    fontWeight: 950,
+                                    color: '#1c1917',
+                                    margin: '8px 0',
+                                    letterSpacing: '-0.05em'
+                                }}
+                            >
                                 {stats.events}
                             </div>
                             <div
                                 style={{
-                                    fontSize: '11px',
-                                    color: '#4b5563',
-                                    fontWeight: 600,
-                                    marginTop: '8px',
-                                    backgroundColor: '#f3f4f6',
-                                    padding: '4px 12px',
-                                    borderRadius: '20px',
+                                    fontSize: '12px',
+                                    color: '#b45309',
+                                    fontWeight: 800,
+                                    backgroundColor: '#fef3c7',
+                                    padding: '6px 18px',
+                                    borderRadius: '24px',
                                     display: 'inline-block',
-                                    border: '1px solid #e5e7eb'
+                                    border: '1px solid #fde68a',
+                                    alignSelf: 'center'
                                 }}
                             >
-                                Schema v1
+                                MongoDB Store
                             </div>
                         </div>
 
                         <div
                             style={{
                                 backgroundColor: '#fff',
-                                padding: '24px',
-                                borderRadius: '24px',
-                                border: isInconsistent ? '2px solid #111827' : '1px solid #e5e7eb',
-                                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)'
+                                padding: '40px 28px',
+                                borderRadius: '32px',
+                                border: '1px solid #e7e5e4',
+                                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.03)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '20px'
+                            }}
+                        >
+                            <div
+                                style={{
+                                    fontSize: '13px',
+                                    fontWeight: 800,
+                                    color: '#78716c',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.1em'
+                                }}
+                            >
+                                Messaging Bridge
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            fontSize: '15px',
+                                            color: '#57534e',
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        Queue Pending:
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: '22px',
+                                            fontWeight: 900,
+                                            color: stats.queue?.async > 0 ? '#b45309' : '#1c1917'
+                                        }}
+                                    >
+                                        {stats.queue?.async ?? 0}
+                                    </span>
+                                </div>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            fontSize: '15px',
+                                            color: '#57534e',
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        Failed (DLQ):
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: '22px',
+                                            fontWeight: 900,
+                                            color: stats.queue?.failed > 0 ? '#ef4444' : '#1c1917',
+                                            backgroundColor:
+                                                stats.queue?.failed > 0 ? '#fff1f2' : 'transparent',
+                                            padding: stats.queue?.failed > 0 ? '4px 12px' : '0',
+                                            borderRadius: '10px'
+                                        }}
+                                    >
+                                        {stats.queue?.failed ?? 0}
+                                    </span>
+                                </div>
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    color: '#78716c',
+                                    fontWeight: 800,
+                                    backgroundColor: '#f5f5f4',
+                                    padding: '6px 18px',
+                                    borderRadius: '24px',
+                                    display: 'inline-block',
+                                    border: '1px solid #e7e5e4',
+                                    alignSelf: 'flex-start'
+                                }}
+                            >
+                                PostgreSQL Queue
+                            </div>
+                        </div>
+
+                        <div
+                            style={{
+                                backgroundColor: '#fff',
+                                padding: '40px 28px',
+                                borderRadius: '32px',
+                                border: isInconsistent ? '3px solid #b45309' : '1px solid #e7e5e4',
+                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.06)',
+                                transition: 'all 0.3s'
                             }}
                         >
                             <div
@@ -884,24 +1031,31 @@ export function DemoFlow() {
                                     marginBottom: '20px'
                                 }}
                             >
-                                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>
-                                    Read Consistency
+                                <h3
+                                    style={{
+                                        margin: 0,
+                                        fontSize: '17px',
+                                        fontWeight: 800,
+                                        color: '#1c1917'
+                                    }}
+                                >
+                                    Read Models
                                 </h3>
                                 <div style={{ textAlign: 'right' }}>
                                     <div
                                         style={{
-                                            fontSize: '11px',
-                                            color: '#9ca3af',
-                                            textTransform: 'uppercase'
+                                            fontSize: '10px',
+                                            color: '#a8a29e',
+                                            fontWeight: 800
                                         }}
                                     >
-                                        Snapshots
+                                        SNAPS
                                     </div>
                                     <div
                                         style={{
                                             fontSize: '18px',
-                                            fontWeight: 700,
-                                            color: '#111827'
+                                            fontWeight: 900,
+                                            color: '#1c1917'
                                         }}
                                     >
                                         {stats.snapshots}
@@ -916,17 +1070,19 @@ export function DemoFlow() {
                                         fontSize: '14px'
                                     }}
                                 >
-                                    <span style={{ color: '#6b7280' }}>User Records:</span>
+                                    <span style={{ color: '#78716c', fontWeight: 600 }}>
+                                        Users:
+                                    </span>
                                     <span
                                         style={{
-                                            fontWeight: 700,
+                                            fontWeight: 900,
                                             color:
                                                 stats.users < expectedUserRecords
-                                                    ? '#f43f5e'
-                                                    : '#111827'
+                                                    ? '#ef4444'
+                                                    : '#1c1917'
                                         }}
                                     >
-                                        {stats.users}
+                                        {stats.users} / {expectedUserRecords}
                                     </span>
                                 </div>
                                 <div
@@ -936,17 +1092,19 @@ export function DemoFlow() {
                                         fontSize: '14px'
                                     }}
                                 >
-                                    <span style={{ color: '#6b7280' }}>Booking Records:</span>
+                                    <span style={{ color: '#78716c', fontWeight: 600 }}>
+                                        Bookings:
+                                    </span>
                                     <span
                                         style={{
-                                            fontWeight: 700,
+                                            fontWeight: 900,
                                             color:
                                                 stats.bookings < expectedBookingRecords
-                                                    ? '#f43f5e'
-                                                    : '#111827'
+                                                    ? '#ef4444'
+                                                    : '#1c1917'
                                         }}
                                     >
-                                        {stats.bookings}
+                                        {stats.bookings} / {expectedBookingRecords}
                                     </span>
                                 </div>
                             </div>
@@ -956,54 +1114,55 @@ export function DemoFlow() {
                                     disabled={loading}
                                     style={{
                                         width: '100%',
-                                        marginTop: '20px',
-                                        padding: '12px',
-                                        backgroundColor: '#111827',
+                                        marginTop: '24px',
+                                        padding: '14px',
+                                        background:
+                                            'linear-gradient(135deg, #b45309 0%, #92400e 100%)',
                                         color: 'white',
                                         border: 'none',
-                                        borderRadius: '8px',
+                                        borderRadius: '12px',
                                         cursor: 'pointer',
                                         fontSize: '14px',
-                                        fontWeight: 600
+                                        fontWeight: 800,
+                                        boxShadow: '0 10px 15px -3px rgba(180, 83, 9, 0.3)'
                                     }}
                                 >
-                                    Repair & Sync
+                                    Sync Read Model
                                 </button>
                             )}
                         </div>
                     </div>
 
-                    {/* LIVE TABLES */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                             <DataList
-                                title="Event Store"
+                                title="Event Store (Mongo)"
                                 items={events}
                                 columns={['eventType', 'occurredOn']}
-                                emptyMsg="No events."
+                                emptyMsg="No events recorded."
                                 badge={events.length}
                             />
                             <DataList
-                                title="Checkpoints"
+                                title="Projections Checkpoints"
                                 items={checkpoints}
                                 columns={['projectionName', 'lastEventId']}
-                                emptyMsg="No checkpoints."
+                                emptyMsg="No checkpoints found."
                                 badge={checkpoints.length}
                             />
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                             <DataList
-                                title="Users Projection"
+                                title="Users SQL Projection"
                                 items={sortedUsers}
                                 columns={['name', 'email']}
-                                emptyMsg="No users."
+                                emptyMsg="No users projected."
                                 badge={sortedUsers.length}
                             />
                             <DataList
-                                title="Bookings Projection"
+                                title="Bookings SQL Projection"
                                 items={bookings}
                                 columns={['data.clientName', 'data.clientEmail', 'createdAt']}
-                                emptyMsg="No bookings."
+                                emptyMsg="No bookings projected."
                                 badge={bookings.length}
                             />
                         </div>

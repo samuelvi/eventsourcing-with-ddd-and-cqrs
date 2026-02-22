@@ -76,14 +76,14 @@ final readonly class ArchitectureControlService
         $failedCount = 0;
 
         try {
-            $asyncCount = (int) $this->messagingConnection->fetchOne(
+            $asyncCount = $this->toIntCount($this->messagingConnection->fetchOne(
                 'SELECT COUNT(*) FROM messenger_messages WHERE queue_name = :q',
                 ['q' => 'async']
-            );
-            $failedCount = (int) $this->messagingConnection->fetchOne(
+            ));
+            $failedCount = $this->toIntCount($this->messagingConnection->fetchOne(
                 'SELECT COUNT(*) FROM messenger_messages WHERE queue_name = :q',
                 ['q' => 'failed']
-            );
+            ));
         } catch (\Exception) {
             // Table might not exist yet
         }
@@ -190,5 +190,10 @@ final readonly class ArchitectureControlService
         $this->cache->delete(self::CACHE_KEY_MASTER);
         $this->cache->delete(self::CACHE_KEY_USER_PROJECTIONS);
         $this->cache->delete(self::CACHE_KEY_BOOKING_PROJECTIONS);
+    }
+
+    private function toIntCount(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
     }
 }

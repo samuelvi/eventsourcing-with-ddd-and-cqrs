@@ -10,8 +10,6 @@ use App\Tests\Infrastructure\Messenger\Fixtures\TestFailingMessage;
 use App\Tests\Infrastructure\Messenger\Fixtures\TestMessage;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Console\Tester\CommandTester;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 
@@ -21,15 +19,22 @@ final class MessengerIntegrationTest extends KernelTestCase
     private AsyncCommandBusInterface $asyncCommandBus;
     private SyncCommandBusInterface $syncCommandBus;
     private Connection $queueConnection;
-    private CommandTester $commandTester;
 
     protected function setUp(): void
     {
         self::bootKernel();
 
-        $this->bus = self::getContainer()->get(MessageBusInterface::class);
-        $this->asyncCommandBus = self::getContainer()->get(AsyncCommandBusInterface::class);
-        $this->syncCommandBus = self::getContainer()->get(SyncCommandBusInterface::class);
+        $bus = self::getContainer()->get(MessageBusInterface::class);
+        self::assertInstanceOf(MessageBusInterface::class, $bus);
+        $this->bus = $bus;
+
+        $asyncCommandBus = self::getContainer()->get(AsyncCommandBusInterface::class);
+        self::assertInstanceOf(AsyncCommandBusInterface::class, $asyncCommandBus);
+        $this->asyncCommandBus = $asyncCommandBus;
+
+        $syncCommandBus = self::getContainer()->get(SyncCommandBusInterface::class);
+        self::assertInstanceOf(SyncCommandBusInterface::class, $syncCommandBus);
+        $this->syncCommandBus = $syncCommandBus;
         /** @var Connection $connection */
         $connection = self::getContainer()->get('doctrine.dbal.messaging_connection');
         $this->queueConnection = $connection;
@@ -76,7 +81,6 @@ final class MessengerIntegrationTest extends KernelTestCase
         } catch (\Exception $e) {
             // Si entra aquí, es que se ha ejecutado de forma síncrona
             $this->markTestSkipped('El mensaje se ejecutó de forma síncrona, saltando prueba de encolado asíncrono.');
-            return;
         }
 
         // 2. Verificar que entró

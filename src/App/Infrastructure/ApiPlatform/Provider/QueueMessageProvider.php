@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\ApiPlatform\Provider;
 
 use ApiPlatform\Metadata\Operation;
+use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\State\ProviderInterface;
 use App\Infrastructure\ApiPlatform\Resource\QueueMessage;
 use Doctrine\DBAL\Connection;
@@ -22,7 +23,7 @@ final readonly class QueueMessageProvider implements ProviderInterface
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
-        $uriTemplate = $operation->getUriTemplate();
+        $uriTemplate = $operation instanceof HttpOperation ? $operation->getUriTemplate() : null;
         $filterQueue = null;
         if ($uriTemplate === '/messages-async') {
             $filterQueue = 'async';
@@ -66,13 +67,36 @@ final readonly class QueueMessageProvider implements ProviderInterface
     private function mapToModel(array $data): QueueMessage
     {
         return new QueueMessage(
-            (int) $data['id'],
-            (string) $data['body'],
-            (string) $data['headers'],
-            (string) $data['queue_name'],
-            (string) $data['created_at'],
-            (string) $data['available_at'],
-            isset($data['delivered_at']) ? (string) $data['delivered_at'] : null,
+            $this->toIntOrZero($data['id'] ?? null),
+            $this->toStringOrEmpty($data['body'] ?? null),
+            $this->toStringOrEmpty($data['headers'] ?? null),
+            $this->toStringOrEmpty($data['queue_name'] ?? null),
+            $this->toStringOrEmpty($data['created_at'] ?? null),
+            $this->toStringOrEmpty($data['available_at'] ?? null),
+            $this->toNullableString($data['delivered_at'] ?? null),
         );
+    }
+
+    private function toIntOrZero(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
+    }
+
+    private function toStringOrEmpty(mixed $value): string
+    {
+        if (is_scalar($value)) {
+            return (string) $value;
+        }
+
+        return '';
+    }
+
+    private function toNullableString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return $this->toStringOrEmpty($value);
     }
 }

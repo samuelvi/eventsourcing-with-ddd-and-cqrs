@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Infrastructure\Messenger\Fixtures;
 
+use App\Application\Bus\AsyncCommandBusInterface;
+use App\Application\Bus\SyncCommandBusInterface;
 use App\Tests\Infrastructure\Messenger\Fixtures\TestFailingMessage;
 use App\Tests\Infrastructure\Messenger\Fixtures\TestMessage;
 use Doctrine\DBAL\Connection;
@@ -16,6 +18,8 @@ use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 final class MessengerIntegrationTest extends KernelTestCase
 {
     private MessageBusInterface $bus;
+    private AsyncCommandBusInterface $asyncCommandBus;
+    private SyncCommandBusInterface $syncCommandBus;
     private Connection $queueConnection;
     private CommandTester $commandTester;
 
@@ -24,6 +28,8 @@ final class MessengerIntegrationTest extends KernelTestCase
         self::bootKernel();
 
         $this->bus = self::getContainer()->get(MessageBusInterface::class);
+        $this->asyncCommandBus = self::getContainer()->get(AsyncCommandBusInterface::class);
+        $this->syncCommandBus = self::getContainer()->get(SyncCommandBusInterface::class);
         /** @var Connection $connection */
         $connection = self::getContainer()->get('doctrine.dbal.messaging_connection');
         $this->queueConnection = $connection;
@@ -76,5 +82,25 @@ final class MessengerIntegrationTest extends KernelTestCase
         // 2. Verificar que entró
         $totalCount = $this->queueConnection->fetchOne("SELECT COUNT(*) FROM messenger_messages");
         $this->assertGreaterThan(0, $totalCount, 'El mensaje debería estar encolado inicialmente');
+    }
+
+    public function testAsyncCommandBusDispatchDoesNotBubbleHandlerException(): void
+    {
+        $message = new TestFailingMessage('Fallo controlado async');
+
+        try {
+            $this->asyncCommandBus->dispatch($message);
+            $this->addToAssertionCount(1);
+        } catch (\Throwable $exception) {
+            $this->fail('AsyncCommandBus no debería propagar la excepción del handler en dispatch: ' . $exception->getMessage());
+        }
+    }
+
+    public function testSyncCommandBusDispatchBubblesHandlerExceptionImmediately(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Fallo simulado para DLQ');
+
+        $this->syncCommandBus->dispatch(new TestFailingMessage('Fallo controlado sync'));
     }
 }

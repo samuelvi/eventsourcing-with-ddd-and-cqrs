@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Http\Controller;
 
-use App\Application\Bus\SyncCommandBusInterface;
+use App\Application\Bus\AsyncCommandBusInterface;
 use App\Application\Command\SubmitBookingWizardCommand;
 use App\Application\Dto\BookingWizardDto;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -19,8 +18,7 @@ final class BookingWizardController extends AbstractController
     #[Route('/api/booking-wizard', name: 'api_booking_wizard_submit', methods: ['POST'])]
     public function __invoke(
         #[MapRequestPayload] BookingWizardDto $dto,
-        #[Autowire(service: 'App\Infrastructure\Messenger\Bus\MessengerSyncCommandBus')]
-        SyncCommandBusInterface $commandBus
+        AsyncCommandBusInterface $commandBus
     ): Response {
         $commandBus->dispatch(SubmitBookingWizardCommand::create(
             id: $dto->bookingId,

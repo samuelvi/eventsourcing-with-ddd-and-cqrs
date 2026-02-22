@@ -20,12 +20,8 @@ framework:
 
         routing:
             # Route your messages to the transports
-            'App\Application\Command\CreateUserCommand': async
-            'App\Application\Command\UpdateUserCommand': async
-            'App\Application\Command\DeleteUserCommand': async
-            # Or use wildcard if supported, but explicit is safer for now as I see specific files.
-            # Actually, I can use interface based routing if they implement something like AsyncMessageInterface.
-            # But let's stick to explicit for the known commands or namespace.
+            # Default command routing is async.
+            # Sync behavior is explicitly selected by SyncCommandBusInterface (TransportNamesStamp('sync')).
             'App\Application\Command\*': async
             'App\Domain\Event\*': async
 

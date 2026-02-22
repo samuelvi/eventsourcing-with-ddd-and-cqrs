@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace App\Application\Service;
 
 use App\Infrastructure\EventSourcing\Snapshot;
+use App\Domain\Model\User;
+use App\Domain\Repository\UserEventStoreRepositoryInterface;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
+use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -29,8 +34,11 @@ final readonly class ArchitectureControlService
         private KernelInterface $kernel,
         private \App\Domain\Repository\UserReadRepositoryInterface $userRepository,
         private \App\Domain\Repository\BookingReadRepositoryInterface $bookingRepository,
-        #[\Symfony\Component\DependencyInjection\Attribute\Target('messaging')]
-        private \Doctrine\DBAL\Connection $messagingConnection,
+        private UserEventStoreRepositoryInterface $userEventStoreRepository,
+        #[\Symfony\Component\DependencyInjection\Attribute\Target('messaging.connection')]
+        private Connection $messagingConnection,
+        #[Autowire('%env(string:QUEUE_BACKEND)%')]
+        private string $queueBackend,
     ) {}
 
     /**
@@ -75,20 +83,22 @@ final readonly class ArchitectureControlService
             $checkpointsMap[$cp->projectionName] = $cp->lastEventId?->toRfc4122();
         }
 
-        $asyncCount = 0;
-        $failedCount = 0;
+        $asyncCount = null;
+        $failedCount = null;
 
-        try {
-            $asyncCount = $this->toIntCount($this->messagingConnection->fetchOne(
-                'SELECT COUNT(*) FROM messenger_messages WHERE queue_name = :q',
-                ['q' => 'async']
-            ));
-            $failedCount = $this->toIntCount($this->messagingConnection->fetchOne(
-                'SELECT COUNT(*) FROM messenger_messages WHERE queue_name = :q',
-                ['q' => 'failed']
-            ));
-        } catch (\Exception) {
-            // Table might not exist yet
+        if ($this->queueBackend === 'postgres') {
+            try {
+                $asyncCount = $this->toIntCount($this->messagingConnection->fetchOne(
+                    'SELECT COUNT(*) FROM messenger_messages WHERE queue_name = :q',
+                    ['q' => 'async']
+                ));
+                $failedCount = $this->toIntCount($this->messagingConnection->fetchOne(
+                    'SELECT COUNT(*) FROM messenger_messages WHERE queue_name = :q',
+                    ['q' => 'failed']
+                ));
+            } catch (\Exception) {
+                // Table might not exist yet
+            }
         }
 
         return [
@@ -98,6 +108,7 @@ final readonly class ArchitectureControlService
             'snapshots' => $this->mongoStore->countSnapshots(),
             'checkpoints' => $checkpointsMap,
             'queue' => [
+                'backend' => $this->queueBackend,
                 'async' => $asyncCount,
                 'failed' => $failedCount
             ]
@@ -177,9 +188,11 @@ final readonly class ArchitectureControlService
                 $storedEvent->eventType,
                 'json'
             );
-            $this->eventBus->dispatch($event);
+            $this->eventBus->dispatch($event, [new TransportNamesStamp(['sync'])]);
             $replayedEvents++;
         }
+
+        $this->refreshUsersSeededFromSnapshots();
 
         return $replayedEvents;
     }
@@ -274,6 +287,46 @@ final readonly class ArchitectureControlService
                     'email' => $email,
                     'address' => $address,
                     'created_at' => $snapshot->createdAt->format('Y-m-d H:i:s')
+                ]
+            );
+        }
+    }
+
+    private function refreshUsersSeededFromSnapshots(): void
+    {
+        foreach ($this->mongoStore->iterateLatestSnapshotsByAggregateId() as $snapshot) {
+            if (!$this->isUserSnapshotState($snapshot->state)) {
+                continue;
+            }
+
+            $aggregate = $this->userEventStoreRepository->get($snapshot->aggregateId);
+            if (!$aggregate instanceof User) {
+                continue;
+            }
+
+            if ($aggregate->isDeleted()) {
+                $this->readEntityManager->execute(
+                    'DELETE FROM users WHERE id = :id',
+                    ['id' => $snapshot->aggregateId->toRfc4122()]
+                );
+                continue;
+            }
+
+            $this->readEntityManager->execute(
+                <<<'SQL'
+                INSERT INTO users (id, name, email, address, created_at)
+                VALUES (:id, :name, :email, :address, :created_at)
+                ON CONFLICT (id) DO UPDATE
+                SET name = EXCLUDED.name,
+                    email = EXCLUDED.email,
+                    address = EXCLUDED.address
+                SQL,
+                [
+                    'id' => $snapshot->aggregateId->toRfc4122(),
+                    'name' => $aggregate->getName(),
+                    'email' => $aggregate->getEmail(),
+                    'address' => $aggregate->address,
+                    'created_at' => $snapshot->createdAt->format('Y-m-d H:i:s'),
                 ]
             );
         }

@@ -48,9 +48,10 @@ Feature: User CRUD with Event Sourcing
     Given I am on the "/" page
     When I create a user via API with name "First User" and email "duplicate-owner@test.com"
     Then the user API response status should be 202
+    When I wait 2 second
     When I create a user via API with name "Second User" and email "duplicate-target@test.com"
     Then the user API response status should be 202
-
+    When I wait 2 second
     When I update that user via API with name "Second User Updated" and email "duplicate-owner@test.com"
     Then the user API response status should be 409
 

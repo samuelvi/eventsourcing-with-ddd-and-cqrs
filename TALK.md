@@ -78,16 +78,25 @@ El sistema utiliza proyecciones especializadas para transformar hechos en vistas
 
 1.  **Garantía de Integridad (Prioridades)**: En arquitecturas SQL con claves foráneas, el orden importa. `UserProjection` tiene asignada una **prioridad alta (10)** en el bus de Symfony, mientras que `BookingProjection` tiene la prioridad por defecto (0). Esto garantiza que, en un flujo síncrono, el Usuario siempre "nazca" en SQL antes de que la Reserva intente referenciarlo.
 
-    **Nota sobre el Escalamiento Asíncrono:** Es fundamental entender que en un entorno de producción con colas de mensajes (donde cada proyección corre en un worker distinto), **las prioridades de Symfony ya no garantizan el orden**. El mensaje del Booking podría procesarse antes que el del Usuario. Para manejar esto, la industria utiliza las siguientes estrategias:
-    - **Reintento con Re-encolado (Retry with Delay):** Si la `BookingProjection` falla porque el usuario no existe, se lanza una excepción que devuelve el mensaje a la cola con un pequeño retardo. Se espera que para el segundo o tercer intento, el usuario ya haya sido creado por su propio worker.
+    **Nota sobre el Escalamiento Asíncrono:** Es fundamental entender que en un entorno de producción con colas de mensajes (donde cada proyección corre en un worker distinto), **las prioridades de Symfony ya no garantizan el orden**. El mensaje del Booking podría procesarse antes que el del Usuario.
+
+    #### Gestión de Fallos: El caso del "Usuario B"
+
+    Imagina una secuencia de eventos: `101 (User A)`, `102 (User B)`, `103 (User C)`. Si el proceso del `User B` falla (ej. por un bug o timeout), ¿qué ocurre con el checkpoint?
+    - **Estrategia Dead Letter Queue (DLQ):** El sistema considera que un mensaje ha sido "gestionado" tanto si tiene éxito como si se mueve a una cola de fallos controlada.
+    - **Avance del Checkpoint:** Al mover a `User B` a la DLQ, el sistema **permite que el checkpoint avance al 102**. Esto evita el bloqueo total del sistema ("Poison Pill") y permite procesar al `User C` inmediatamente.
+    - **Rescate Manual:** Los datos de `User B` no se pierden; quedan en una tabla lateral de la base de datos de infraestructura (`queue-db`) esperando a que un desarrollador los rescate tras corregir el problema.
+
+    #### Técnicas de Resiliencia Aplicadas:
+    - **Reintento Inteligente (Smart Retry):** Si una proyección falla porque un dato dependiente aún no ha llegado (condición de carrera), el sistema lanza una `RecoverableMessageException`. Symfony Messenger captura esto y reintenta el mensaje con un retardo exponencial (1s, 2s, 4s...), dando tiempo a que la consistencia eventual se alcance.
+    - **Aislamiento de Infraestructura:** Las colas viven en una base de datos PostgreSQL dedicada, separada de los datos de dominio, permitiendo una migración transparente a sistemas como RabbitMQ o Kafka en el futuro.
     - **Consolidación de Proyectores (Atomic Projection):** Crear un único listener que gestione ambas entidades en una única transacción SQL, asegurando el orden correcto de inserción.
-    - **Look-ahead Logic:** La `BookingProjection` comprueba si el usuario existe y, si no, lo crea ella misma con los datos mínimos disponibles en el evento (gracias a que el ID es determinista).
-    - **Relajación de Constraints (Eventual Consistency):** Eliminar las Foreign Keys físicas en las tablas de lectura, confiando en que la integridad ya se ha validado en el Write Model (MongoDB) y aceptando una inconsistencia temporal de milisegundos en la vista SQL.
+    - **Relajación de Constraints (Eventual Consistency):** Eliminar las Foreign Keys físicas en las tablas de lectura, aceptando una inconsistencia temporal de milisegundos en la vista SQL.
 
 2.  **Checkpointing**: Cada proyección guarda su propio "marcador" en MongoDB. Esto permite saber qué evento fue el último procesado con éxito, facilitando la recuperación tras un fallo y asegurando que ningún evento se procese dos veces.
     - Qué es exactamente un checkpoint:
         - Un documento por proyección (ej. `user_projection`, `booking_projection`).
-        - Guarda el identificador del último evento aplicado con éxito por esa proyección.
+        - Guarda el identificador del último evento aplica con éxito por esa proyección.
         - Vive en la colección `checkpoints` de MongoDB (separado de `events` y `snapshots`).
         - Punto clave: se actualiza en el **Read Side** (al final de un handler de proyección exitoso), **no** en el `save()` del agregado en el Write Side.
     - Para qué se usa en operación:
@@ -319,16 +328,23 @@ Recordatorio final: `aggregateId` por sí solo **no** es único en `events` (deb
 - **CQRS**: Command Query Responsibility Segregation
 - **CRON**: Command Run On (utilidad para programar tareas)
 - **CRUD**: Create, Read, Update, Delete
+- **DBAL**: Database Abstraction Layer (Capa de abstracción de base de datos)
 - **DDD**: Domain-Driven Design
+- **DLQ**: Dead Letter Queue (Cola de mensajes fallidos)
+- **DSN**: Data Source Name (Nombre de origen de datos / Cadena de conexión)
+- **E2E**: End-to-End (Pruebas de extremo a extremo)
 - **EAFP**: Better to Ask Forgiveness than Permission (Es Mejor Pedir Perdón que Pedir Permiso)
 - **HTTP**: Hypertext Transfer Protocol
 - **I/O**: Input/Output (Entrada/Salida)
 - **LBYL**: Look Before You Leap (Es Mejor Preguntar Antes de Saltar)
+- **ORM**: Object-Relational Mapping (Mapeo Objeto-Relacional)
 - **PHP**: PHP: Hypertext Preprocessor (en sus inicios: Personal Home Page)
 - **POC**: Proof Of Concept (Prueba de Concepto)
+- **SPA**: Single Page Application (Aplicación de una sola página)
 - **SQL**: Structured Query Language
 - **UI**: User Interface (Interfaz de Usuario)
 - **UUID**: Universally Unique Identifier
+- **XML-RPC**: XML Remote Procedure Call (usado para comunicación con Supervisor)
 
 ---
 

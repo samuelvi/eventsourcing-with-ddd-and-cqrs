@@ -78,3 +78,6 @@ docker/test/n8n/data
 ###> phpstan/phpstan ###
 phpstan.neon
 ###< phpstan/phpstan ###
+docker/dev/postgres-queue/data
+docker/test/postgres-queue/data
+tests/Infrastructure/Messenger/Fixtures

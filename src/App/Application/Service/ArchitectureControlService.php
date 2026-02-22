@@ -27,6 +27,8 @@ final readonly class ArchitectureControlService
         private KernelInterface $kernel,
         private \App\Domain\Repository\UserReadRepositoryInterface $userRepository,
         private \App\Domain\Repository\BookingReadRepositoryInterface $bookingRepository,
+        #[\Symfony\Component\DependencyInjection\Attribute\Target('messaging')]
+        private \Doctrine\DBAL\Connection $messagingConnection,
     ) {}
 
     /**
@@ -60,7 +62,7 @@ final readonly class ArchitectureControlService
     }
 
     /**
-     * @return array<string, int|array<string, string|null>>
+     * @return array<string, mixed>
      */
     public function getStats(): array
     {
@@ -70,12 +72,32 @@ final readonly class ArchitectureControlService
             $checkpointsMap[$cp->projectionName] = $cp->lastEventId?->toRfc4122();
         }
 
+        $asyncCount = 0;
+        $failedCount = 0;
+
+        try {
+            $asyncCount = (int) $this->messagingConnection->fetchOne(
+                'SELECT COUNT(*) FROM messenger_messages WHERE queue_name = :q',
+                ['q' => 'async']
+            );
+            $failedCount = (int) $this->messagingConnection->fetchOne(
+                'SELECT COUNT(*) FROM messenger_messages WHERE queue_name = :q',
+                ['q' => 'failed']
+            );
+        } catch (\Exception) {
+            // Table might not exist yet
+        }
+
         return [
             'events' => $this->mongoStore->countEvents(),
             'users' => $this->userRepository->countAll(),
             'bookings' => $this->bookingRepository->countAll(),
             'snapshots' => $this->mongoStore->countSnapshots(),
-            'checkpoints' => $checkpointsMap
+            'checkpoints' => $checkpointsMap,
+            'queue' => [
+                'async' => $asyncCount,
+                'failed' => $failedCount
+            ]
         ];
     }
 

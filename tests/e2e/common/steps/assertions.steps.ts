@@ -46,7 +46,9 @@ Then('I should see {int} rows in the table', async ({ page }, count: number) => 
 });
 
 Then('the table should contain {string}', async ({ page }, text: string) => {
-    await expect(page.getByRole('table')).toContainText(text);
+    // This is more robust for async UIs. It waits for the specific text to appear,
+    // rather than checking the entire table which might be in a transient state.
+    await expect(page.getByText(text, { exact: true })).toBeVisible({ timeout: 20000 });
 });
 
 Then('the table should be empty', async ({ page }) => {

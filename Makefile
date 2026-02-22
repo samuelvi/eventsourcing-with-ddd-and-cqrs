@@ -38,6 +38,7 @@ dev-wait:
 setup-api:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T symfony-api composer install
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T symfony-api bin/console doctrine:migrations:migrate --no-interaction
+	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) restart messenger-worker
 
 init-front:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T node npm install --quiet
@@ -67,8 +68,10 @@ setup-api-test:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test composer install --no-interaction --prefer-dist --no-progress --no-scripts
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:database:create --if-not-exists
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:migrations:migrate --no-interaction
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console messenger:setup-transports --no-interaction
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:clear --env=test --no-warmup
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:warmup --env=test
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) restart messenger-worker-test
 
 load-fixtures-test:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test sh -lc 'if bin/console list --raw | grep -q "^app:system:reset$$"; then bin/console app:system:reset --no-interaction; else echo "app:system:reset no disponible en test. Usando doctrine:fixtures:load."; bin/console doctrine:fixtures:load --no-interaction --append; fi'
@@ -85,7 +88,13 @@ test-unit: test-init
 
 test-e2e: test-init ## Run Playwright E2E tests (Headless)
 	@echo "Running E2E Tests (Headless)..."
-	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx bddgen && PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx playwright test
+	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx bddgen && \
+	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx playwright test || ( \
+		echo "E2E tests failed. Dumping logs:" && \
+		$(DOCKER_COMPOSE_TEST) logs --tail=100 symfony-api-test && \
+		$(DOCKER_COMPOSE_TEST) logs --tail=100 messenger-worker-test && \
+		exit 1 \
+	)
 
 test-e2e-ui: test-init ## Run Playwright E2E tests (UI Mode)
 	@echo "Running E2E Tests (UI Mode)..."
@@ -100,7 +109,13 @@ test-e2e-report: ## Show Playwright E2E report
 
 test-all: test-init
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/phpunit
-	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx bddgen && PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx playwright test
+	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx bddgen && \
+	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx playwright test || ( \
+		echo "E2E tests failed. Dumping logs:" && \
+		$(DOCKER_COMPOSE_TEST) logs --tail=100 symfony-api-test && \
+		$(DOCKER_COMPOSE_TEST) logs --tail=100 messenger-worker-test && \
+		exit 1 \
+	)
 
 phpstan:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T symfony-api vendor/bin/phpstan analyse --memory-limit=1G
@@ -119,6 +134,7 @@ dev-restart:
 dev-clean:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) down -v
 	rm -rf docker/dev/postgres/data/*
+	rm -rf docker/dev/postgres-queue/data/*
 	rm -rf docker/dev/mongodb/data/*
 	@echo "Entorno dev limpiado."
 
@@ -134,5 +150,6 @@ test-restart:
 test-clean:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) down -v
 	rm -rf docker/test/postgres/data/*
+	rm -rf docker/test/postgres-queue/data/*
 	rm -rf docker/test/mongodb/data/*
 	@echo "Entorno test limpiado."

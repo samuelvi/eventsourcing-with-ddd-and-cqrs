@@ -23,6 +23,11 @@ When(
         await storeResponse(response);
         currentUserId = await extractUserId(response);
         expect(currentUserId).toBe(id);
+
+        // Wait for the projection to be updated
+        await spin(() =>
+            request.get(`/api/users/${currentUserId}`).then((res) => expect(res.status()).toBe(200))
+        );
     }
 );
 
@@ -40,6 +45,11 @@ When(
         await storeResponse(response);
         currentUserId = await extractUserId(response);
         expect(currentUserId).toBe(id);
+
+        // Wait for the projection to be updated
+        await spin(() =>
+            request.get(`/api/users/${currentUserId}`).then((res) => expect(res.status()).toBe(200))
+        );
     }
 );
 
@@ -47,6 +57,15 @@ When(
     'I update that user via API with name {string} and email {string}',
     async ({ request }, name: string, email: string) => {
         expect(currentUserId).not.toBeNull();
+
+        // Poll until the user is available before trying to update
+        await spin(
+            async () => {
+                const checkResponse = await request.get(`/api/users/${currentUserId}`);
+                expect(checkResponse.status()).toBe(200);
+            },
+            { timeout: 15000 }
+        );
 
         const response = await request.fetch(`/api/users/${currentUserId}`, {
             method: 'PATCH',
@@ -63,6 +82,16 @@ When(
 
 When('I delete that user via API', async ({ request }) => {
     expect(currentUserId).not.toBeNull();
+
+    // Poll until the user is available before trying to delete
+    await spin(
+        async () => {
+            const checkResponse = await request.get(`/api/users/${currentUserId}`);
+            expect(checkResponse.status()).toBe(200);
+        },
+        { timeout: 15000 }
+    );
+
     const response = await request.fetch(`/api/users/${currentUserId}`, {
         method: 'DELETE',
         headers: {

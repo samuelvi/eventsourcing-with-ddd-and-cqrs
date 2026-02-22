@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Projection;
 
+use App\Application\Exception\RecoverableMessageException;
 use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Model\BookingEntity;
 use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
@@ -40,12 +41,9 @@ final readonly class BookingProjection
         $user = $this->userWriteRepository->find($event->userId);
         
         if (!$user) {
-            error_log('BookingProjection: user not found ' . $event->userId);
-            // In a real ES system, we might retry or fail. 
-            // For the demo, if UserProjection is OFFLINE, this will (and should) fail 
-            // due to Foreign Key constraints if we try to insert.
-            // Or we can just return to show the inconsistency.
-            return;
+            // This is a recoverable error. The UserRegistered event might be processed after this one.
+            // Throwing this specific exception will tell Messenger to retry with a delay.
+            throw new RecoverableMessageException(sprintf('User %s not found for booking projection. Message will be retried.', $event->userId));
         }
 
         // 2. Idempotency check: Does this booking exist?

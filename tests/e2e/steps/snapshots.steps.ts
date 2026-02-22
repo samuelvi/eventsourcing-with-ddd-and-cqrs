@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { Then, When } from '../common/bdd';
+import { Then, When, spin } from '../common/bdd';
 
 let snapshotUserAggregateId: string | null = null;
 
@@ -38,6 +38,12 @@ When('I create a user aggregate with 5 events', async ({ request }) => {
     snapshotUserAggregateId = await extractUserId(createResponse);
     expect(snapshotUserAggregateId).not.toBeNull();
 
+    // Poll until the user is available in the read model
+    await expect(async () => {
+        const checkResponse = await request.get(`/api/users/${snapshotUserAggregateId}`);
+        expect(checkResponse.status()).toBe(200);
+    }).toPass({ timeout: 15000 });
+
     for (let i = 0; i < 4; i++) {
         const updateResponse = await request.fetch(`/api/users/${snapshotUserAggregateId}`, {
             method: 'PATCH',
@@ -66,16 +72,21 @@ Then('the snapshot count should be {int}', async ({ request }, expected: number)
 Then('the user aggregate snapshot count should be {int}', async ({ request }, expected: number) => {
     expect(snapshotUserAggregateId).not.toBeNull();
 
-    const response = await request.get('/api/snapshots');
-    expect(response.ok()).toBeTruthy();
+    await spin(
+        async () => {
+            const response = await request.get('/api/snapshots');
+            expect(response.ok()).toBeTruthy();
 
-    const payload = (await response.json()) as {
-        'hydra:member'?: Array<{ aggregateId?: string }>;
-    };
+            const payload = (await response.json()) as {
+                'hydra:member'?: Array<{ aggregateId?: string }>;
+            };
 
-    const members = payload['hydra:member'] ?? [];
-    const count = members.filter((s) => s.aggregateId === snapshotUserAggregateId).length;
-    expect(count).toBe(expected);
+            const members = payload['hydra:member'] ?? [];
+            const count = members.filter((s) => s.aggregateId === snapshotUserAggregateId).length;
+            expect(count).toBe(expected);
+        },
+        { timeout: 20000 }
+    );
 });
 
 async function extractUserId(response: {

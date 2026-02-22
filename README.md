@@ -1,6 +1,6 @@
 # Event Sourcing With DDD & CQRS
 
-POC de reservas con Event Sourcing usando Symfony 7.2, PHP 8.4, API Platform 3.4, React 18 (Vite), PostgreSQL, MongoDB y n8n.
+POC de reservas con Event Sourcing usando Symfony 7.4 LTS, PHP 8.4/8.5, API Platform 3.4, React 18 (Vite), PostgreSQL, MongoDB y n8n.
 
 ## Estado del proyecto
 
@@ -42,6 +42,7 @@ Ya instalé el Web Profiler para `dev` (`symfony/web-profiler-bundle`) y quedaro
 - `config/bundles.php`
 - `config/packages/web_profiler.yaml`
 - `config/routes/web_profiler.yaml`
+- Versión instalada: `symfony/web-profiler-bundle ^7.4` (solo entorno `dev`/`test` en desarrollo)
 
 Con `APP_ENV=dev` y `APP_DEBUG=1` (como en `docker/dev/docker-compose.yaml`), debes ver la barra en respuestas HTML:
 
@@ -228,14 +229,16 @@ DEV:
 - Architecture Monitor: http://localhost:8080/demo
 - Explorer: http://localhost:8080/explorer
 - API Docs: http://localhost:8080/docs
-- Adminer: http://localhost:8081/
+- Adminer: http://localhost:8081/ (Servidores: `postgres-db`, `queue-db`)
+- Supervisor Web UI: http://localhost:9001/ (Gestión de workers)
 - Mongo Express: http://localhost:8082/
 - n8n: http://localhost:5678/
 
 TEST:
 
 - App/API: http://localhost:9080/
-- Adminer: http://localhost:9081/
+- Adminer: http://localhost:9081/ (Servidores: `postgres-db-test`, `queue-db-test`)
+- Supervisor Web UI: http://localhost:9002/ (Gestión de workers test)
 - n8n: http://localhost:9082/
 - Mongo Express: http://localhost:9083/
 
@@ -246,6 +249,8 @@ Credenciales Mongo Express (dev y test):
 
 ## Credenciales PostgreSQL
 
+### Dominio (Agregados y Proyecciones)
+
 DEV:
 
 - Host: `postgres-db`
@@ -253,7 +258,6 @@ DEV:
 - Base de datos: `event_sourcing_dev`
 - Usuario: `user`
 - Password: `password`
-- `DATABASE_URL`: `postgresql://user:password@postgres-db:5432/event_sourcing_dev?serverVersion=16&charset=utf8`
 
 TEST:
 
@@ -262,7 +266,54 @@ TEST:
 - Base de datos: `event_sourcing_test`
 - Usuario: `user`
 - Password: `password`
-- `DATABASE_URL`: `postgresql://user:password@postgres-db-test:5432/event_sourcing_test?serverVersion=16&charset=utf8`
+
+### Mensajería (Messenger Queue)
+
+DEV:
+
+- Host: `queue-db`
+- Puerto: `5432`
+- Base de datos: `messenger_queue`
+- Usuario: `queue_user`
+- Password: `queue_password`
+
+TEST:
+
+- Host: `queue-db-test`
+- Puerto: `5432`
+- Base de datos: `messenger_queue_test`
+- Usuario: `queue_user`
+- Password: `queue_password`
+
+## Gestión de Mensajería Asíncrona (Messenger)
+
+El sistema utiliza **Symfony Messenger** gestionado por **Supervisor** para el procesamiento asíncrono de comandos y eventos.
+
+### Monitorización y Control
+
+- **Supervisor Web UI (http://localhost:9001)**: Permite ver el estado de los procesos worker, reiniciarlos y ver sus logs directamente desde el navegador sin entrar al contenedor.
+- **Adminer (http://localhost:8081)**: Permite inspeccionar la tabla `messenger_messages` seleccionando el servidor `queue-db`.
+
+### Dead Letter Queue (DLQ)
+
+Para garantizar que no se pierda ningún dato ante fallos puntuales (ej. el caso del Usuario B que falla mientras A y C funcionan):
+
+1. Los mensajes fallidos se reintentan automáticamente con un retardo exponencial.
+2. Tras agotar los reintentos, el mensaje se mueve a la cola `failed` en la base de datos `queue-db`.
+3. El sistema continúa operando, y los mensajes en la DLQ esperan intervención manual.
+
+**Comandos útiles:**
+
+```bash
+# Ver estado de las colas
+docker exec -it messenger-worker bin/console messenger:stats
+
+# Ver mensajes fallidos
+docker exec -it messenger-worker bin/console messenger:failed:show
+
+# Recuperar/Reintentar mensajes fallidos
+docker exec -it messenger-worker bin/console messenger:failed:retry
+```
 
 ## Notas
 

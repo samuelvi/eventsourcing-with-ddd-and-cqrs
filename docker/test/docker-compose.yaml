@@ -130,6 +130,56 @@ services:
         depends_on:
             postgres-test:
                 condition: service_healthy
+            queue-db-test:
+                condition: service_healthy
+        restart: unless-stopped
+
+    # Queue Database (PostgreSQL)
+    queue-db-test:
+        image: postgres:16-alpine
+        container_name: queue-db-test
+        environment:
+            - POSTGRES_DB=messenger_queue_test
+            - POSTGRES_USER=queue_user
+            - POSTGRES_PASSWORD=queue_password
+        ports:
+            - '5435:5432'
+        volumes:
+            - ./postgres-queue/data:/var/lib/postgresql/data
+        networks:
+            - app-network-test
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U queue_user -d messenger_queue_test']
+            interval: 5s
+            timeout: 5s
+            retries: 30
+            start_period: 120s
+        restart: unless-stopped
+
+    # Messenger Worker (Supervisor)
+    messenger-worker-test:
+        build:
+            context: ../../
+            dockerfile: docker/dev/Dockerfile
+        container_name: messenger-worker-test
+        entrypoint:
+            ['/usr/bin/supervisord', '-n', '-c', '/etc/supervisor/conf.d/messenger-worker.conf']
+        user: root
+        ports:
+            - '9002:9001'
+        volumes:
+            - ../../:/app
+            - ./worker/supervisord.conf:/etc/supervisor/conf.d/messenger-worker.conf:ro
+        env_file:
+            - ../../.env
+            - ../../.env.test
+        depends_on:
+            queue-db-test:
+                condition: service_healthy
+            postgres-test:
+                condition: service_healthy
+        networks:
+            - app-network-test
         restart: unless-stopped
 
 networks:

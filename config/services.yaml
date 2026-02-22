@@ -59,3 +59,19 @@ services:
     App\Application\Handler\:
         resource: '../src/App/Application/Handler'
         tags: ['messenger.message_handler']
+
+    App\Infrastructure\ApiPlatform\Provider\QueueMessageProvider:
+        arguments:
+            $connection: '@doctrine.dbal.messaging_connection'
+
+    App\Application\Service\ArchitectureControlService:
+        arguments:
+            $messagingConnection: '@doctrine.dbal.messaging_connection'
+
+    messenger.retry_strategy.recoverable:
+        class: Symfony\Component\Messenger\Retry\MultiplierRetryStrategy
+        arguments:
+            $maxRetries: 5
+            $delayMilliseconds: 1000 # 1 second
+            $multiplier: 2
+            $maxDelayMilliseconds: 0

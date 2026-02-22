@@ -11,7 +11,11 @@ framework:
                     queue_name: async
                     auto_setup: true
                 retry_strategy:
-                    service: messenger.retry_strategy.recoverable
+                    max_retries: 5
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 60000
+                    jitter: 0.1
             failed:
                 dsn: 'doctrine://messaging?queue_name=failed'
                 options:

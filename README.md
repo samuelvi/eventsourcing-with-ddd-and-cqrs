@@ -221,6 +221,51 @@ Calidad backend:
 make phpstan
 ```
 
+## Mensajería, Reintentos y Dead Letter (failed)
+
+Configuración activa en `config/packages/messenger.yaml` para transporte `async`:
+
+- `max_retries: 5`
+- `delay: 1000ms`
+- `multiplier: 2`
+- `max_delay: 60000ms`
+- `jitter: 0.1`
+
+Cuando se agotan los reintentos, el mensaje se mueve al transporte `failed` (DLQ) y **no se elimina automáticamente**.
+
+Comandos operativos (DEV):
+
+```bash
+docker compose -f docker/dev/docker-compose.yaml --env-file .env --env-file .env.dev exec -T symfony-api bin/console messenger:failed:show
+docker compose -f docker/dev/docker-compose.yaml --env-file .env --env-file .env.dev exec -T symfony-api bin/console messenger:failed:retry --force
+docker compose -f docker/dev/docker-compose.yaml --env-file .env --env-file .env.dev exec -T symfony-api bin/console messenger:failed:remove --force
+```
+
+Comandos operativos (TEST):
+
+```bash
+docker compose -f docker/test/docker-compose.yaml --env-file .env --env-file .env.test exec -T symfony-api-test bin/console messenger:failed:show
+docker compose -f docker/test/docker-compose.yaml --env-file .env --env-file .env.test exec -T symfony-api-test bin/console messenger:failed:retry --force
+docker compose -f docker/test/docker-compose.yaml --env-file .env --env-file .env.test exec -T symfony-api-test bin/console messenger:failed:remove --force
+```
+
+Observabilidad rápida:
+
+- UI: `http://localhost:8080/demo` muestra `Queue Pending` y `Failed`.
+- API: `GET /api/demo/stats` devuelve:
+    - `queue.async`
+    - `queue.failed`
+
+Consulta SQL directa (DB de mensajería):
+
+```bash
+# DEV
+docker compose -f docker/dev/docker-compose.yaml --env-file .env --env-file .env.dev exec -T queue-db psql -U queue_user -d messenger_queue -c "SELECT queue_name, COUNT(*) FROM messenger_messages GROUP BY queue_name ORDER BY queue_name;"
+
+# TEST
+docker compose -f docker/test/docker-compose.yaml --env-file .env --env-file .env.test exec -T queue-db-test psql -U queue_user -d messenger_queue_test -c "SELECT queue_name, COUNT(*) FROM messenger_messages GROUP BY queue_name ORDER BY queue_name;"
+```
+
 ## URLs de servicios
 
 DEV:

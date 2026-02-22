@@ -189,9 +189,10 @@ Aquí hay dos recorridos distintos y es importante no mezclarlos:
     - Algoritmo:
         - Limpia tablas de lectura en PostgreSQL.
         - Limpia checkpoints de proyección.
-        - Reproduce **todos los eventos** de Mongo en orden cronológico estable.
-    - En este flujo no se parte de snapshots para “atajar” la reconstrucción de SQL; la fuente de verdad para replay es el stream de eventos completo.
-    - Resumen: **Events only** para reconstruir lecturas.
+        - **Seed rápido desde snapshots** (actualmente para usuarios): inserta el último estado conocido por agregado.
+        - Reproduce solo el **delta de eventos** posterior al snapshot sembrado.
+        - Para agregados sin snapshot, reprocesa su stream completo.
+    - Resumen: **Snapshot seed + Event delta** para acelerar reconstrucción sin perder consistencia.
 
 #### Orden temporal en replay: regla crítica
 

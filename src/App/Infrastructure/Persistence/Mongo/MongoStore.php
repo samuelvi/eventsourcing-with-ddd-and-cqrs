@@ -77,17 +77,27 @@ final readonly class MongoStore
      */
     public function findEventsForReplay(): array
     {
+        $events = [];
+        foreach ($this->iterateEventsForReplay() as $event) {
+            $events[] = $event;
+        }
+
+        return $events;
+    }
+
+    /**
+     * @return iterable<StoredEvent>
+     */
+    public function iterateEventsForReplay(): iterable
+    {
         $cursor = $this->mongoClient->getDatabase()->selectCollection('events')->find(
             [],
             ['sort' => ['occurredOn' => 1, 'aggregateId' => 1, 'version' => 1]]
         );
 
-        $events = [];
         foreach ($cursor as $doc) {
-            $events[] = StoredEvent::fromArray($this->toArrayFromDoc($doc));
+            yield StoredEvent::fromArray($this->toArrayFromDoc($doc));
         }
-
-        return $events;
     }
 
     public function countEvents(): int
@@ -158,6 +168,31 @@ final readonly class MongoStore
             $snapshots[] = Snapshot::fromArray($this->toArrayFromDoc($doc));
         }
         return $snapshots;
+    }
+
+    /**
+     * Streams only the latest snapshot per aggregate (ordered by aggregateId asc).
+     *
+     * @return iterable<Snapshot>
+     */
+    public function iterateLatestSnapshotsByAggregateId(): iterable
+    {
+        $cursor = $this->mongoClient->getDatabase()->selectCollection('snapshots')->find(
+            [],
+            ['sort' => ['aggregateId' => 1, 'version' => -1, 'createdAt' => -1]]
+        );
+
+        $lastAggregateId = null;
+        foreach ($cursor as $doc) {
+            $snapshot = Snapshot::fromArray($this->toArrayFromDoc($doc));
+            $aggregateId = $snapshot->aggregateId->toRfc4122();
+            if ($aggregateId === $lastAggregateId) {
+                continue;
+            }
+
+            $lastAggregateId = $aggregateId;
+            yield $snapshot;
+        }
     }
 
     public function findLatestSnapshotByAggregateId(Uuid $aggregateId): ?Snapshot

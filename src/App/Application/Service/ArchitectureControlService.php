@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Service;
 
+use App\Infrastructure\EventSourcing\Snapshot;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\HttpKernel\KernelInterface;
@@ -143,19 +144,44 @@ final readonly class ArchitectureControlService
         // 3. Clear Mongo Checkpoints (KEEP EVENTS)
         $this->mongoStore->clearCheckpoints();
 
-        // 4. Fetch all events from Mongo in chronological order for deterministic replay
-        $events = $this->mongoStore->findEventsForReplay();
+        // 4. Fast bootstrap from latest snapshots (currently user aggregates).
+        $this->seedUserReadModelFromLatestSnapshots();
 
-        foreach ($events as $storedEvent) {
+        // 5. Replay event deltas using streaming merge with latest snapshots
+        // to avoid loading millions of rows into PHP memory.
+        $snapshotIterator = $this->asIterator($this->mongoStore->iterateLatestSnapshotsByAggregateId());
+        $currentSnapshot = $snapshotIterator->valid() ? $snapshotIterator->current() : null;
+        $replayedEvents = 0;
+
+        foreach ($this->mongoStore->iterateEventsForReplay() as $storedEvent) {
+            $aggregateId = $storedEvent->aggregateId->toRfc4122();
+
+            while (
+                $currentSnapshot instanceof Snapshot
+                && strcmp($currentSnapshot->aggregateId->toRfc4122(), $aggregateId) < 0
+            ) {
+                $snapshotIterator->next();
+                $currentSnapshot = $snapshotIterator->valid() ? $snapshotIterator->current() : null;
+            }
+
+            if (
+                $currentSnapshot instanceof Snapshot
+                && $currentSnapshot->aggregateId->toRfc4122() === $aggregateId
+                && $storedEvent->version <= $currentSnapshot->version
+            ) {
+                continue;
+            }
+
             $event = $this->serializer->deserialize(
                 json_encode($storedEvent->payload),
                 $storedEvent->eventType,
                 'json'
             );
             $this->eventBus->dispatch($event);
+            $replayedEvents++;
         }
 
-        return count($events);
+        return $replayedEvents;
     }
 
     public function reset(): void
@@ -207,5 +233,96 @@ final readonly class ArchitectureControlService
     private function toIntCount(mixed $value): int
     {
         return is_numeric($value) ? (int) $value : 0;
+    }
+
+    private function seedUserReadModelFromLatestSnapshots(): void
+    {
+        foreach ($this->mongoStore->iterateLatestSnapshotsByAggregateId() as $snapshot) {
+            if (!$this->isUserSnapshotState($snapshot->state)) {
+                continue;
+            }
+
+            $aggregateId = $snapshot->aggregateId->toRfc4122();
+
+            // Deleted users are intentionally not upserted, but we still skip historical
+            // events up to snapshot version to avoid replaying full history.
+            $isDeleted = (bool) ($snapshot->state['deleted'] ?? false);
+            if ($isDeleted) {
+                continue;
+            }
+
+            $name = $this->toNullableString($snapshot->state['name'] ?? null);
+            $email = $this->toNullableString($snapshot->state['email'] ?? null);
+            if ($name === null || $email === null) {
+                continue;
+            }
+
+            $address = $this->toNullableString($snapshot->state['address'] ?? null);
+
+            $this->readEntityManager->execute(
+                <<<'SQL'
+                INSERT INTO users (id, name, email, address, created_at)
+                VALUES (:id, :name, :email, :address, :created_at)
+                ON CONFLICT (id) DO UPDATE
+                SET name = EXCLUDED.name,
+                    email = EXCLUDED.email,
+                    address = EXCLUDED.address
+                SQL,
+                [
+                    'id' => $aggregateId,
+                    'name' => $name,
+                    'email' => $email,
+                    'address' => $address,
+                    'created_at' => $snapshot->createdAt->format('Y-m-d H:i:s')
+                ]
+            );
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $state
+     */
+    private function isUserSnapshotState(array $state): bool
+    {
+        return array_key_exists('name', $state) && array_key_exists('email', $state);
+    }
+
+    private function toNullableString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $trimmed = trim($value);
+
+            return $trimmed === '' ? null : $trimmed;
+        }
+
+        if (is_int($value) || is_float($value) || is_bool($value)) {
+            return (string) $value;
+        }
+
+        return null;
+    }
+
+    /**
+     * @template T
+     * @param iterable<T> $items
+     * @return \Iterator<T>
+     */
+    private function asIterator(iterable $items): \Iterator
+    {
+        if ($items instanceof \Iterator) {
+            $items->rewind();
+
+            return $items;
+        }
+
+        return (function () use ($items): \Generator {
+            foreach ($items as $item) {
+                yield $item;
+            }
+        })();
     }
 }

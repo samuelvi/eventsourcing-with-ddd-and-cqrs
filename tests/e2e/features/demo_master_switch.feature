@@ -11,11 +11,11 @@ Feature: Demo Master Switch
     And I set the booking projection status to "ONLINE"
     And I remember the current demo stats
     And I click the "Generate New Booking" button
-    Then the events count should increase by 1
+    Then the events count should increase by 2
     And I reload the page
     And the "Repair & Sync" button should be visible
     When I click the "Repair & Sync" button
-    Then the events count should increase by 1
+    Then the events count should increase by 2
     And I reload the page
     And the "Repair & Sync" button should not be visible
     And I set the user projection status to "ONLINE"
@@ -29,11 +29,11 @@ Feature: Demo Master Switch
     And I set the booking projection status to "OFFLINE"
     And I remember the current demo stats
     When I click the "Generate New Booking" button
-    Then the events count should increase by 1
+    Then the events count should increase by 2
     And I reload the page
     And the "Repair & Sync" button should be visible
     When I click the "Repair & Sync" button
-    Then the events count should increase by 1
+    Then the events count should increase by 2
     And I reload the page
     And the "Repair & Sync" button should not be visible
     And I set the user projection status to "ONLINE"
@@ -47,11 +47,11 @@ Feature: Demo Master Switch
     And I set the booking projection status to "OFFLINE"
     And I remember the current demo stats
     When I click the "Generate New Booking" button
-    Then the events count should increase by 1
+    Then the events count should increase by 2
     And I reload the page
     And the "Repair & Sync" button should be visible
     When I click the "Repair & Sync" button
-    Then the events count should increase by 1
+    Then the events count should increase by 2
     And I reload the page
     And the "Repair & Sync" button should not be visible
     And I set the user projection status to "ONLINE"

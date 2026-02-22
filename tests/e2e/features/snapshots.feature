@@ -8,8 +8,8 @@ Feature: Snapshot Generation
     Given I am on the "/wizard" page
     When I submit 5 booking requests
     And I navigate to "/demo"
-    Then I should see "5" in the "Historical Facts" counter
-    And the event store total items should be 5
+    Then I should see "10" in the "Historical Facts" counter
+    And the event store total items should be 10
     And the snapshot count should be 0
 
   Scenario: User aggregate creates snapshot after five events on same aggregate

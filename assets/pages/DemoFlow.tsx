@@ -529,7 +529,7 @@ export function DemoFlow() {
                                     boxShadow: '0 10px 15px -3px rgba(239, 68, 68, 0.3)'
                                 }}
                             >
-                                Wipe Data
+                                Execute Reset
                             </button>
                         </div>
                     </div>
@@ -703,6 +703,7 @@ export function DemoFlow() {
                                         </span>
                                         <button
                                             onClick={() => toggleProjections(p.type as any)}
+                                            aria-label={p.label}
                                             style={{
                                                 padding: '10px 18px',
                                                 backgroundColor: p.active ? '#ecfdf5' : '#fff1f2',
@@ -783,7 +784,7 @@ export function DemoFlow() {
                                     boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)'
                                 }}
                             >
-                                Generate New Booking Fact
+                                Generate New Booking
                             </button>
                         </div>
                     </div>
@@ -834,7 +835,7 @@ export function DemoFlow() {
                                     fontWeight: 700
                                 }}
                             >
-                                Clear All Read Models
+                                Clear Transactional Data (Postgres)
                             </button>
                             <button
                                 onClick={runRebuild}
@@ -852,7 +853,7 @@ export function DemoFlow() {
                                     boxShadow: '0 10px 15px -3px rgba(180, 83, 9, 0.2)'
                                 }}
                             >
-                                Rebuild SQL from Mongo
+                                Rebuild from Mongo (Events)
                             </button>
                         </div>
                     </div>
@@ -1127,7 +1128,7 @@ export function DemoFlow() {
                                         boxShadow: '0 10px 15px -3px rgba(180, 83, 9, 0.3)'
                                     }}
                                 >
-                                    Sync Read Model
+                                    Repair & Sync
                                 </button>
                             )}
                         </div>
@@ -1152,14 +1153,14 @@ export function DemoFlow() {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                             <DataList
-                                title="Users SQL Projection"
+                                title="Users Projection"
                                 items={sortedUsers}
                                 columns={['name', 'email']}
                                 emptyMsg="No users projected."
                                 badge={sortedUsers.length}
                             />
                             <DataList
-                                title="Bookings SQL Projection"
+                                title="Bookings Projection"
                                 items={bookings}
                                 columns={['data.clientName', 'data.clientEmail', 'createdAt']}
                                 emptyMsg="No bookings projected."

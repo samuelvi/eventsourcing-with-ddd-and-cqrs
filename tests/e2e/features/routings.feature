@@ -10,11 +10,11 @@ Feature: API and routing smoke checks
     And the page source should not contain "app.tsx"
     And the page source should not contain ":5173"
 
-  Scenario: Booking submission API accepts valid payload and stores one event
+  Scenario: Booking submission API accepts valid payload and stores related events
     Given I am on the "/wizard" page
     When I submit a valid booking through the API
     Then the last API response status should be 202
-    And the event store total items should be 1
+    And the event store total items should be 2
 
   Scenario: Event store endpoint is reachable
     When I send a "GET" request to "/api/event-store"

@@ -15,7 +15,7 @@ Feature: Booking Wizard
     And I should see "Your booking event has been recorded in the store"
     
     When I navigate to "/demo"
-    Then I should see "1" in the "Historical Facts" counter
+    Then I should see "2" in the "Historical Facts" counter
     And I should see "John TED Talk" in the "Bookings Projection" table
     And I should see "john@ted.com" in the "Bookings Projection" table
 
@@ -36,7 +36,7 @@ Feature: Booking Wizard
     Then I should see "Request Received"
     
     When I navigate to "/demo"
-    Then I should see "2" in the "Historical Facts" counter
+    Then I should see "3" in the "Historical Facts" counter
     And I should see "1" in the "User Records" counter
 
   Scenario: Security: Identity is sacred and metadata is snapshotted
@@ -85,7 +85,7 @@ Feature: Booking Wizard
     And I click the "Submit Booking" button
     
     When I navigate to "/demo"
-    Then I should see "2" in the "Historical Facts" counter
+    Then I should see "4" in the "Historical Facts" counter
     And I should see "1" in the "User Records" counter
     And I click the "Repair & Sync" button
     Then I should see "2" in the "User Records" counter

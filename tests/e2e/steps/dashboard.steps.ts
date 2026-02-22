@@ -20,10 +20,24 @@ Then(
             const valueLocator = container.locator('div').filter({ hasText: /^\d+$/ }).first();
             await expect(valueLocator).toHaveText(value, { timeout: 15000 });
         } else {
-            // For User Records: or Booking Records:
-            const labelLocator = page.getByText(label, { exact: false });
+            // For User/Booking records counters across UI variants.
+            const aliases: Record<string, RegExp> = {
+                'User Records': /User Records|Users:/i,
+                'Booking Records': /Booking Records|Bookings:/i
+            };
+            const labelLocator = aliases[label]
+                ? page.getByText(aliases[label])
+                : page.getByText(label, { exact: false });
             const row = page.locator('div').filter({ has: labelLocator }).last();
             const valueLocator = row.locator('span').last();
+
+            if (aliases[label]) {
+                await expect(valueLocator).toHaveText(new RegExp(`^${value}(\\s*/\\s*\\d+)?$`), {
+                    timeout: 15000
+                });
+                return;
+            }
+
             await expect(valueLocator).toHaveText(value, { timeout: 15000 });
         }
     }

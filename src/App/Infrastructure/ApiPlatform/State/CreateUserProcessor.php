@@ -31,7 +31,8 @@ final readonly class CreateUserProcessor implements ProcessorInterface
         $command = new CreateUserCommand(
             id: $id->toRfc4122(),
             name: $data->name,
-            email: $data->email
+            email: $data->email,
+            address: $data->address
         );
 
         $this->commandBus->dispatch($command);
@@ -40,7 +41,8 @@ final readonly class CreateUserProcessor implements ProcessorInterface
             name: trim($data->name),
             email: strtolower(trim($data->email)),
             id: $id,
-            createdAt: new \DateTimeImmutable()
+            createdAt: new \DateTimeImmutable(),
+            address: $data->address
         );
     }
 }

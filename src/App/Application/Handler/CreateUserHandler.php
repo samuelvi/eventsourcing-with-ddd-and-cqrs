@@ -28,7 +28,8 @@ final readonly class CreateUserHandler
         $user = User::register(
             $aggregateId,
             $command->name,
-            $email
+            $email,
+            $this->normalizeAddress($command->address),
         );
 
         $events = $user->getRecordedEvents();
@@ -42,5 +43,16 @@ final readonly class CreateUserHandler
         foreach ($events as $event) {
             $this->eventBus->dispatch($event);
         }
+    }
+
+    private function normalizeAddress(?string $address): ?string
+    {
+        if ($address === null) {
+            return null;
+        }
+
+        $normalized = trim($address);
+
+        return $normalized === '' ? null : $normalized;
     }
 }

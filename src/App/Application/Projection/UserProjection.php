@@ -81,6 +81,7 @@ final readonly class UserProjection
 
         $projected->name = $aggregate->getName();
         $projected->email = $aggregate->getEmail();
+        $projected->address = $aggregate->address;
         $projected->createdAt ??= $fallbackCreatedAt;
 
         $this->userWriteRepository->save($projected);

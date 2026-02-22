@@ -218,6 +218,26 @@ Es vital entender qué base de datos usar según el objetivo:
 - **Para mostrar datos (Lectura)**: Se usa PostgreSQL. Es extremadamente rápido para realizar búsquedas y filtros complejos.
 - **Para validar reglas (Negocio)**: Debemos consultar el estado que ofrece el Agregado (rehidratado desde MongoDB), ya que es la única fuente que garantiza tener el dato exacto al milisegundo.
 
+### Mención Especial: ¿Qué hacer cuando cambia el esquema de base de datos?
+
+La estrategia recomendada para evitar dolor es **Expand -> Migrate -> Contract**:
+
+1. **Expand (seguro):** añadir estructura nueva sin romper la antigua.
+    - Ejemplo: añadir `users.address` como nullable.
+2. **Migrate (convivencia):** el código nuevo escribe/lee el campo nuevo, pero sigue funcionando si viene vacío (eventos antiguos).
+3. **Contract (limpieza):** cuando todo está estable, se elimina lo legacy en una iteración posterior.
+
+#### Ejemplo didáctico real de esta demo
+
+- Antes: `UserRegistered` guardaba `name` y `email`.
+- Cambio: se introduce `address` opcional.
+- Resultado buscado:
+    - usuarios nuevos pueden traer `address`;
+    - eventos antiguos siguen siendo válidos (porque `address` es opcional);
+    - si vaciamos PostgreSQL y hacemos **Rebuild from Mongo (Events)**, la reconstrucción no se rompe.
+
+La clave es que el **histórico no se reescribe en bloque**: se diseña compatibilidad hacia atrás en eventos/proyecciones y se deja que el replay reconstruya el estado final.
+
 ---
 
 ## 6. Anexo: Cómo se calcula la versión del Agregado (y cómo evita duplicados)

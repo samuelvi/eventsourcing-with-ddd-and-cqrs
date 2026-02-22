@@ -20,5 +20,8 @@ final class CreateUserCommand
         #[Assert\NotBlank]
         #[Assert\Email]
         public readonly string $email,
+
+        #[Assert\Length(max: 255)]
+        public readonly ?string $address = null,
     ) {}
 }

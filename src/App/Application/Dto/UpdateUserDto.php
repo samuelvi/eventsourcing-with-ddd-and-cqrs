@@ -16,5 +16,8 @@ final class UpdateUserDto
         #[Assert\NotBlank]
         #[Assert\Email]
         public string $email,
+
+        #[Assert\Length(max: 255)]
+        public ?string $address = null,
     ) {}
 }

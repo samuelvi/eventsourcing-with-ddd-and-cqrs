@@ -85,4 +85,15 @@ final class DemoControlController extends AbstractController
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    #[Route('/api/demo/evolve-user-schema', methods: ['POST'])]
+    public function evolveUserSchema(): Response
+    {
+        $this->architectureService->enableUserAddressSchemaEvolution();
+
+        return new JsonResponse([
+            'status' => 'success',
+            'message' => 'User schema evolved: address column enabled.'
+        ]);
+    }
 }

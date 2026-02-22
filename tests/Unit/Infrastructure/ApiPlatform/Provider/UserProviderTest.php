@@ -22,6 +22,7 @@ final class UserProviderTest extends TestCase
                     'id' => '01951b27-4f10-7a6c-aea9-d57dc89656f2',
                     'name' => 'Ada Lovelace',
                     'email' => 'ada@example.com',
+                    'address' => null,
                     'created_at' => '2026-02-19 10:15:00',
                 ],
             ],
@@ -48,6 +49,7 @@ final class UserProviderTest extends TestCase
                     'id' => '01951b27-4f10-7a6c-aea9-d57dc89656f2',
                     'name' => 'Ada Lovelace',
                     'email' => 'ada@example.com',
+                    'address' => null,
                     'created_at' => '2026-02-19 10:15:00',
                 ],
             ]
@@ -73,6 +75,7 @@ final class UserProviderTest extends TestCase
                     'id' => $id->toRfc4122(),
                     'name' => 'Ada Lovelace',
                     'email' => 'ada@example.com',
+                    'address' => null,
                     'created_at' => '2026-02-19 10:15:00',
                 ],
             ]
@@ -91,8 +94,8 @@ final class UserProviderTest extends TestCase
 final readonly class InMemoryUserReadRepository implements UserReadRepositoryInterface
 {
     /**
-     * @param array<array{id: string, name: string, email: string, created_at: string}> $list
-     * @param array<string, array{id: string, name: string, email: string, created_at: string}> $byId
+     * @param array<array{id: string, name: string, email: string, address: string|null, created_at: string}> $list
+     * @param array<string, array{id: string, name: string, email: string, address: string|null, created_at: string}> $byId
      */
     public function __construct(
         private array $list,

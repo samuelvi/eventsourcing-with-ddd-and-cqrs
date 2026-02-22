@@ -30,7 +30,8 @@ final readonly class UserProvider implements ProviderInterface
                 TypeAssert::string($data['name']), 
                 TypeAssert::string($data['email']), 
                 Uuid::fromString(TypeAssert::string($data['id'])),
-                isset($data['created_at']) ? new \DateTimeImmutable(TypeAssert::string($data['created_at'])) : null
+                isset($data['created_at']) ? new \DateTimeImmutable(TypeAssert::string($data['created_at'])) : null,
+                $this->toNullableString($data['address'] ?? null)
             );
         }
 
@@ -41,9 +42,27 @@ final readonly class UserProvider implements ProviderInterface
                 TypeAssert::string($row['name']),
                 TypeAssert::string($row['email']),
                 Uuid::fromString(TypeAssert::string($row['id'])),
-                isset($row['created_at']) ? new \DateTimeImmutable(TypeAssert::string($row['created_at'])) : null
+                isset($row['created_at']) ? new \DateTimeImmutable(TypeAssert::string($row['created_at'])) : null,
+                $this->toNullableString($row['address'] ?? null)
             );
         }, $data);
+    }
+
+    private function toNullableString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_string($value)) {
+            return $value;
+        }
+
+        if (is_int($value) || is_float($value) || is_bool($value)) {
+            return (string) $value;
+        }
+
+        return null;
     }
 
     private function resolveUserId(mixed $id): string

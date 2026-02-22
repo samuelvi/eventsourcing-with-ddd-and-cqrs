@@ -15,23 +15,23 @@ final readonly class DbalUserReadRepository implements UserReadRepositoryInterfa
     ) {}
 
     /**
-     * @return array<array{id: string, name: string, email: string, created_at: string|null}>
+     * @return array<array{id: string, name: string, email: string, address: string|null, created_at: string|null}>
      */
     public function findAllForList(): array
     {
-        $sql = 'SELECT id, name, email, created_at FROM users ORDER BY created_at DESC NULLS LAST, id DESC';
-        /** @var array<array{id: string, name: string, email: string, created_at: string|null}> */
+        $sql = 'SELECT id, name, email, address, created_at FROM users ORDER BY created_at DESC NULLS LAST, id DESC';
+        /** @var array<array{id: string, name: string, email: string, address: string|null, created_at: string|null}> */
         return $this->entityManager->query($sql);
     }
 
     /**
-     * @return array{id: string, name: string, email: string, created_at: string|null}|null
+     * @return array{id: string, name: string, email: string, address: string|null, created_at: string|null}|null
      */
     public function findById(string $id): ?array
     {
-        $sql = 'SELECT id, name, email, created_at FROM users WHERE id = :id';
+        $sql = 'SELECT id, name, email, address, created_at FROM users WHERE id = :id';
         $result = $this->entityManager->fetchOne($sql, ['id' => $id]);
-        /** @var array{id: string, name: string, email: string, created_at: string|null}|null $result */
+        /** @var array{id: string, name: string, email: string, address: string|null, created_at: string|null}|null $result */
         return $result;
     }
 
@@ -56,13 +56,13 @@ final readonly class DbalUserReadRepository implements UserReadRepositoryInterfa
     }
 
     /**
-     * @return array{id: string, name: string, email: string, created_at: string|null}|null
+     * @return array{id: string, name: string, email: string, address: string|null, created_at: string|null}|null
      */
     public function findByEmail(string $email): ?array
     {
-        $sql = 'SELECT id, name, email, created_at FROM users WHERE email = :email';
+        $sql = 'SELECT id, name, email, address, created_at FROM users WHERE email = :email';
         $result = $this->entityManager->fetchOne($sql, ['email' => $email]);
-        /** @var array{id: string, name: string, email: string, created_at: string|null}|null $result */
+        /** @var array{id: string, name: string, email: string, address: string|null, created_at: string|null}|null $result */
         return $result;
     }
 }

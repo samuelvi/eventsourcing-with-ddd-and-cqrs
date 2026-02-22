@@ -14,16 +14,18 @@ final class User extends AggregateRoot
 {
     private string $name;
     private string $email;
+    public private(set) ?string $address = null;
     private bool $deleted = false;
 
-    public static function register(Uuid $id, string $name, string $email): self
+    public static function register(Uuid $id, string $name, string $email, ?string $address = null): self
     {
         $user = new self($id);
         $user->recordThat(new UserRegistered(
             userId: $id->toRfc4122(),
             name: $name,
             email: $email,
-            occurredOn: new \DateTimeImmutable()
+            occurredOn: new \DateTimeImmutable(),
+            address: $address,
         ));
 
         return $user;
@@ -34,6 +36,7 @@ final class User extends AggregateRoot
         if ($event instanceof UserRegistered) {
             $this->name = $event->name;
             $this->email = $event->email;
+            $this->address = $event->address;
             $this->deleted = false;
             return;
         }
@@ -41,6 +44,7 @@ final class User extends AggregateRoot
         if ($event instanceof UserProfileUpdated) {
             $this->name = $event->name;
             $this->email = $event->email;
+            $this->address = $event->address ?? $this->address;
             return;
         }
 
@@ -49,7 +53,7 @@ final class User extends AggregateRoot
         }
     }
 
-    public function updateProfile(string $name, string $email): void
+    public function updateProfile(string $name, string $email, ?string $address = null): void
     {
         $this->guardNotDeleted();
 
@@ -57,7 +61,8 @@ final class User extends AggregateRoot
             userId: $this->aggregateId->toRfc4122(),
             name: $name,
             email: strtolower(trim($email)),
-            occurredOn: new \DateTimeImmutable()
+            occurredOn: new \DateTimeImmutable(),
+            address: $address ?? $this->address,
         ));
     }
 
@@ -83,6 +88,7 @@ final class User extends AggregateRoot
         return [
             'name' => $this->name,
             'email' => $this->email,
+            'address' => $this->address,
             'deleted' => $this->deleted,
         ];
     }
@@ -91,6 +97,8 @@ final class User extends AggregateRoot
     {
         $this->name = TypeAssert::string($state['name'] ?? null);
         $this->email = TypeAssert::string($state['email'] ?? null);
+        $address = $state['address'] ?? null;
+        $this->address = is_string($address) ? $address : null;
         $this->deleted = (bool) ($state['deleted'] ?? false);
     }
 

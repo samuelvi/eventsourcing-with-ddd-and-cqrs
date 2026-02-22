@@ -41,7 +41,8 @@ final readonly class UpdateUserHandler
 
         $aggregate->updateProfile(
             name: trim($command->name),
-            email: $nextEmail
+            email: $nextEmail,
+            address: $this->normalizeAddress($command->address)
         );
 
         $events = $aggregate->getRecordedEvents();
@@ -55,5 +56,16 @@ final readonly class UpdateUserHandler
         foreach ($events as $event) {
             $this->eventBus->dispatch($event);
         }
+    }
+
+    private function normalizeAddress(?string $address): ?string
+    {
+        if ($address === null) {
+            return null;
+        }
+
+        $normalized = trim($address);
+
+        return $normalized === '' ? null : $normalized;
     }
 }

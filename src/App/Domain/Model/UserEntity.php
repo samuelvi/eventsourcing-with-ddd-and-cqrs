@@ -69,20 +69,37 @@ class UserEntity
     #[Groups(['user:read'])]
     public string $name;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['user:read'])]
+    public ?string $address = null;
+
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     #[Groups(['user:read'])]
     public ?\DateTimeImmutable $createdAt = null;
 
-    private function __construct(string $name, string $email, ?Uuid $id = null, ?\DateTimeImmutable $createdAt = null)
+    private function __construct(
+        string $name,
+        string $email,
+        ?Uuid $id = null,
+        ?\DateTimeImmutable $createdAt = null,
+        ?string $address = null
+    )
     {
         $this->id = $id ?? Uuid::v7();
         $this->name = $name;
         $this->email = $email;
         $this->createdAt = $createdAt;
+        $this->address = $address;
     }
 
-    public static function hydrate(string $name, string $email, Uuid $id, ?\DateTimeImmutable $createdAt = null): self
+    public static function hydrate(
+        string $name,
+        string $email,
+        Uuid $id,
+        ?\DateTimeImmutable $createdAt = null,
+        ?string $address = null
+    ): self
     {
-        return new self($name, $email, $id, $createdAt);
+        return new self($name, $email, $id, $createdAt, $address);
     }
 }

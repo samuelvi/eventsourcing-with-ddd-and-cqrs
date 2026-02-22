@@ -105,7 +105,8 @@ export function DemoFlow() {
         data: status = {
             projectionsEnabled: true,
             userProjectionsEnabled: true,
-            bookingProjectionsEnabled: true
+            bookingProjectionsEnabled: true,
+            userAddressSchemaEnabled: false
         }
     } = useQuery({
         queryKey: ['status'],
@@ -246,6 +247,19 @@ export function DemoFlow() {
         onError: () => showToast('Reset failed', 'error')
     });
 
+    const evolveUserSchemaMutation = useMutation({
+        mutationFn: async () => {
+            const res = await fetch('/api/demo/evolve-user-schema', { method: 'POST' });
+            if (!res.ok) throw new Error('Schema evolution failed');
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['status'] });
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+            showToast('User schema v2 enabled (address)');
+        },
+        onError: () => showToast('Schema evolution failed', 'error')
+    });
+
     // --- Actions ---
     const toggleProjections = (type: 'master' | 'user' | 'booking') => toggleMutation.mutate(type);
     const submitRandomBooking = () =>
@@ -260,7 +274,12 @@ export function DemoFlow() {
         createUserMutation.mutate({
             id: uuidv4(),
             name: `Pure User ${Math.floor(Math.random() * 1000)}`,
-            email: `user${Math.floor(Math.random() * 1000)}@pure.com`
+            email: `user${Math.floor(Math.random() * 1000)}@pure.com`,
+            ...(status.userAddressSchemaEnabled
+                ? {
+                      address: `${Math.floor(Math.random() * 200) + 1} Demo Street, ES`
+                  }
+                : {})
         });
     const runRebuild = () => {
         showToast('Syncing history...');
@@ -271,10 +290,12 @@ export function DemoFlow() {
         clearTransactionalMutation.mutate();
     };
     const executeReset = () => resetMutation.mutate();
+    const evolveUserSchema = () => evolveUserSchemaMutation.mutate();
 
     const projectionsEnabled = status.projectionsEnabled;
     const userProjectionsEnabled = status.userProjectionsEnabled;
     const bookingProjectionsEnabled = status.bookingProjectionsEnabled;
+    const userAddressSchemaEnabled = status.userAddressSchemaEnabled;
     const sortedUsers = [...users].sort((a, b) =>
         String(b.id || '').localeCompare(String(a.id || ''))
     );
@@ -284,6 +305,7 @@ export function DemoFlow() {
         createUserMutation.isPending ||
         rebuildFromMongoMutation.isPending ||
         clearTransactionalMutation.isPending ||
+        evolveUserSchemaMutation.isPending ||
         resetMutation.isPending;
 
     const DataList = ({
@@ -391,6 +413,8 @@ export function DemoFlow() {
                                                     <span style={{ fontWeight: 600 }}>
                                                         {String(val).split('\\').pop()}
                                                     </span>
+                                                ) : val === null || val === undefined ? (
+                                                    '—'
                                                 ) : (
                                                     String(val)
                                                 )}
@@ -767,6 +791,27 @@ export function DemoFlow() {
                                 }}
                             >
                                 Register User Only
+                            </button>
+                            <button
+                                onClick={evolveUserSchema}
+                                disabled={loading || userAddressSchemaEnabled}
+                                style={{
+                                    width: '100%',
+                                    padding: '14px',
+                                    fontSize: '14px',
+                                    backgroundColor: userAddressSchemaEnabled
+                                        ? '#f5f5f4'
+                                        : '#fffbeb',
+                                    color: userAddressSchemaEnabled ? '#a8a29e' : '#92400e',
+                                    border: '1px solid #fde68a',
+                                    borderRadius: '14px',
+                                    cursor: userAddressSchemaEnabled ? 'default' : 'pointer',
+                                    fontWeight: 700
+                                }}
+                            >
+                                {userAddressSchemaEnabled
+                                    ? 'User Schema v2 Enabled (address)'
+                                    : 'Simulate User Schema Change: add address'}
                             </button>
                             <button
                                 onClick={submitRandomBooking}
@@ -1155,7 +1200,7 @@ export function DemoFlow() {
                             <DataList
                                 title="Users Projection"
                                 items={sortedUsers}
-                                columns={['name', 'email']}
+                                columns={['name', 'email', 'address']}
                                 emptyMsg="No users projected."
                                 badge={sortedUsers.length}
                             />

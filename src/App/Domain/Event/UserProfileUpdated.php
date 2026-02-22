@@ -10,6 +10,7 @@ final readonly class UserProfileUpdated
         public string $userId,
         public string $name,
         public string $email,
-        public \DateTimeImmutable $occurredOn
+        public \DateTimeImmutable $occurredOn,
+        public ?string $address = null,
     ) {}
 }

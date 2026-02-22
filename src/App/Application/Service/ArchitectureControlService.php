@@ -17,6 +17,7 @@ final readonly class ArchitectureControlService
     private const CACHE_KEY_MASTER = 'demo_projections_enabled';
     private const CACHE_KEY_USER_PROJECTIONS = 'demo_user_projections_enabled';
     private const CACHE_KEY_BOOKING_PROJECTIONS = 'demo_booking_projections_enabled';
+    private const CACHE_KEY_USER_ADDRESS_SCHEMA = 'demo_user_address_schema_enabled';
 
     public function __construct(
         private CacheInterface $cache,
@@ -40,6 +41,7 @@ final readonly class ArchitectureControlService
             'projectionsEnabled' => $this->cache->get(self::CACHE_KEY_MASTER, fn() => true),
             'userProjectionsEnabled' => $this->cache->get(self::CACHE_KEY_USER_PROJECTIONS, fn() => true),
             'bookingProjectionsEnabled' => $this->cache->get(self::CACHE_KEY_BOOKING_PROJECTIONS, fn() => true),
+            'userAddressSchemaEnabled' => $this->cache->get(self::CACHE_KEY_USER_ADDRESS_SCHEMA, fn() => false),
         ];
     }
 
@@ -190,6 +192,16 @@ final readonly class ArchitectureControlService
         $this->cache->delete(self::CACHE_KEY_MASTER);
         $this->cache->delete(self::CACHE_KEY_USER_PROJECTIONS);
         $this->cache->delete(self::CACHE_KEY_BOOKING_PROJECTIONS);
+        $this->cache->delete(self::CACHE_KEY_USER_ADDRESS_SCHEMA);
+    }
+
+    public function enableUserAddressSchemaEvolution(): void
+    {
+        // Simulate DB schema evolution in a safe/idempotent way for the demo.
+        $this->readEntityManager->execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(255) DEFAULT NULL');
+
+        $this->cache->delete(self::CACHE_KEY_USER_ADDRESS_SCHEMA);
+        $this->cache->get(self::CACHE_KEY_USER_ADDRESS_SCHEMA, fn() => true);
     }
 
     private function toIntCount(mixed $value): int

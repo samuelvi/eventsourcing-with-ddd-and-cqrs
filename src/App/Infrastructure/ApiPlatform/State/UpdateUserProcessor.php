@@ -34,7 +34,8 @@ final readonly class UpdateUserProcessor implements ProcessorInterface
         $command = new UpdateUserCommand(
             id: $userId,
             name: $data->name,
-            email: $data->email
+            email: $data->email,
+            address: $data->address
         );
 
         try {
@@ -55,7 +56,8 @@ final readonly class UpdateUserProcessor implements ProcessorInterface
             name: trim($data->name),
             email: strtolower(trim($data->email)),
             id: Uuid::fromString($userId),
-            createdAt: null
+            createdAt: null,
+            address: $data->address
         );
     }
 

@@ -6,9 +6,9 @@ namespace App\Infrastructure\ApiPlatform\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Application\Bus\AsyncCommandBusInterface;
 use App\Application\Command\GenerateQuotesCommand;
 use App\Domain\Model\BookingEntity;
-use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * @implements ProcessorInterface<BookingEntity, BookingEntity>
@@ -16,7 +16,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 final readonly class GenerateQuotesProcessor implements ProcessorInterface
 {
     public function __construct(
-        private MessageBusInterface $commandBus,
+        private AsyncCommandBusInterface $commandBus,
     ) {}
 
     /**

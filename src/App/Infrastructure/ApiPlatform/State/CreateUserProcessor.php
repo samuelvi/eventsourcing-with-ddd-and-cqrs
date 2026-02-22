@@ -6,10 +6,10 @@ namespace App\Infrastructure\ApiPlatform\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Application\Bus\SyncCommandBusInterface;
 use App\Application\Command\CreateUserCommand;
 use App\Application\Dto\CreateUserDto;
 use App\Domain\Model\UserEntity;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -18,7 +18,7 @@ use Symfony\Component\Uid\Uuid;
 final readonly class CreateUserProcessor implements ProcessorInterface
 {
     public function __construct(
-        private MessageBusInterface $commandBus,
+        private SyncCommandBusInterface $commandBus,
     ) {}
 
     /**

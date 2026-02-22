@@ -6,8 +6,8 @@ namespace App\Infrastructure\ApiPlatform\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Application\Bus\SyncCommandBusInterface;
 use App\Application\Command\DeleteUserCommand;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -16,7 +16,7 @@ use Symfony\Component\Uid\Uuid;
 final readonly class DeleteUserProcessor implements ProcessorInterface
 {
     public function __construct(
-        private MessageBusInterface $commandBus,
+        private SyncCommandBusInterface $commandBus,
     ) {}
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): void

@@ -6,13 +6,13 @@ namespace App\Infrastructure\ApiPlatform\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Application\Bus\SyncCommandBusInterface;
 use App\Application\Command\UpdateUserCommand;
 use App\Application\Dto\UpdateUserDto;
 use App\Domain\Model\UserEntity;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\Messenger\Exception\HandlerFailedException;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -21,7 +21,7 @@ use Symfony\Component\Uid\Uuid;
 final readonly class UpdateUserProcessor implements ProcessorInterface
 {
     public function __construct(
-        private MessageBusInterface $commandBus,
+        private SyncCommandBusInterface $commandBus,
     ) {}
 
     /**

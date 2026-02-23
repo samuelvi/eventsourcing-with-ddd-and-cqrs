@@ -8,24 +8,27 @@ use App\Domain\Event\UserRegistered;
 use App\Domain\Event\UserProfileUpdated;
 use App\Domain\Event\UserDeleted;
 use App\Domain\Shared\TypeAssert;
+use App\Domain\ValueObject\Address;
+use App\Domain\ValueObject\Email;
+use App\Domain\ValueObject\PersonName;
 use Symfony\Component\Uid\Uuid;
 
 final class User extends AggregateRoot
 {
-    private string $name;
-    private string $email;
-    public private(set) ?string $address = null;
+    private PersonName $name;
+    private Email $email;
+    private ?Address $address = null;
     private bool $deleted = false;
 
-    public static function register(Uuid $id, string $name, string $email, ?string $address = null): self
+    public static function register(Uuid $id, PersonName $name, Email $email, ?Address $address = null): self
     {
         $user = new self($id);
         $user->recordThat(new UserRegistered(
             userId: $id->toRfc4122(),
-            name: $name,
-            email: $email,
+            name: $name->toString(),
+            email: $email->toString(),
             occurredOn: new \DateTimeImmutable(),
-            address: $address,
+            address: $address?->toString(),
         ));
 
         return $user;
@@ -34,17 +37,17 @@ final class User extends AggregateRoot
     protected function apply(object $event): void
     {
         if ($event instanceof UserRegistered) {
-            $this->name = $event->name;
-            $this->email = $event->email;
-            $this->address = $event->address;
+            $this->name = PersonName::fromString($event->name);
+            $this->email = Email::fromString($event->email);
+            $this->address = Address::fromNullable($event->address);
             $this->deleted = false;
             return;
         }
 
         if ($event instanceof UserProfileUpdated) {
-            $this->name = $event->name;
-            $this->email = $event->email;
-            $this->address = $event->address ?? $this->address;
+            $this->name = PersonName::fromString($event->name);
+            $this->email = Email::fromString($event->email);
+            $this->address = Address::fromNullable($event->address);
             return;
         }
 
@@ -53,16 +56,16 @@ final class User extends AggregateRoot
         }
     }
 
-    public function updateProfile(string $name, string $email, ?string $address = null): void
+    public function updateProfile(PersonName $name, Email $email, ?Address $address = null): void
     {
         $this->guardNotDeleted();
 
         $this->recordThat(new UserProfileUpdated(
             userId: $this->aggregateId->toRfc4122(),
-            name: $name,
-            email: strtolower(trim($email)),
+            name: $name->toString(),
+            email: $email->toString(),
             occurredOn: new \DateTimeImmutable(),
-            address: $address ?? $this->address,
+            address: $address?->toString(),
         ));
     }
 
@@ -86,31 +89,37 @@ final class User extends AggregateRoot
     public function getSnapshotState(): array
     {
         return [
-            'name' => $this->name,
-            'email' => $this->email,
-            'address' => $this->address,
+            'name' => $this->name->toString(),
+            'email' => $this->email->toString(),
+            'address' => $this->address?->toString(),
             'deleted' => $this->deleted,
         ];
     }
 
     protected function applySnapshot(array $state): void
     {
-        $this->name = TypeAssert::string($state['name'] ?? null);
-        $this->email = TypeAssert::string($state['email'] ?? null);
-        $address = $state['address'] ?? null;
-        $this->address = is_string($address) ? $address : null;
+        $this->name = PersonName::fromString(TypeAssert::string($state['name'] ?? null));
+        $this->email = Email::fromString(TypeAssert::string($state['email'] ?? null));
+        $this->address = Address::fromNullable(
+            isset($state['address']) && is_string($state['address']) ? $state['address'] : null
+        );
         $this->deleted = (bool) ($state['deleted'] ?? false);
     }
 
     // Getters para lógica interna si fuera necesaria
     public function getName(): string
     {
-        return $this->name;
+        return $this->name->toString();
     }
 
     public function getEmail(): string
     {
-        return $this->email;
+        return $this->email->toString();
+    }
+
+    public function getAddress(): ?string
+    {
+        return $this->address?->toString();
     }
 
     public function isDeleted(): bool

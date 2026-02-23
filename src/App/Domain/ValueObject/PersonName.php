@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\ValueObject;
+
+final readonly class PersonName
+{
+    private function __construct(
+        private string $value,
+    ) {}
+
+    public static function fromString(string $value): self
+    {
+        $normalized = trim($value);
+        if ($normalized === '') {
+            throw new \InvalidArgumentException('Name cannot be empty.');
+        }
+
+        $length = mb_strlen($normalized);
+        if ($length < 2 || $length > 255) {
+            throw new \InvalidArgumentException('Name length must be between 2 and 255 characters.');
+        }
+
+        return new self($normalized);
+    }
+
+    public function toString(): string
+    {
+        return $this->value;
+    }
+}

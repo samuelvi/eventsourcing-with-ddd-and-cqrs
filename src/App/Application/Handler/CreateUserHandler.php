@@ -8,6 +8,9 @@ use App\Application\Command\CreateUserCommand;
 use App\Domain\Exception\ConcurrencyException;
 use App\Domain\Model\User;
 use App\Domain\Repository\UserEventStoreRepositoryInterface;
+use App\Domain\ValueObject\Address;
+use App\Domain\ValueObject\Email;
+use App\Domain\ValueObject\PersonName;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
@@ -22,14 +25,13 @@ final readonly class CreateUserHandler
 
     public function __invoke(CreateUserCommand $command): void
     {
-        $email = strtolower(trim($command->email));
         $aggregateId = Uuid::fromString($command->id);
 
         $user = User::register(
             $aggregateId,
-            $command->name,
-            $email,
-            $this->normalizeAddress($command->address),
+            PersonName::fromString($command->name),
+            Email::fromString($command->email),
+            Address::fromNullable($command->address),
         );
 
         $events = $user->getRecordedEvents();
@@ -43,16 +45,5 @@ final readonly class CreateUserHandler
         foreach ($events as $event) {
             $this->eventBus->dispatch($event);
         }
-    }
-
-    private function normalizeAddress(?string $address): ?string
-    {
-        if ($address === null) {
-            return null;
-        }
-
-        $normalized = trim($address);
-
-        return $normalized === '' ? null : $normalized;
     }
 }

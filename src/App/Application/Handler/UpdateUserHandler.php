@@ -9,6 +9,9 @@ use App\Domain\Exception\ConcurrencyException;
 use App\Domain\Model\User;
 use App\Domain\Repository\UserEventStoreRepositoryInterface;
 use App\Domain\Repository\UserReadRepositoryInterface;
+use App\Domain\ValueObject\Address;
+use App\Domain\ValueObject\Email;
+use App\Domain\ValueObject\PersonName;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -33,16 +36,16 @@ final readonly class UpdateUserHandler
             throw new NotFoundHttpException(sprintf('User %s not found.', $command->id));
         }
 
-        $nextEmail = strtolower(trim($command->email));
-        $duplicate = $this->userReadRepository->findByEmail($nextEmail);
+        $nextEmail = Email::fromString($command->email);
+        $duplicate = $this->userReadRepository->findByEmail($nextEmail->toString());
         if ($duplicate !== null && $duplicate['id'] !== $command->id) {
             throw new ConflictHttpException('Email is already in use by another user.');
         }
 
         $aggregate->updateProfile(
-            name: trim($command->name),
+            name: PersonName::fromString($command->name),
             email: $nextEmail,
-            address: $this->normalizeAddress($command->address)
+            address: Address::fromNullable($command->address)
         );
 
         $events = $aggregate->getRecordedEvents();
@@ -56,16 +59,5 @@ final readonly class UpdateUserHandler
         foreach ($events as $event) {
             $this->eventBus->dispatch($event);
         }
-    }
-
-    private function normalizeAddress(?string $address): ?string
-    {
-        if ($address === null) {
-            return null;
-        }
-
-        $normalized = trim($address);
-
-        return $normalized === '' ? null : $normalized;
     }
 }

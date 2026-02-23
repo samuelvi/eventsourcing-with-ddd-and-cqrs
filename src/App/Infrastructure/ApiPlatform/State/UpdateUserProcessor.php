@@ -10,6 +10,9 @@ use App\Application\Bus\SyncCommandBusInterface;
 use App\Application\Command\UpdateUserCommand;
 use App\Application\Dto\UpdateUserDto;
 use App\Domain\Model\UserEntity;
+use App\Domain\ValueObject\Address;
+use App\Domain\ValueObject\Email;
+use App\Domain\ValueObject\PersonName;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\Messenger\Exception\HandlerFailedException;
@@ -30,12 +33,15 @@ final readonly class UpdateUserProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): UserEntity
     {
         $userId = $this->resolveUserId($uriVariables['id'] ?? null);
+        $name = PersonName::fromString($data->name);
+        $email = Email::fromString($data->email);
+        $address = Address::fromNullable($data->address);
 
         $command = new UpdateUserCommand(
             id: $userId,
-            name: $data->name,
-            email: $data->email,
-            address: $data->address
+            name: $name->toString(),
+            email: $email->toString(),
+            address: $address?->toString()
         );
 
         try {
@@ -53,11 +59,11 @@ final readonly class UpdateUserProcessor implements ProcessorInterface
         }
 
         return UserEntity::hydrate(
-            name: trim($data->name),
-            email: strtolower(trim($data->email)),
+            name: $name->toString(),
+            email: $email->toString(),
             id: Uuid::fromString($userId),
             createdAt: null,
-            address: $data->address
+            address: $address?->toString()
         );
     }
 

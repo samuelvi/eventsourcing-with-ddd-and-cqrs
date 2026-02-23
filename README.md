@@ -13,6 +13,7 @@ POC de reservas con Event Sourcing usando Symfony 7.4 LTS, PHP 8.4/8.5, API Plat
 Para arquitectura, decisiones técnicas, flujo de reservas, snapshots, consistencia eventual y roadmap de sagas/orquestación:
 
 - `TALK.md`
+- `docs/architecture/value-objects-policy.md` (criterio de uso de Value Objects por capa)
 
 Este `README.md` está enfocado en operación diaria (arranque, tests y comandos).
 

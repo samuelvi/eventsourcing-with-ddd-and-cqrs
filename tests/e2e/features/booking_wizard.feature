@@ -76,6 +76,7 @@ Feature: Booking Wizard
     And I click the "Submit Booking" button
     
     When I navigate to "/demo"
+    Then I should see "1" in the "User Records" counter
     And I click the "User Projection" button
     Then I should see "OFFLINE"
     

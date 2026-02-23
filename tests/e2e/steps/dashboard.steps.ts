@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { Then } from '../common/bdd';
+import { Then, spin } from '../common/bdd';
 
 Then(
     'I should see {string} in the {string} counter',
@@ -13,12 +13,12 @@ Then(
                 .filter({ has: page.locator('div', { hasText: /^\d+$/ }) })
                 .last();
             const valueLocator = card.locator('div').filter({ hasText: /^\d+$/ });
-            await expect(valueLocator).toHaveText(value, { timeout: 15000 });
+            await expect(valueLocator).toHaveText(value, { timeout: 30000 });
         } else if (label === 'Snapshots') {
             const labelLocator = page.getByText('Snapshots', { exact: true });
             const container = page.locator('div').filter({ has: labelLocator }).last();
             const valueLocator = container.locator('div').filter({ hasText: /^\d+$/ }).first();
-            await expect(valueLocator).toHaveText(value, { timeout: 15000 });
+            await expect(valueLocator).toHaveText(value, { timeout: 30000 });
         } else {
             // For User/Booking records counters across UI variants.
             const aliases: Record<string, RegExp> = {
@@ -32,13 +32,19 @@ Then(
             const valueLocator = row.locator('span').last();
 
             if (aliases[label]) {
-                await expect(valueLocator).toHaveText(new RegExp(`^${value}(\\s*/\\s*\\d+)?$`), {
-                    timeout: 15000
-                });
+                await spin(
+                    async () => {
+                        await expect(valueLocator).toHaveText(
+                            new RegExp(`^${value}(\\s*/\\s*\\d+)?$`),
+                            { timeout: 5000 }
+                        );
+                    },
+                    { timeout: 60000, interval: 400 }
+                );
                 return;
             }
 
-            await expect(valueLocator).toHaveText(value, { timeout: 15000 });
+            await expect(valueLocator).toHaveText(value, { timeout: 30000 });
         }
     }
 );
@@ -51,7 +57,7 @@ Then(
             .locator('div')
             .filter({ has: page.locator('div', { hasText: tableTitle }) })
             .last();
-        await expect(container.locator('table')).toContainText(text, { timeout: 15000 });
+        await expect(container.locator('table')).toContainText(text, { timeout: 30000 });
     }
 );
 

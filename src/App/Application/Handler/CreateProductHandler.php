@@ -7,6 +7,11 @@ namespace App\Application\Handler;
 use App\Application\Command\CreateProductCommand;
 use App\Domain\Model\Product;
 use App\Domain\Repository\ProductEventStoreRepositoryInterface;
+use App\Domain\ValueObject\Currency;
+use App\Domain\ValueObject\Money;
+use App\Domain\ValueObject\ProductName;
+use App\Domain\ValueObject\ProductType;
+use App\Domain\ValueObject\UuidString;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -23,11 +28,13 @@ final readonly class CreateProductHandler
         // 1. Create the Aggregate (it records the ProductRegistered event)
         $product = Product::register(
             id: \Symfony\Component\Uid\Uuid::v7(),
-            name: $command->name,
-            price: $command->price,
-            currency: $command->currency,
-            type: $command->type,
-            supplierId: $command->supplierId,
+            name: ProductName::fromString($command->name),
+            price: Money::fromFloat(
+                $command->price,
+                Currency::fromString($command->currency)
+            ),
+            type: ProductType::fromString($command->type),
+            supplierId: UuidString::fromString($command->supplierId),
             details: $command->detailsData
         );
 

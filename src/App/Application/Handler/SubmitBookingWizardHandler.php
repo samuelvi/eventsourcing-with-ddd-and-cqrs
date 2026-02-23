@@ -11,10 +11,6 @@ use App\Domain\Model\User;
 use App\Domain\Repository\BookingEventStoreRepositoryInterface;
 use App\Domain\Repository\UserEventStoreRepositoryInterface;
 use App\Domain\Shared\Constants;
-use App\Domain\ValueObject\Email;
-use App\Domain\ValueObject\NonNegativeAmount;
-use App\Domain\ValueObject\PersonName;
-use App\Domain\ValueObject\PositiveInt;
 use App\Domain\ValueObject\UuidString;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -31,9 +27,9 @@ final readonly class SubmitBookingWizardHandler
 
     public function __invoke(SubmitBookingWizardCommand $command): void
     {
-        $bookingId = Uuid::fromString($command->id);
-        $clientEmail = Email::fromString($command->clientEmail);
-        $clientName = PersonName::fromString($command->clientName);
+        $bookingId = $command->bookingId();
+        $clientEmail = $command->clientEmailVO();
+        $clientName = $command->clientNameVO();
 
         // Resolve User ID deterministically (No DB call!)
         $userId = Uuid::v5(Uuid::fromString(Constants::USER_NAMESPACE), $clientEmail->toString());
@@ -61,8 +57,8 @@ final readonly class SubmitBookingWizardHandler
         $booking = Booking::submit(
             id: $bookingId,
             userId: UuidString::fromString($userId->toRfc4122()),
-            pax: PositiveInt::fromInt($command->pax),
-            budget: NonNegativeAmount::fromFloat($command->budget),
+            pax: $command->paxVO(),
+            budget: $command->budgetVO(),
             clientName: $clientName,
             clientEmail: $clientEmail
         );

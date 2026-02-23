@@ -8,6 +8,8 @@ use App\Domain\Event\QuoteRequested;
 use App\Domain\Model\QuoteEntity;
 use App\Domain\Repository\QuoteReadRepositoryInterface;
 use App\Domain\Repository\QuoteWriteRepositoryInterface;
+use App\Domain\ValueObject\NonNegativeAmount;
+use App\Domain\ValueObject\UuidString;
 use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -24,25 +26,32 @@ final readonly class QuoteProjection
 
     public function __invoke(QuoteRequested $event): void
     {
+        $quoteId = UuidString::fromString($event->quoteId);
+
         // Idempotency Check
-        if ($this->readRepository->exists($event->quoteId)) {
+        if ($this->readRepository->exists($quoteId->toString())) {
             return;
         }
 
+        $bookingId = UuidString::fromString($event->bookingId);
+        $supplierId = UuidString::fromString($event->supplierId);
+        $productId = UuidString::fromString($event->productId);
+        $price = NonNegativeAmount::fromFloat($event->requestedPrice);
+
         // Create Read Model
         $quote = QuoteEntity::hydrate(
-            id: Uuid::fromString($event->quoteId),
-            bookingId: Uuid::fromString($event->bookingId),
-            supplierId: Uuid::fromString($event->supplierId),
-            productId: Uuid::fromString($event->productId),
-            price: $event->requestedPrice,
+            id: Uuid::fromString($quoteId->toString()),
+            bookingId: Uuid::fromString($bookingId->toString()),
+            supplierId: Uuid::fromString($supplierId->toString()),
+            productId: Uuid::fromString($productId->toString()),
+            price: $price->toFloat(),
             createdAt: $event->occurredOn
         );
 
         $this->writeRepository->save($quote);
 
         // Update Checkpoint
-        $this->updateCheckpoint($event->quoteId);
+        $this->updateCheckpoint($quoteId->toString());
     }
 
     private function updateCheckpoint(string $lastEventId): void

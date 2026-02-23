@@ -29,7 +29,8 @@ final readonly class GenerateQuotesHandler
 
     public function __invoke(GenerateQuotesCommand $command): void
     {
-        $bookingRow = $this->bookingReadRepository->findById($command->bookingId);
+        $bookingId = $command->bookingIdVO();
+        $bookingRow = $this->bookingReadRepository->findById($bookingId->toString());
         if (!$bookingRow) {
             return;
         }
@@ -56,7 +57,7 @@ final readonly class GenerateQuotesHandler
 
             $quoteEvent = new QuoteRequested(
                 quoteId: $quoteId->toRfc4122(),
-                bookingId: $command->bookingId,
+                bookingId: $bookingId->toString(),
                 supplierId: $supplierId->toString(),
                 productId: $productId->toString(),
                 requestedPrice: $requestedPrice->toFloat(),
@@ -69,7 +70,7 @@ final readonly class GenerateQuotesHandler
                 eventType: QuoteRequested::class,
                 payload: [
                     'quoteId' => $quoteId->toRfc4122(),
-                    'bookingId' => $command->bookingId,
+                    'bookingId' => $bookingId->toString(),
                     'supplierId' => $supplierId->toString(),
                     'productId' => $productId->toString(),
                     'requestedPrice' => $requestedPrice->toFloat(),

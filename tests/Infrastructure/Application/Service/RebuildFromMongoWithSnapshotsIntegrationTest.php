@@ -8,6 +8,9 @@ use App\Application\Service\ArchitectureControlService;
 use App\Domain\Model\User;
 use App\Domain\Repository\UserEventStoreRepositoryInterface;
 use App\Domain\Repository\UserReadRepositoryInterface;
+use App\Domain\ValueObject\Address;
+use App\Domain\ValueObject\Email;
+use App\Domain\ValueObject\PersonName;
 use App\Infrastructure\EventSourcing\Snapshot;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
 use App\Infrastructure\Persistence\Mongo\MongoClient;
@@ -70,17 +73,38 @@ final class RebuildFromMongoWithSnapshotsIntegrationTest extends KernelTestCase
     {
         $userId = Uuid::v7();
 
-        $aggregate = User::register($userId, 'Alice v1', 'alice@example.com', 'Street 1');
+        $aggregate = User::register(
+            $userId,
+            PersonName::fromString('Alice v1'),
+            Email::fromString('alice@example.com'),
+            Address::fromString('Street 1')
+        );
         $this->userEventStoreRepository->save($aggregate);
 
         // Build history up to v5 and create an explicit snapshot at v5.
-        $aggregate->updateProfile('Alice v2', 'alice@example.com', 'Street 2');
+        $aggregate->updateProfile(
+            PersonName::fromString('Alice v2'),
+            Email::fromString('alice@example.com'),
+            Address::fromString('Street 2')
+        );
         $this->userEventStoreRepository->save($aggregate);
-        $aggregate->updateProfile('Alice v3', 'alice@example.com', 'Street 3');
+        $aggregate->updateProfile(
+            PersonName::fromString('Alice v3'),
+            Email::fromString('alice@example.com'),
+            Address::fromString('Street 3')
+        );
         $this->userEventStoreRepository->save($aggregate);
-        $aggregate->updateProfile('Alice v4', 'alice@example.com', 'Street 4');
+        $aggregate->updateProfile(
+            PersonName::fromString('Alice v4'),
+            Email::fromString('alice@example.com'),
+            Address::fromString('Street 4')
+        );
         $this->userEventStoreRepository->save($aggregate);
-        $aggregate->updateProfile('Alice v5', 'alice@example.com', 'Street 5');
+        $aggregate->updateProfile(
+            PersonName::fromString('Alice v5'),
+            Email::fromString('alice@example.com'),
+            Address::fromString('Street 5')
+        );
         $this->userEventStoreRepository->save($aggregate);
 
         $v5State = $this->userEventStoreRepository->get($userId);
@@ -90,7 +114,11 @@ final class RebuildFromMongoWithSnapshotsIntegrationTest extends KernelTestCase
         );
 
         // Add one delta event after snapshot (v6).
-        $v5State->updateProfile('Alice v6', 'alice@example.com', 'Street 6');
+        $v5State->updateProfile(
+            PersonName::fromString('Alice v6'),
+            Email::fromString('alice@example.com'),
+            Address::fromString('Street 6')
+        );
         $this->userEventStoreRepository->save($v5State);
 
         self::assertGreaterThan(0, $this->mongoStore->countEvents());

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Command;
 
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Uid\Uuid;
 
 final readonly class DeleteUserCommand
 {
@@ -13,4 +14,9 @@ final readonly class DeleteUserCommand
         #[Assert\Uuid]
         public string $id,
     ) {}
+
+    public function aggregateId(): Uuid
+    {
+        return Uuid::fromString($this->id);
+    }
 }

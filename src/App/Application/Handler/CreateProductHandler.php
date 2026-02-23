@@ -23,11 +23,10 @@ final readonly class CreateProductHandler
         // 1. Create the Aggregate (it records the ProductRegistered event)
         $product = Product::register(
             id: \Symfony\Component\Uid\Uuid::v7(),
-            name: $command->name,
-            price: $command->price,
-            currency: $command->currency,
-            type: $command->type,
-            supplierId: $command->supplierId,
+            name: $command->nameVO(),
+            price: $command->priceVO(),
+            type: $command->typeVO(),
+            supplierId: $command->supplierIdVO(),
             details: $command->detailsData
         );
 

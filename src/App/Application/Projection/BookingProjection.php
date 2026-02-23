@@ -11,6 +11,11 @@ use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
 use App\Domain\Repository\BookingWriteRepositoryInterface;
 use App\Domain\Repository\BookingReadRepositoryInterface;
 use App\Domain\Repository\UserWriteRepositoryInterface;
+use App\Domain\ValueObject\Email;
+use App\Domain\ValueObject\NonNegativeAmount;
+use App\Domain\ValueObject\PersonName;
+use App\Domain\ValueObject\PositiveInt;
+use App\Domain\ValueObject\UuidString;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
@@ -32,31 +37,38 @@ final readonly class BookingProjection
 
     public function __invoke(BookingWizardCompleted $event): void
     {
+        $bookingId = UuidString::fromString($event->bookingId);
+        $userId = UuidString::fromString($event->userId);
+        $pax = PositiveInt::fromInt($event->pax);
+        $budget = NonNegativeAmount::fromFloat($event->budget);
+        $clientName = PersonName::fromString($event->clientName);
+        $clientEmail = Email::fromString($event->clientEmail);
+
         // DEMO MODE: projection is active only if both master and booking switches are active.
         if (!$this->isProjectionEnabled()) {
             return;
         }
 
         // 1. Get User (FK requirement)
-        $user = $this->userWriteRepository->find($event->userId);
+        $user = $this->userWriteRepository->find($userId->toString());
         
         if (!$user) {
             // This is a recoverable error. The UserRegistered event might be processed after this one.
             // Throwing this specific exception will tell Messenger to retry with a delay.
-            throw new RecoverableMessageException(sprintf('User %s not found for booking projection. Message will be retried.', $event->userId));
+            throw new RecoverableMessageException(sprintf('User %s not found for booking projection. Message will be retried.', $userId->toString()));
         }
 
         // 2. Idempotency check: Does this booking exist?
-        if (!$this->bookingReadRepository->exists($event->bookingId)) {
+        if (!$this->bookingReadRepository->exists($bookingId->toString())) {
             $data = [
-                'pax' => $event->pax,
-                'budget' => $event->budget,
-                'clientName' => $event->clientName,
-                'clientEmail' => $event->clientEmail,
+                'pax' => $pax->toInt(),
+                'budget' => $budget->toFloat(),
+                'clientName' => $clientName->toString(),
+                'clientEmail' => $clientEmail->toString(),
             ];
 
             $booking = BookingEntity::create(
-                id: Uuid::fromString($event->bookingId),
+                id: Uuid::fromString($bookingId->toString()),
                 user: $user,
                 data: $data,
                 createdAt: $event->occurredOn
@@ -70,7 +82,7 @@ final readonly class BookingProjection
         if (!$checkpoint) {
             $checkpoint = ProjectionCheckpoint::create('booking_projection');
         }
-        $checkpoint->update(Uuid::fromString($event->bookingId));
+        $checkpoint->update(Uuid::fromString($bookingId->toString()));
         $this->mongoStore->saveCheckpoint($checkpoint);
     }
 

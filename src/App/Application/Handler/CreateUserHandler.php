@@ -10,7 +10,6 @@ use App\Domain\Model\User;
 use App\Domain\Repository\UserEventStoreRepositoryInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Uid\Uuid;
 
 #[AsMessageHandler]
 final readonly class CreateUserHandler
@@ -22,14 +21,11 @@ final readonly class CreateUserHandler
 
     public function __invoke(CreateUserCommand $command): void
     {
-        $email = strtolower(trim($command->email));
-        $aggregateId = Uuid::fromString($command->id);
-
         $user = User::register(
-            $aggregateId,
-            $command->name,
-            $email,
-            $this->normalizeAddress($command->address),
+            $command->aggregateId(),
+            $command->nameVO(),
+            $command->emailVO(),
+            $command->addressVO(),
         );
 
         $events = $user->getRecordedEvents();
@@ -43,16 +39,5 @@ final readonly class CreateUserHandler
         foreach ($events as $event) {
             $this->eventBus->dispatch($event);
         }
-    }
-
-    private function normalizeAddress(?string $address): ?string
-    {
-        if ($address === null) {
-            return null;
-        }
-
-        $normalized = trim($address);
-
-        return $normalized === '' ? null : $normalized;
     }
 }

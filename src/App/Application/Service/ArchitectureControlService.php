@@ -325,7 +325,7 @@ final readonly class ArchitectureControlService
                     'id' => $snapshot->aggregateId->toRfc4122(),
                     'name' => $aggregate->getName(),
                     'email' => $aggregate->getEmail(),
-                    'address' => $aggregate->address,
+                    'address' => $aggregate->getAddress(),
                     'created_at' => $snapshot->createdAt->format('Y-m-d H:i:s'),
                 ]
             );

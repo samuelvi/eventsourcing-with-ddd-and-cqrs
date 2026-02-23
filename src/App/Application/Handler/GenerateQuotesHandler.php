@@ -11,6 +11,8 @@ use App\Domain\Repository\ProductReadRepositoryInterface;
 use App\Infrastructure\EventSourcing\StoredEvent;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use App\Domain\Shared\TypeAssert;
+use App\Domain\ValueObject\NonNegativeAmount;
+use App\Domain\ValueObject\UuidString;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
@@ -27,16 +29,17 @@ final readonly class GenerateQuotesHandler
 
     public function __invoke(GenerateQuotesCommand $command): void
     {
-        $bookingRow = $this->bookingReadRepository->findById($command->bookingId);
+        $bookingId = $command->bookingIdVO();
+        $bookingRow = $this->bookingReadRepository->findById($bookingId->toString());
         if (!$bookingRow) {
             return;
         }
 
         /** @var array<string, mixed> $bookingData */
         $bookingData = TypeAssert::array(json_decode(TypeAssert::string($bookingRow['data']), true));
-        $budget = TypeAssert::float($bookingData['budget'] ?? 0.0);
+        $budget = NonNegativeAmount::fromFloat(TypeAssert::float($bookingData['budget'] ?? 0.0));
 
-        $matches = $this->productReadRepository->findByBudget($budget);
+        $matches = $this->productReadRepository->findByBudget($budget->toFloat());
 
         if (empty($matches)) {
             return;
@@ -48,12 +51,16 @@ final readonly class GenerateQuotesHandler
             $quoteId = Uuid::v7();
 
             // 1. Create the Domain Event
+            $supplierId = UuidString::fromString(TypeAssert::string($product['supplier_id']));
+            $productId = UuidString::fromString(TypeAssert::string($product['id']));
+            $requestedPrice = NonNegativeAmount::fromFloat((float) $product['price']);
+
             $quoteEvent = new QuoteRequested(
                 quoteId: $quoteId->toRfc4122(),
-                bookingId: $command->bookingId,
-                supplierId: $product['supplier_id'],
-                productId: $product['id'],
-                requestedPrice: (float) $product['price'],
+                bookingId: $bookingId->toString(),
+                supplierId: $supplierId->toString(),
+                productId: $productId->toString(),
+                requestedPrice: $requestedPrice->toFloat(),
                 occurredOn: $occurredOn
             );
 
@@ -63,10 +70,10 @@ final readonly class GenerateQuotesHandler
                 eventType: QuoteRequested::class,
                 payload: [
                     'quoteId' => $quoteId->toRfc4122(),
-                    'bookingId' => $command->bookingId,
-                    'supplierId' => $product['supplier_id'],
-                    'productId' => $product['id'],
-                    'requestedPrice' => (float) $product['price'],
+                    'bookingId' => $bookingId->toString(),
+                    'supplierId' => $supplierId->toString(),
+                    'productId' => $productId->toString(),
+                    'requestedPrice' => $requestedPrice->toFloat(),
                     'occurredOn' => $occurredOn->format(\DateTimeInterface::ATOM)
                 ],
                 occurredOn: $occurredOn

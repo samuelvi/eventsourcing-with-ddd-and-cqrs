@@ -8,6 +8,11 @@ use App\Domain\Event\ProductRegistered;
 use App\Domain\Model\ProductEntity;
 use App\Domain\Repository\ProductWriteRepositoryInterface;
 use App\Domain\Repository\SupplierWriteRepositoryInterface;
+use App\Domain\ValueObject\Currency;
+use App\Domain\ValueObject\Money;
+use App\Domain\ValueObject\ProductName;
+use App\Domain\ValueObject\ProductType;
+use App\Domain\ValueObject\UuidString;
 use App\Infrastructure\EventSourcing\ProjectionCheckpoint;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -24,22 +29,28 @@ final readonly class ProductProjection
     #[AsMessageHandler]
     public function __invoke(ProductRegistered $event): void
     {
-        $supplier = $this->supplierRepository->getById($event->supplierId);
+        $supplierId = UuidString::fromString($event->supplierId);
+        $productId = UuidString::fromString($event->productId);
+        $name = ProductName::fromString($event->name);
+        $type = ProductType::fromString($event->type);
+        $price = Money::fromFloat($event->price, Currency::fromString($event->currency));
+
+        $supplier = $this->supplierRepository->getById($supplierId->toString());
 
         $product = ProductEntity::hydrate(
-            id: Uuid::fromString($event->productId),
-            name: $event->name,
-            price: $event->price,
-            currency: $event->currency,
-            type: $event->type,
+            id: Uuid::fromString($productId->toString()),
+            name: $name->toString(),
+            price: $price->amount()->toFloat(),
+            currency: $price->currency()->toString(),
+            type: $type->toString(),
             supplier: $supplier,
-            externalReferenceId: Uuid::fromString($event->productId) // Usamos el mismo ID para simplificar el vínculo
+            externalReferenceId: Uuid::fromString($productId->toString()) // Usamos el mismo ID para simplificar el vínculo
         );
 
         $this->productWriteRepository->save($product);
 
         // Update Checkpoint
-        $this->updateCheckpoint($event->productId);
+        $this->updateCheckpoint($productId->toString());
     }
 
     private function updateCheckpoint(string $lastEventId): void

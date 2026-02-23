@@ -8,6 +8,9 @@ use App\Domain\Event\UserDeleted;
 use App\Domain\Event\UserProfileUpdated;
 use App\Domain\Event\UserRegistered;
 use App\Domain\Model\User;
+use App\Domain\ValueObject\Address;
+use App\Domain\ValueObject\Email;
+use App\Domain\ValueObject\PersonName;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -16,10 +19,13 @@ final class UserTest extends TestCase
     public function testUpdateProfileRecordsEventAndUpdatesState(): void
     {
         $id = Uuid::v7();
-        $user = User::register($id, 'Old Name', 'old@example.com');
+        $user = User::register($id, PersonName::fromString('Old Name'), Email::fromString('old@example.com'));
         $user->clearRecordedEvents();
 
-        $user->updateProfile('New Name', 'new@example.com');
+        $user->updateProfile(
+            PersonName::fromString('New Name'),
+            Email::fromString('new@example.com')
+        );
 
         $events = $user->getRecordedEvents();
         $this->assertCount(1, $events);
@@ -31,7 +37,7 @@ final class UserTest extends TestCase
     public function testDeleteRecordsEventAndPreventsFutureChanges(): void
     {
         $id = Uuid::v7();
-        $user = User::register($id, 'Ada', 'ada@example.com');
+        $user = User::register($id, PersonName::fromString('Ada'), Email::fromString('ada@example.com'));
         $user->clearRecordedEvents();
 
         $user->delete();
@@ -41,7 +47,7 @@ final class UserTest extends TestCase
         $this->assertInstanceOf(UserDeleted::class, $events[0]);
 
         $this->expectException(\DomainException::class);
-        $user->updateProfile('Blocked', 'blocked@example.com');
+        $user->updateProfile(PersonName::fromString('Blocked'), Email::fromString('blocked@example.com'));
     }
 
     public function testReconstitutedDeletedUserCannotBeUpdated(): void
@@ -63,6 +69,10 @@ final class UserTest extends TestCase
         $user = User::reconstituteFromHistory($id, $history);
 
         $this->expectException(\DomainException::class);
-        $user->updateProfile('After Delete', 'after@example.com');
+        $user->updateProfile(
+            PersonName::fromString('After Delete'),
+            Email::fromString('after@example.com'),
+            Address::fromNullable('Road 1')
+        );
     }
 }

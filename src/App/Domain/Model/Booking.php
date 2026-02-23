@@ -6,32 +6,37 @@ namespace App\Domain\Model;
 
 use App\Domain\Event\BookingWizardCompleted;
 use App\Domain\Shared\TypeAssert;
+use App\Domain\ValueObject\Email;
+use App\Domain\ValueObject\NonNegativeAmount;
+use App\Domain\ValueObject\PersonName;
+use App\Domain\ValueObject\PositiveInt;
+use App\Domain\ValueObject\UuidString;
 use Symfony\Component\Uid\Uuid;
 
 final class Booking extends AggregateRoot
 {
-    private string $userId;
-    private int $pax;
-    private float $budget;
-    private string $clientName;
-    private string $clientEmail;
+    private UuidString $userId;
+    private PositiveInt $pax;
+    private NonNegativeAmount $budget;
+    private PersonName $clientName;
+    private Email $clientEmail;
 
     public static function submit(
         Uuid $id,
-        string $userId,
-        int $pax,
-        float $budget,
-        string $clientName,
-        string $clientEmail
+        UuidString $userId,
+        PositiveInt $pax,
+        NonNegativeAmount $budget,
+        PersonName $clientName,
+        Email $clientEmail
     ): self {
         $booking = new self($id);
         $booking->recordThat(BookingWizardCompleted::occur(
             bookingId: $id->toRfc4122(),
-            userId: $userId,
-            pax: $pax,
-            budget: $budget,
-            clientName: $clientName,
-            clientEmail: $clientEmail,
+            userId: $userId->toString(),
+            pax: $pax->toInt(),
+            budget: $budget->toFloat(),
+            clientName: $clientName->toString(),
+            clientEmail: $clientEmail->toString(),
             occurredOn: new \DateTimeImmutable()
         ));
 
@@ -41,31 +46,31 @@ final class Booking extends AggregateRoot
     protected function apply(object $event): void
     {
         if ($event instanceof BookingWizardCompleted) {
-            $this->userId = $event->userId;
-            $this->pax = $event->pax;
-            $this->budget = $event->budget;
-            $this->clientName = $event->clientName;
-            $this->clientEmail = $event->clientEmail;
+            $this->userId = UuidString::fromString($event->userId);
+            $this->pax = PositiveInt::fromInt($event->pax);
+            $this->budget = NonNegativeAmount::fromFloat($event->budget);
+            $this->clientName = PersonName::fromString($event->clientName);
+            $this->clientEmail = Email::fromString($event->clientEmail);
         }
     }
 
     public function getSnapshotState(): array
     {
         return [
-            'userId' => $this->userId,
-            'pax' => $this->pax,
-            'budget' => $this->budget,
-            'clientName' => $this->clientName,
-            'clientEmail' => $this->clientEmail,
+            'userId' => $this->userId->toString(),
+            'pax' => $this->pax->toInt(),
+            'budget' => $this->budget->toFloat(),
+            'clientName' => $this->clientName->toString(),
+            'clientEmail' => $this->clientEmail->toString(),
         ];
     }
 
     protected function applySnapshot(array $state): void
     {
-        $this->userId = TypeAssert::string($state['userId'] ?? null);
-        $this->pax = TypeAssert::int($state['pax'] ?? null);
-        $this->budget = TypeAssert::float($state['budget'] ?? null);
-        $this->clientName = TypeAssert::string($state['clientName'] ?? null);
-        $this->clientEmail = TypeAssert::string($state['clientEmail'] ?? null);
+        $this->userId = UuidString::fromString(TypeAssert::string($state['userId'] ?? null));
+        $this->pax = PositiveInt::fromInt(TypeAssert::int($state['pax'] ?? null));
+        $this->budget = NonNegativeAmount::fromFloat(TypeAssert::float($state['budget'] ?? null));
+        $this->clientName = PersonName::fromString(TypeAssert::string($state['clientName'] ?? null));
+        $this->clientEmail = Email::fromString(TypeAssert::string($state['clientEmail'] ?? null));
     }
 }

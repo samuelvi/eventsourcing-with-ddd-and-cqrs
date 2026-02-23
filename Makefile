@@ -12,6 +12,7 @@ ENV_FILES_TEST = $(strip $(foreach f,$(ENV_FILE_BASE) $(ENV_FILE_TEST),$(if $(wi
 .PHONY: init dev-init test-init
 .PHONY: dev-up dev-down dev-build dev-logs dev-ps dev-restart dev-clean dev-wait
 .PHONY: test-up test-down test-build test-logs test-ps test-restart test-clean test-wait
+.PHONY: test-ci-up test-ci-down test-init-ci setup-api-test-ci test-e2e-ci
 .PHONY: setup-api setup-api-test load-fixtures load-fixtures-test init-front build-front
 .PHONY: test test-unit test-e2e test-e2e-ui test-e2e-debug test-e2e-report test-all phpstan
 
@@ -54,7 +55,14 @@ test-init: test-down test-build test-up test-wait setup-api-test load-fixtures-t
 test-up: build-front
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) up -d
 
+test-ci-up: build-front
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) up -d --build \
+		postgres-test mongodb-test queue-db-test symfony-api-test messenger-worker-test
+
 test-down:
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) down
+
+test-ci-down:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) down
 
 test-build:
@@ -64,8 +72,20 @@ test-wait:
 	@echo "Esperando a que los servicios test arranquen..."
 	@sleep 10
 
+test-init-ci: test-ci-up test-wait setup-api-test-ci load-fixtures-test
+	@echo "Sistema test CI inicializado."
+
 setup-api-test:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test composer install --no-interaction --prefer-dist --no-progress --no-scripts
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:database:create --if-not-exists
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:migrations:migrate --no-interaction
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:clear --env=test --no-warmup
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:warmup --env=test
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console messenger:setup-transports --no-interaction
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) restart messenger-worker-test
+
+setup-api-test-ci:
+	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test sh -lc 'if [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist --no-progress --no-scripts; fi'
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:database:create --if-not-exists
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:migrations:migrate --no-interaction
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:clear --env=test --no-warmup
@@ -88,6 +108,16 @@ test-unit: test-init
 
 test-e2e: test-init ## Run Playwright E2E tests (Headless)
 	@echo "Running E2E Tests (Headless)..."
+	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx bddgen && \
+	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx playwright test || ( \
+		echo "E2E tests failed. Dumping logs:" && \
+		$(DOCKER_COMPOSE_TEST) logs --tail=100 symfony-api-test && \
+		$(DOCKER_COMPOSE_TEST) logs --tail=100 messenger-worker-test && \
+		exit 1 \
+	)
+
+test-e2e-ci: test-init-ci ## Run Playwright E2E tests (Headless) with minimal CI services
+	@echo "Running E2E Tests in CI mode (minimal services)..."
 	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx bddgen && \
 	PLAYWRIGHT_BASE_URL=http://127.0.0.1:9080 npx playwright test || ( \
 		echo "E2E tests failed. Dumping logs:" && \

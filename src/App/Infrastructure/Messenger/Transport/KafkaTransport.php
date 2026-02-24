@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Messenger\Transport;
 
+use App\Infrastructure\Messenger\Transport\Stamp\KafkaReceivedStamp;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\TransportException;
 use Symfony\Component\Messenger\Stamp\TransportMessageIdStamp;
@@ -47,6 +48,7 @@ final class KafkaTransport implements TransportInterface
 
         $messageId = is_string($decoded['id'] ?? null) ? $decoded['id'] : uniqid('kafka-msg-', true);
         $envelope = $this->serializer->decode($this->toEncodedEnvelope($decoded['envelope'] ?? null))
+            ->with(new KafkaReceivedStamp($message))
             ->with(new TransportMessageIdStamp($messageId));
 
         return [$envelope];
@@ -54,12 +56,12 @@ final class KafkaTransport implements TransportInterface
 
     public function ack(Envelope $envelope): void
     {
-        // Auto-commit is enabled to keep transport logic simple for this POC.
+        $this->commitOffset($envelope);
     }
 
     public function reject(Envelope $envelope): void
     {
-        // Failure handling is delegated to Messenger retry/failure transport middleware.
+        $this->commitOffset($envelope);
     }
 
     public function send(Envelope $envelope): Envelope
@@ -121,7 +123,7 @@ final class KafkaTransport implements TransportInterface
         $conf = new $confClass();
         $conf->set('metadata.broker.list', $this->brokers);
         $conf->set('group.id', $this->groupId);
-        $conf->set('enable.auto.commit', 'true');
+        $conf->set('enable.auto.commit', 'false');
         $conf->set('auto.offset.reset', 'earliest');
 
         /** @var \RdKafka\KafkaConsumer $consumer */
@@ -183,5 +185,20 @@ final class KafkaTransport implements TransportInterface
             'body' => $body,
             'headers' => $normalizedHeaders,
         ];
+    }
+
+    private function commitOffset(Envelope $envelope): void
+    {
+        $stamp = $envelope->last(KafkaReceivedStamp::class);
+        if (!$stamp instanceof KafkaReceivedStamp) {
+            return;
+        }
+
+        $consumer = $this->consumer();
+        if (!method_exists($consumer, 'commit')) {
+            return;
+        }
+
+        $consumer->commit($stamp->message);
     }
 }

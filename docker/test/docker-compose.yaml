@@ -45,7 +45,7 @@ services:
         container_name: postgres-db-test
         environment:
             - POSTGRES_USER=user
-            - POSTGRES_PASSWORD=password
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
             - POSTGRES_DB=event_sourcing_test
         ports:
             - '5434:5432'
@@ -70,7 +70,7 @@ services:
             - '27018:27017'
         environment:
             - MONGODB_INITDB_ROOT_USERNAME=root
-            - MONGODB_INITDB_ROOT_PASSWORD=password
+            - MONGODB_INITDB_ROOT_PASSWORD=${MONGODB_INITDB_ROOT_PASSWORD:-password}
         volumes:
             - ./mongodb/data:/data/db
         networks:
@@ -91,10 +91,10 @@ services:
             - '9083:8081'
         environment:
             - ME_CONFIG_MONGODB_ADMINUSERNAME=root
-            - ME_CONFIG_MONGODB_ADMINPASSWORD=password
-            - ME_CONFIG_MONGODB_URL=mongodb://root:password@mongodb-test:27017/
+            - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGODB_INITDB_ROOT_PASSWORD:-password}
+            - ME_CONFIG_MONGODB_URL=mongodb://root:${MONGODB_INITDB_ROOT_PASSWORD:-password}@mongodb-test:27017/
             - ME_CONFIG_BASICAUTH_USERNAME=user
-            - ME_CONFIG_BASICAUTH_PASSWORD=password
+            - ME_CONFIG_BASICAUTH_PASSWORD=${MONGO_EXPRESS_PASSWORD:-password}
         networks:
             - app-network-test
         depends_on:
@@ -115,7 +115,7 @@ services:
             - DB_POSTGRESDB_PORT=5432
             - DB_POSTGRESDB_DATABASE=event_sourcing_test
             - DB_POSTGRESDB_USER=user
-            - DB_POSTGRESDB_PASSWORD=password
+            - DB_POSTGRESDB_PASSWORD=${DB_POSTGRESDB_PASSWORD:-password}
         volumes:
             - ./n8n/data:/home/node/.n8n
         networks:
@@ -147,7 +147,7 @@ services:
         environment:
             - POSTGRES_DB=messenger_queue_test
             - POSTGRES_USER=queue_user
-            - POSTGRES_PASSWORD=queue_password
+            - POSTGRES_PASSWORD=${QUEUE_POSTGRES_PASSWORD:-queue_password}
         ports:
             - '5435:5432'
         volumes:

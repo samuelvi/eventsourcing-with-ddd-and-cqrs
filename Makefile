@@ -12,7 +12,7 @@ ENV_FILES_TEST = $(strip $(foreach f,$(ENV_FILE_BASE) $(ENV_FILE_TEST),$(if $(wi
 .PHONY: init dev-init test-init
 .PHONY: dev-up dev-down dev-build dev-logs dev-ps dev-restart dev-clean dev-wait
 .PHONY: test-up test-down test-build test-logs test-ps test-restart test-clean test-wait
-.PHONY: test-ci-up test-ci-down test-init-ci setup-api-test-ci test-e2e-ci
+.PHONY: test-ci-up test-ci-down test-init-ci setup-api-test-ci setup-api-test-common test-e2e-ci
 .PHONY: setup-api setup-api-test load-fixtures load-fixtures-test init-front build-front
 .PHONY: test test-unit test-e2e test-e2e-ui test-e2e-debug test-e2e-report test-all phpstan
 
@@ -77,15 +77,13 @@ test-init-ci: test-ci-up test-wait setup-api-test-ci load-fixtures-test
 
 setup-api-test:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test composer install --no-interaction --prefer-dist --no-progress --no-scripts
-	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:database:create --if-not-exists
-	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:migrations:migrate --no-interaction
-	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:clear --env=test --no-warmup
-	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:warmup --env=test
-	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console messenger:setup-transports --no-interaction
-	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) restart messenger-worker-test
+	$(MAKE) setup-api-test-common
 
 setup-api-test-ci:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test sh -lc 'if [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist --no-progress --no-scripts; fi'
+	$(MAKE) setup-api-test-common
+
+setup-api-test-common:
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:database:create --if-not-exists
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console doctrine:migrations:migrate --no-interaction
 	$(DOCKER_COMPOSE_TEST) $(ENV_FILES_TEST) exec -T symfony-api-test bin/console cache:clear --env=test --no-warmup

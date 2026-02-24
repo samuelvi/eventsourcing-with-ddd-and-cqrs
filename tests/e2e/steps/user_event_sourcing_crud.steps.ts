@@ -113,7 +113,21 @@ When('I rebuild projections from mongo history', async ({ request }) => {
 });
 
 When('I wait {int} second', async ({ page }, seconds: number) => {
-    await page.waitForTimeout(seconds * 1000);
+    const timeout = Math.max(1000, seconds * 1000);
+
+    // Prefer readiness-based waits over fixed sleeps; bound by requested timeout.
+    try {
+        await page.waitForLoadState('networkidle', { timeout });
+        return;
+    } catch {
+        // Fall through to a weaker readiness signal.
+    }
+
+    try {
+        await page.waitForLoadState('load', { timeout });
+    } catch {
+        // Keep this step non-fatal: callers should assert concrete outcomes next.
+    }
 });
 
 Then(

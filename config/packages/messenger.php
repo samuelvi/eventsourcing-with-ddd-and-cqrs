@@ -34,6 +34,7 @@ return static function (ContainerConfigurator $container): void {
                 'dsn' => '%env(MESSENGER_TRANSPORT_DSN_REDIS)%',
                 'options' => [
                     'queue' => 'async',
+                    'visibility_timeout_ms' => 60000,
                 ],
                 'retry_strategy' => $retryStrategy,
             ],
@@ -41,6 +42,7 @@ return static function (ContainerConfigurator $container): void {
                 'dsn' => '%env(MESSENGER_FAILED_TRANSPORT_DSN_REDIS)%',
                 'options' => [
                     'queue' => 'failed',
+                    'visibility_timeout_ms' => 60000,
                 ],
             ],
         ],

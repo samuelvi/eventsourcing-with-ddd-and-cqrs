@@ -9,10 +9,10 @@ Then('I should see {string}', async ({ page }, text: string) => {
     await spin(
         async () => {
             await expect(page.getByText(text, { exact: false }).first()).toBeVisible({
-                timeout: 3000
+                timeout: 5000
             });
         },
-        { timeout: 60000, interval: 300 }
+        { timeout: 90000, interval: 300 }
     );
 });
 

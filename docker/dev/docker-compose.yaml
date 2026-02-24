@@ -8,9 +8,9 @@ services:
             dockerfile: docker/dev/Dockerfile
         container_name: symfony-api
         ports:
-            - '8080:80'
-            - '443:443'
-            - '443:443/udp'
+            - '${DEV_BIND_HOST:-127.0.0.1}:8080:80'
+            - '${DEV_BIND_HOST:-127.0.0.1}:443:443'
+            - '${DEV_BIND_HOST:-127.0.0.1}:443:443/udp'
         env_file:
             - ../../.env
         environment:
@@ -48,7 +48,7 @@ services:
         volumes:
             - ../../:/app
         ports:
-            - '5173:5173'
+            - '${DEV_BIND_HOST:-127.0.0.1}:5173:5173'
         command: ['sh', '-c', 'npm install && npm run dev -- --host']
         networks:
             - app-network
@@ -84,7 +84,7 @@ services:
         image: n8nio/n8n
         container_name: n8n
         ports:
-            - '5678:5678'
+            - '${DEV_BIND_HOST:-127.0.0.1}:5678:5678'
         env_file:
             - ../../.env
         environment:
@@ -113,7 +113,7 @@ services:
         container_name: mongodb
         user: '0:0'
         ports:
-            - '27017:27017'
+            - '${DEV_BIND_HOST:-127.0.0.1}:27017:27017'
         environment:
             - MONGODB_INITDB_ROOT_USERNAME=root
             - MONGODB_INITDB_ROOT_PASSWORD=${MONGODB_INITDB_ROOT_PASSWORD:-password}
@@ -134,7 +134,7 @@ services:
         image: mongo-express
         container_name: mongo-express
         ports:
-            - '8082:8081'
+            - '${DEV_BIND_HOST:-127.0.0.1}:8082:8081'
         environment:
             - ME_CONFIG_MONGODB_ADMINUSERNAME=root
             - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGODB_INITDB_ROOT_PASSWORD:-password}
@@ -152,7 +152,7 @@ services:
         image: adminer
         container_name: adminer
         ports:
-            - '8081:8080'
+            - '${DEV_BIND_HOST:-127.0.0.1}:8081:8080'
         env_file:
             - ../../.env
         networks:
@@ -173,7 +173,7 @@ services:
             - POSTGRES_USER=queue_user
             - POSTGRES_PASSWORD=${QUEUE_POSTGRES_PASSWORD:-queue_password}
         ports:
-            - '${QUEUE_DB_EXTERNAL_PORT:-5436}:5432'
+            - '${DEV_BIND_HOST:-127.0.0.1}:${QUEUE_DB_EXTERNAL_PORT:-5436}:5432'
         volumes:
             - ./postgres-queue/data:/var/lib/postgresql/data
         networks:
@@ -192,7 +192,7 @@ services:
         container_name: queue-redis
         command: ['redis-server', '--appendonly', 'yes']
         ports:
-            - '${QUEUE_REDIS_EXTERNAL_PORT:-6380}:6379'
+            - '${DEV_BIND_HOST:-127.0.0.1}:${QUEUE_REDIS_EXTERNAL_PORT:-6380}:6379'
         volumes:
             - ./redis/data:/data
         networks:
@@ -210,7 +210,7 @@ services:
         image: apache/kafka:3.9.0
         container_name: queue-kafka
         ports:
-            - '${QUEUE_KAFKA_EXTERNAL_PORT:-9092}:9092'
+            - '${DEV_BIND_HOST:-127.0.0.1}:${QUEUE_KAFKA_EXTERNAL_PORT:-9092}:9092'
         environment:
             - KAFKA_NODE_ID=1
             - KAFKA_PROCESS_ROLES=broker,controller
@@ -244,7 +244,7 @@ services:
         image: redis/redisinsight:latest
         container_name: redisinsight
         ports:
-            - '8084:5540'
+            - '${DEV_BIND_HOST:-127.0.0.1}:8084:5540'
         volumes:
             - ./redisinsight/data:/data
         networks:
@@ -259,7 +259,7 @@ services:
         image: provectuslabs/kafka-ui:latest
         container_name: kafka-ui
         ports:
-            - '8085:8080'
+            - '${DEV_BIND_HOST:-127.0.0.1}:8085:8080'
         environment:
             - KAFKA_CLUSTERS_0_NAME=local
             - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
@@ -280,7 +280,7 @@ services:
             ['/usr/bin/supervisord', '-n', '-c', '/etc/supervisor/conf.d/messenger-worker.conf']
         user: root
         ports:
-            - '9001:9001'
+            - '${DEV_BIND_HOST:-127.0.0.1}:9001:9001'
         volumes:
             - ../../:/app
             - ./worker/supervisord.conf:/etc/supervisor/conf.d/messenger-worker.conf:ro

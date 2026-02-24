@@ -18,6 +18,42 @@ final class RedisTransport implements TransportInterface
     private const MAX_DELAY_PROMOTION = 100;
     private const MAX_INFLIGHT_REQUEUE = 100;
     private const MAX_PROCESSING_SCAN = 200;
+    private const LUA_PROMOTE_DELAYED = <<<'LUA'
+local delayed = KEYS[1]
+local ready = KEYS[2]
+local now = ARGV[1]
+local maxItems = tonumber(ARGV[2])
+local due = redis.call('ZRANGEBYSCORE', delayed, '-inf', now, 'LIMIT', 0, maxItems)
+
+for _, message in ipairs(due) do
+    redis.call('ZREM', delayed, message)
+    redis.call('LPUSH', ready, message)
+end
+
+return due
+LUA;
+    private const LUA_REQUEUE_EXPIRED_INFLIGHT = <<<'LUA'
+local inflight = KEYS[1]
+local inflightPayload = KEYS[2]
+local processing = KEYS[3]
+local ready = KEYS[4]
+local now = ARGV[1]
+local maxItems = tonumber(ARGV[2])
+local expired = redis.call('ZRANGEBYSCORE', inflight, '-inf', now, 'LIMIT', 0, maxItems)
+
+for _, messageId in ipairs(expired) do
+    local payload = redis.call('HGET', inflightPayload, messageId)
+    if payload then
+        redis.call('LREM', processing, 1, payload)
+        redis.call('LPUSH', ready, payload)
+    end
+
+    redis.call('ZREM', inflight, messageId)
+    redis.call('HDEL', inflightPayload, messageId)
+end
+
+return expired
+LUA;
 
     private object|null $client = null;
 
@@ -104,6 +140,18 @@ final class RedisTransport implements TransportInterface
     private function promoteDelayedMessages(\Redis $redis): void
     {
         $now = $this->nowInMs();
+        $atomicResult = $this->runLua(
+            $redis,
+            self::LUA_PROMOTE_DELAYED,
+            [$this->delayedKey(), $this->readyKey(), (string) $now, (string) self::MAX_DELAY_PROMOTION],
+            2
+        );
+
+        if ($atomicResult !== null) {
+            return;
+        }
+
+        // Fallback path when Lua is unavailable; keeps behavior correct but not fully atomic.
         $dueMessages = $redis->zRangeByScore(
             $this->delayedKey(),
             '-inf',
@@ -180,6 +228,25 @@ final class RedisTransport implements TransportInterface
     private function requeueExpiredInflightMessages(\Redis $redis): void
     {
         $now = $this->nowInMs();
+        $atomicResult = $this->runLua(
+            $redis,
+            self::LUA_REQUEUE_EXPIRED_INFLIGHT,
+            [
+                $this->inflightKey(),
+                $this->inflightPayloadKey(),
+                $this->processingKey(),
+                $this->readyKey(),
+                (string) $now,
+                (string) self::MAX_INFLIGHT_REQUEUE
+            ],
+            4
+        );
+
+        if ($atomicResult !== null) {
+            return;
+        }
+
+        // Fallback path when Lua is unavailable; keeps behavior correct but not fully atomic.
         $expiredIds = $redis->zRangeByScore(
             $this->inflightKey(),
             '-inf',
@@ -268,6 +335,24 @@ final class RedisTransport implements TransportInterface
         }
 
         return [$messageId, $this->toEncodedEnvelope($decoded['envelope'] ?? null)];
+    }
+
+    /**
+     * @param list<string> $args
+     * @return array<mixed, mixed>|null
+     */
+    private function runLua(\Redis $redis, string $script, array $args, int $numKeys): ?array
+    {
+        $result = $redis->eval($script, $args, $numKeys);
+        if ($result === false) {
+            return null;
+        }
+
+        if (!is_array($result)) {
+            return [];
+        }
+
+        return $result;
     }
 
     /**

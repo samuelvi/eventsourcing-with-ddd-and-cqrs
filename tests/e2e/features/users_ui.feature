@@ -28,7 +28,7 @@ Feature: Users UI Management
     And the event store should contain an event of type "App\\Domain\\Event\\UserProfileUpdated" for that user
 
     When I click the "Delete User" button
-    Then I should see "No users in projection."
+    Then the users projection should not include that user
     And the event store should contain an event of type "App\\Domain\\Event\\UserDeleted" for that user
 
   Scenario: Edit user generated from demo booking keeps latest name in users list

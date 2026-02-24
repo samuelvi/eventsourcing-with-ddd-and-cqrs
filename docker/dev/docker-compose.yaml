@@ -22,6 +22,7 @@ services:
             - CORS_ALLOW_ORIGIN=^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$
         volumes:
             - ../../:/app
+            - ../../var/log:/app/var/log
             - ./symfony/caddy_data:/data
             - ./symfony/caddy_config:/config
         networks:

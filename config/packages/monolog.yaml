@@ -1,0 +1,19 @@
+monolog:
+    channels:
+        - n8n
+        - custom
+    handlers:
+        n8n:
+            type: rotating_file
+            path: /app/var/log/n8n.log
+            level: info
+            max_files: 30
+            formatter: monolog.formatter.json
+            channels: [n8n]
+        custom:
+            type: rotating_file
+            path: /app/var/log/custom.log
+            level: debug
+            max_files: 30
+            formatter: monolog.formatter.json
+            channels: [custom]

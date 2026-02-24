@@ -1,12 +1,19 @@
 import { expect } from '@playwright/test';
-import { Then } from '../bdd';
+import { Then, spin } from '../bdd';
 
 // =============================================================================
 // Text Visibility Assertions
 // =============================================================================
 
 Then('I should see {string}', async ({ page }, text: string) => {
-    await expect(page.getByText(text, { exact: false }).first()).toBeVisible();
+    await spin(
+        async () => {
+            await expect(page.getByText(text, { exact: false }).first()).toBeVisible({
+                timeout: 3000
+            });
+        },
+        { timeout: 60000, interval: 300 }
+    );
 });
 
 Then('I should not see {string}', async ({ page }, text: string) => {

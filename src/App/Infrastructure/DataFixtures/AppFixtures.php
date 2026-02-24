@@ -12,6 +12,19 @@ use Doctrine\Persistence\ObjectManager;
 
 final class AppFixtures extends Fixture
 {
+    private array $countries = [
+        'Spain',
+        'France',
+        'Italy',
+        'Germany',
+        'Portugal',
+        'United Kingdom',
+        'Netherlands',
+        'Belgium',
+        'Austria',
+        'Switzerland'
+    ];
+
     public function load(ObjectManager $manager): void
     {
         // 1. Create Suppliers and their Menus/Products
@@ -25,6 +38,7 @@ final class AppFixtures extends Fixture
 
         foreach ($supplierNames as $name) {
             $supplier = SupplierEntity::create($name);
+            $supplier->country = $this->countries[array_rand($this->countries)];
             $manager->persist($supplier);
 
             // Generate between 5 and 10 menus for each supplier

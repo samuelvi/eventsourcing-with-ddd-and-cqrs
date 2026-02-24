@@ -22,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
     ],
     normalizationContext: ['groups' => ['snapshot:read']]
 )]
-class Snapshot
+final readonly class Snapshot
 {
     private function __construct(
         #[Groups(['snapshot:read'])]

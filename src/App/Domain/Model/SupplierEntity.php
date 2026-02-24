@@ -52,6 +52,10 @@ class SupplierEntity
     #[Groups(['supplier:read', 'supplier:write'])]
     public float $rating = 0.0;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['supplier:read', 'supplier:write'])]
+    public ?string $country = null;
+
     /** @var Collection<int, ProductEntity> */
     #[ORM\OneToMany(mappedBy: 'supplier', targetEntity: ProductEntity::class)]
     #[Groups(['supplier:read'])]

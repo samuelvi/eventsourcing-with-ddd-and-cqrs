@@ -71,6 +71,10 @@ class BookingEntity
     #[Groups(['booking:read'])]
     public string $status = self::STATUS_PENDING;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['booking:read', 'booking:write'])]
+    public ?string $country = null;
+
     /**
      * @param array<string, mixed> $data
      */

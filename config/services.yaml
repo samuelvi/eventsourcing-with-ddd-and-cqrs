@@ -57,6 +57,16 @@ services:
     App\Application\Bus\AsyncCommandBusInterface: '@App\Infrastructure\Messenger\Bus\MessengerAsyncCommandBus'
     App\Application\Bus\SyncCommandBusInterface: '@App\Infrastructure\Messenger\Bus\MessengerSyncCommandBus'
 
+    # --- N8n Logger ---
+    App\Application\Service\N8nNotifier:
+        arguments:
+            $n8nLogger: '@monolog.logger.n8n'
+
+    # --- Custom App Logger ---
+    App\Application\Logger\AppLogger:
+        arguments:
+            $logger: '@monolog.logger.custom'
+
     # --- Application Handlers ---
     App\Application\Handler\:
         resource: '../src/App/Application/Handler'

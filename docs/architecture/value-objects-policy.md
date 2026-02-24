@@ -21,6 +21,7 @@ Applies to backend code under:
 3. API DTOs, HTTP payloads and serializer-bound events MAY stay primitive to preserve public contract stability.
 4. Event Store payload format remains primitive unless an explicit event-versioning/upcaster strategy is implemented.
 5. Read-model entities (`*Entity`) and DBAL row arrays MAY stay primitive; mapping to VO happens before entering domain logic.
+6. VO and immutable command-style messages SHOULD default to `final readonly class` unless framework constraints require mutability.
 
 ## Current Coverage
 

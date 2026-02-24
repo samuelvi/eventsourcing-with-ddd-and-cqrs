@@ -1,6 +1,6 @@
 # AGENTS
 
-Last updated: 2026-02-22
+Last updated: 2026-02-24
 
 ## Scope
 
@@ -27,6 +27,15 @@ Operational context for coding agents in this repository. Keep this file concise
     - `App\\Application\\Command\\* -> async`
     - `App\\Domain\\Event\\* -> async`
     - Sync is opt-in via sync bus stamp, not via global routing changes.
+
+## PHP Immutability Defaults
+
+- Prefer `final readonly class` for immutable services, commands and value objects.
+- Keep primitives at documented boundaries (API DTO/input payload, serializer-bound event payload, read-model persistence).
+- Do NOT force `readonly` on framework-managed mutable types:
+    - Doctrine entities (`*Entity`)
+    - Controllers/commands extending Symfony base classes
+    - Messaging transports with lazy clients/internal mutable caches
 
 ## Source Map (By Folder)
 

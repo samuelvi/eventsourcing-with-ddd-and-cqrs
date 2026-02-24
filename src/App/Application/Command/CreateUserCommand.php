@@ -10,7 +10,7 @@ use App\Domain\ValueObject\PersonName;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Uid\Uuid;
 
-final class CreateUserCommand
+final readonly class CreateUserCommand
 {
     public function __construct(
         #[Assert\NotBlank]

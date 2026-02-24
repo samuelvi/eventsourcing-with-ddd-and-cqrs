@@ -7,7 +7,7 @@ namespace App\Infrastructure\Persistence\Mongo;
 use MongoDB\Client;
 use MongoDB\Database;
 
-final class MongoClient
+final readonly class MongoClient
 {
     private Database $database;
 

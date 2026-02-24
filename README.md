@@ -14,6 +14,7 @@ Para arquitectura, decisiones técnicas, flujo de reservas, snapshots, consisten
 
 - `TALK.md`
 - `docs/architecture/value-objects-policy.md` (criterio de uso de Value Objects por capa)
+- `docs/architecture/php-readonly-policy.md` (criterio para usar `final readonly class` y excepciones)
 
 Este `README.md` está enfocado en operación diaria (arranque, tests y comandos).
 

@@ -23,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
     ],
     normalizationContext: ['groups' => ['event:read']]
 )]
-class StoredEvent
+final readonly class StoredEvent
 {
     private function __construct(
         #[Groups(['event:read'])]

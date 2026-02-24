@@ -29,8 +29,11 @@ final class RedisTransportFactory implements TransportFactoryInterface
         $queue = is_string($options['queue'] ?? null) && $options['queue'] !== ''
             ? $options['queue']
             : ($path !== '' ? $path : 'async');
+        $visibilityTimeoutMs = is_numeric($options['visibility_timeout_ms'] ?? null)
+            ? max(1000, (int) $options['visibility_timeout_ms'])
+            : 60000;
 
-        return new RedisTransport($host, $port, $queue, $serializer);
+        return new RedisTransport($host, $port, $queue, $serializer, $visibilityTimeoutMs);
     }
 
     /**

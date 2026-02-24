@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Messenger\Transport;
 
+use App\Infrastructure\Messenger\Transport\Stamp\RedisReceivedStamp;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\TransportException;
 use Symfony\Component\Messenger\Stamp\DelayStamp;
@@ -15,6 +16,8 @@ final class RedisTransport implements TransportInterface
 {
     private const KEY_PREFIX = 'messenger';
     private const MAX_DELAY_PROMOTION = 100;
+    private const MAX_INFLIGHT_REQUEUE = 100;
+    private const MAX_PROCESSING_SCAN = 200;
 
     private object|null $client = null;
 
@@ -23,6 +26,7 @@ final class RedisTransport implements TransportInterface
         private readonly int $port,
         private readonly string $queue,
         private readonly SerializerInterface $serializer,
+        private readonly int $visibilityTimeoutMs = 60000,
     ) {}
 
     public function get(): iterable
@@ -30,32 +34,46 @@ final class RedisTransport implements TransportInterface
         /** @var \Redis $redis */
         $redis = $this->redis();
         $this->promoteDelayedMessages($redis);
+        $this->requeueExpiredInflightMessages($redis);
+        $this->claimOrphanedProcessingMessages($redis);
 
-        $raw = $redis->rPop($this->readyKey());
+        $raw = $redis->rPopLPush($this->readyKey(), $this->processingKey());
         if (!is_string($raw) || $raw === '') {
             return [];
         }
 
-        $decoded = json_decode($raw, true);
-        if (!is_array($decoded)) {
-            throw new TransportException('Unable to decode Redis transport payload.');
-        }
+        [$messageId, $encodedEnvelope] = $this->decodeRawEnvelope($raw);
+        $this->markInflight($redis, $messageId, $raw);
 
-        $messageId = is_string($decoded['id'] ?? null) ? $decoded['id'] : uniqid('redis-msg-', true);
         return [
-            $this->serializer->decode($this->toEncodedEnvelope($decoded['envelope'] ?? null))
+            $this->serializer->decode($encodedEnvelope)
+                ->with(new RedisReceivedStamp($messageId))
                 ->with(new TransportMessageIdStamp($messageId))
         ];
     }
 
     public function ack(Envelope $envelope): void
     {
-        // Redis list transport removes messages eagerly on read.
+        $stamp = $envelope->last(RedisReceivedStamp::class);
+        if (!$stamp instanceof RedisReceivedStamp) {
+            return;
+        }
+
+        /** @var \Redis $redis */
+        $redis = $this->redis();
+        $this->completeInflight($redis, $stamp->messageId);
     }
 
     public function reject(Envelope $envelope): void
     {
-        // Retry/failure is managed by Messenger middleware and failure transport.
+        $stamp = $envelope->last(RedisReceivedStamp::class);
+        if (!$stamp instanceof RedisReceivedStamp) {
+            return;
+        }
+
+        /** @var \Redis $redis */
+        $redis = $this->redis();
+        $this->completeInflight($redis, $stamp->messageId);
     }
 
     public function send(Envelope $envelope): Envelope
@@ -112,9 +130,24 @@ final class RedisTransport implements TransportInterface
         return sprintf('%s:%s:ready', self::KEY_PREFIX, $this->queue);
     }
 
+    private function processingKey(): string
+    {
+        return sprintf('%s:%s:processing', self::KEY_PREFIX, $this->queue);
+    }
+
     private function delayedKey(): string
     {
         return sprintf('%s:%s:delayed', self::KEY_PREFIX, $this->queue);
+    }
+
+    private function inflightKey(): string
+    {
+        return sprintf('%s:%s:inflight', self::KEY_PREFIX, $this->queue);
+    }
+
+    private function inflightPayloadKey(): string
+    {
+        return sprintf('%s:%s:inflight_payload', self::KEY_PREFIX, $this->queue);
     }
 
     private function nowInMs(): int
@@ -142,6 +175,99 @@ final class RedisTransport implements TransportInterface
         $this->client = $redis;
 
         return $this->client;
+    }
+
+    private function requeueExpiredInflightMessages(\Redis $redis): void
+    {
+        $now = $this->nowInMs();
+        $expiredIds = $redis->zRangeByScore(
+            $this->inflightKey(),
+            '-inf',
+            (string) $now,
+            ['limit' => [0, self::MAX_INFLIGHT_REQUEUE]]
+        );
+
+        if (!is_array($expiredIds) || $expiredIds === []) {
+            return;
+        }
+
+        foreach ($expiredIds as $id) {
+            if (!is_string($id) || $id === '') {
+                continue;
+            }
+
+            $payload = $redis->hGet($this->inflightPayloadKey(), $id);
+            if (is_string($payload) && $payload !== '') {
+                $redis->lRem($this->processingKey(), $payload, 1);
+                $redis->lPush($this->readyKey(), $payload);
+            }
+
+            $redis->zRem($this->inflightKey(), $id);
+            $redis->hDel($this->inflightPayloadKey(), $id);
+        }
+    }
+
+    private function claimOrphanedProcessingMessages(\Redis $redis): void
+    {
+        $processing = $redis->lRange($this->processingKey(), 0, self::MAX_PROCESSING_SCAN - 1);
+        if (!is_array($processing) || $processing === []) {
+            return;
+        }
+
+        foreach ($processing as $raw) {
+            if (!is_string($raw) || $raw === '') {
+                continue;
+            }
+
+            try {
+                [$messageId] = $this->decodeRawEnvelope($raw);
+            } catch (TransportException) {
+                continue;
+            }
+
+            $score = $redis->zScore($this->inflightKey(), $messageId);
+            if ($score !== false) {
+                continue;
+            }
+
+            $this->markInflight($redis, $messageId, $raw);
+        }
+    }
+
+    private function markInflight(\Redis $redis, string $messageId, string $raw): void
+    {
+        $deadline = $this->nowInMs() + max(1000, $this->visibilityTimeoutMs);
+        $redis->hSet($this->inflightPayloadKey(), $messageId, $raw);
+        $redis->zAdd($this->inflightKey(), $deadline, $messageId);
+    }
+
+    private function completeInflight(\Redis $redis, string $messageId): void
+    {
+        $payload = $redis->hGet($this->inflightPayloadKey(), $messageId);
+        if (is_string($payload) && $payload !== '') {
+            $redis->lRem($this->processingKey(), $payload, 1);
+        }
+
+        $redis->zRem($this->inflightKey(), $messageId);
+        $redis->hDel($this->inflightPayloadKey(), $messageId);
+    }
+
+    /**
+     * @return array{0: string, 1: array{body: string, headers?: array<string, string>}}
+     */
+    private function decodeRawEnvelope(string $raw): array
+    {
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            throw new TransportException('Unable to decode Redis transport payload.');
+        }
+
+        $messageId = is_string($decoded['id'] ?? null) ? $decoded['id'] : '';
+        if ($messageId === '') {
+            throw new TransportException('Redis transport payload is missing a valid message id.');
+        }
+
+        return [$messageId, $this->toEncodedEnvelope($decoded['envelope'] ?? null)];
     }
 
     /**

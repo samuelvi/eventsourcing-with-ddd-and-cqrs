@@ -16,7 +16,8 @@ When('I submit a valid booking through the API', async ({ request }) => {
             pax: 2,
             budget: 120,
             clientName: 'Wizard Happy Path',
-            clientEmail: `wizard-happy-path-${bookingId}@test.com`
+            clientEmail: `wizard-happy-path-${bookingId}@test.com`,
+            country: 'ES'
         }
     });
 

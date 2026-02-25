@@ -22,6 +22,12 @@ interface ProductReadRepositoryInterface
     public function findByBudget(float $budget): array;
 
     /**
+     * @param array<int, string> $supplierIds
+     * @return array<array<string, mixed>>
+     */
+    public function findBySupplierIds(array $supplierIds): array;
+
+    /**
      * @return array<array<string, mixed>>
      */
     public function findCatalog(): array;

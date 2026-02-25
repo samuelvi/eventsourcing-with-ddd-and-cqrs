@@ -26,6 +26,33 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
     }
 
     /**
+     * @param array<int, string> $supplierIds
+     * @return array<array<string, mixed>>
+     */
+    public function findBySupplierIds(array $supplierIds): array
+    {
+        if ($supplierIds === []) {
+            return [];
+        }
+
+        $params = [];
+        $placeholders = [];
+
+        foreach ($supplierIds as $index => $supplierId) {
+            $paramKey = sprintf('supplier_%d', $index);
+            $placeholders[] = ':' . $paramKey;
+            $params[$paramKey] = $supplierId;
+        }
+
+        $sql = sprintf(
+            'SELECT id, name, price, currency, type, external_reference_id, supplier_id FROM products WHERE supplier_id IN (%s) ORDER BY name ASC',
+            implode(', ', $placeholders)
+        );
+
+        return $this->entityManager->query($sql, $params);
+    }
+
+    /**
      * @return array<array<string, mixed>>
      */
     public function findAllForList(): array

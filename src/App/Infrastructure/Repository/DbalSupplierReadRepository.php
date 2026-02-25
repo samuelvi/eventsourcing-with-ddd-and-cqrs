@@ -18,7 +18,7 @@ final readonly class DbalSupplierReadRepository implements SupplierReadRepositor
      */
     public function findOptimalSuppliers(int $limit = 3): array
     {
-        $sql = 'SELECT id, name, is_active, rating FROM suppliers WHERE is_active = true ORDER BY rating DESC LIMIT :limit';
+        $sql = 'SELECT id, name, is_active, rating, country FROM suppliers WHERE is_active = true ORDER BY rating DESC LIMIT :limit';
         return $this->entityManager->query($sql, ['limit' => $limit]);
     }
 
@@ -27,7 +27,7 @@ final readonly class DbalSupplierReadRepository implements SupplierReadRepositor
      */
     public function findAllForList(): array
     {
-        $sql = 'SELECT id, name, is_active, rating FROM suppliers ORDER BY name ASC';
+        $sql = 'SELECT id, name, is_active, rating, country FROM suppliers ORDER BY name ASC';
         return $this->entityManager->query($sql);
     }
 
@@ -36,7 +36,7 @@ final readonly class DbalSupplierReadRepository implements SupplierReadRepositor
      */
     public function findById(string $id): ?array
     {
-        $sql = 'SELECT id, name, is_active, rating FROM suppliers WHERE id = :id';
+        $sql = 'SELECT id, name, is_active, rating, country FROM suppliers WHERE id = :id';
         $result = $this->entityManager->fetchOne($sql, ['id' => $id]);
 
         return $result ?: null;

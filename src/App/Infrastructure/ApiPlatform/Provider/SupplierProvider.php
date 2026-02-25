@@ -33,7 +33,8 @@ final readonly class SupplierProvider implements ProviderInterface
                 Uuid::fromString(TypeAssert::string($row['id'])),
                 TypeAssert::string($row['name']),
                 (bool) $row['is_active'],
-                TypeAssert::float($row['rating'])
+                TypeAssert::float($row['rating']),
+                isset($row['country']) ? TypeAssert::string($row['country']) : null
             );
         }
 
@@ -44,7 +45,8 @@ final readonly class SupplierProvider implements ProviderInterface
                 Uuid::fromString(TypeAssert::string($row['id'])),
                 TypeAssert::string($row['name']),
                 (bool) $row['is_active'],
-                TypeAssert::float($row['rating'])
+                TypeAssert::float($row['rating']),
+                isset($row['country']) ? TypeAssert::string($row['country']) : null
             );
         }, $data);
     }

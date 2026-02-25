@@ -70,8 +70,11 @@ class SupplierEntity
         $this->products = new ArrayCollection();
     }
 
-    public static function hydrate(Uuid $id, string $name, bool $isActive, float $rating): self
+    public static function hydrate(Uuid $id, string $name, bool $isActive, float $rating, ?string $country = null): self
     {
-        return new self($name, $id, $isActive, $rating);
+        $supplier = new self($name, $id, $isActive, $rating);
+        $supplier->country = $country;
+
+        return $supplier;
     }
 }

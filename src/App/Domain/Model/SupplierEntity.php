@@ -14,6 +14,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Annotation\SerializedName;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -58,7 +59,6 @@ class SupplierEntity
 
     /** @var Collection<int, ProductEntity> */
     #[ORM\OneToMany(mappedBy: 'supplier', targetEntity: ProductEntity::class)]
-    #[Groups(['supplier:read'])]
     public private(set) Collection $products;
 
     private function __construct(string $name, ?Uuid $id = null, bool $isActive = true, float $rating = 0.0)
@@ -76,5 +76,17 @@ class SupplierEntity
         $supplier->country = $country;
 
         return $supplier;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    #[Groups(['supplier:read'])]
+    #[SerializedName('products')]
+    public function getProductIds(): array
+    {
+        return $this->products
+            ->map(static fn (ProductEntity $product): string => $product->id->toRfc4122())
+            ->toArray();
     }
 }

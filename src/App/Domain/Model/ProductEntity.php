@@ -40,7 +40,7 @@ class ProductEntity
 
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank]
-    #[Groups(['product:read', 'product:write', 'supplier:read'])]
+    #[Groups(['product:read', 'product:write'])]
     public string $name;
 
     #[ORM\Column(length: 50)]

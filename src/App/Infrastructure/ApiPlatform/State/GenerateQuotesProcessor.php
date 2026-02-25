@@ -6,9 +6,10 @@ namespace App\Infrastructure\ApiPlatform\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Application\Bus\AsyncCommandBusInterface;
 use App\Application\Command\GenerateQuotesCommand;
 use App\Domain\Model\BookingEntity;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 
 /**
  * @implements ProcessorInterface<BookingEntity, BookingEntity>
@@ -16,7 +17,7 @@ use App\Domain\Model\BookingEntity;
 final readonly class GenerateQuotesProcessor implements ProcessorInterface
 {
     public function __construct(
-        private AsyncCommandBusInterface $commandBus,
+        private MessageBusInterface $messageBus,
     ) {}
 
     /**
@@ -25,7 +26,7 @@ final readonly class GenerateQuotesProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): BookingEntity
     {
         $command = new GenerateQuotesCommand($data->id->toRfc4122());
-        $this->commandBus->dispatch($command);
+        $this->messageBus->dispatch($command, [new TransportNamesStamp(['derivations_events'])]);
 
         return $data;
     }

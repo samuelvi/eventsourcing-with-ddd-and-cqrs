@@ -23,6 +23,16 @@ return static function (ContainerConfigurator $container): void {
         'postgres' => [
             'async' => [
                 'dsn' => '%env(MESSENGER_TRANSPORT_DSN_POSTGRES)%',
+                'options' => [
+                    'queue_name' => 'booking_events',
+                ],
+                'retry_strategy' => $retryStrategy,
+            ],
+            'derivations_events' => [
+                'dsn' => '%env(MESSENGER_TRANSPORT_DSN_POSTGRES)%',
+                'options' => [
+                    'queue_name' => 'derivations_events',
+                ],
                 'retry_strategy' => $retryStrategy,
             ],
             'failed' => [
@@ -33,7 +43,15 @@ return static function (ContainerConfigurator $container): void {
             'async' => [
                 'dsn' => '%env(MESSENGER_TRANSPORT_DSN_REDIS)%',
                 'options' => [
-                    'queue' => 'async',
+                    'queue' => 'booking_events',
+                    'visibility_timeout_ms' => 60000,
+                ],
+                'retry_strategy' => $retryStrategy,
+            ],
+            'derivations_events' => [
+                'dsn' => '%env(MESSENGER_TRANSPORT_DSN_REDIS)%',
+                'options' => [
+                    'queue' => 'derivations_events',
                     'visibility_timeout_ms' => 60000,
                 ],
                 'retry_strategy' => $retryStrategy,
@@ -50,8 +68,16 @@ return static function (ContainerConfigurator $container): void {
             'async' => [
                 'dsn' => '%env(MESSENGER_TRANSPORT_DSN_KAFKA)%',
                 'options' => [
-                    'topic' => 'async',
-                    'group_id' => '%env(default:KAFKA_CONSUMER_GROUP:MESSENGER_KAFKA_GROUP_ID)%',
+                    'topic' => 'booking_events',
+                    'group_id' => '%env(MESSENGER_KAFKA_GROUP_ID)%',
+                ],
+                'retry_strategy' => $retryStrategy,
+            ],
+            'derivations_events' => [
+                'dsn' => '%env(MESSENGER_TRANSPORT_DSN_KAFKA)%',
+                'options' => [
+                    'topic' => 'derivations_events',
+                    'group_id' => '%env(MESSENGER_KAFKA_GROUP_ID)%',
                 ],
                 'retry_strategy' => $retryStrategy,
             ],
@@ -59,7 +85,7 @@ return static function (ContainerConfigurator $container): void {
                 'dsn' => '%env(MESSENGER_FAILED_TRANSPORT_DSN_KAFKA)%',
                 'options' => [
                     'topic' => 'failed',
-                    'group_id' => '%env(default:KAFKA_CONSUMER_GROUP:MESSENGER_KAFKA_FAILED_GROUP_ID)%',
+                    'group_id' => '%env(MESSENGER_KAFKA_FAILED_GROUP_ID)%',
                 ],
             ],
         ],
@@ -68,6 +94,8 @@ return static function (ContainerConfigurator $container): void {
     $routing = [
         'App\Application\Command\*' => 'async',
         'App\Domain\Event\*' => 'async',
+        'App\Application\Command\GenerateQuotesCommand' => 'derivations_events',
+        'App\Domain\Event\QuoteRequested' => 'derivations_events',
     ];
 
     if ($container->env() === 'test') {
@@ -80,6 +108,7 @@ return static function (ContainerConfigurator $container): void {
             'transports' => [
                 'sync' => 'sync://',
                 'async' => $transportsByBackend[$backend]['async'],
+                'derivations_events' => $transportsByBackend[$backend]['derivations_events'],
                 'failed' => $transportsByBackend[$backend]['failed'],
             ],
             'routing' => $routing,

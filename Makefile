@@ -14,6 +14,7 @@ ENV_FILES_TEST = $(strip $(foreach f,$(ENV_FILE_BASE) $(ENV_FILE_TEST),$(if $(wi
 .PHONY: test-up test-down test-build test-logs test-ps test-restart test-clean test-wait
 .PHONY: test-ci-up test-ci-down test-init-ci setup-api-test-ci setup-api-test-common test-e2e-ci
 .PHONY: setup-api setup-api-test load-fixtures load-fixtures-test init-front build-front
+.PHONY: reset-db reset-db-api dev-shell-api get_into_symbani_api
 .PHONY: test test-unit test-e2e test-e2e-ui test-e2e-debug test-e2e-report test-all phpstan
 
 # --- Inicialización DEV (de arriba a abajo) ---
@@ -46,6 +47,18 @@ init-front:
 
 load-fixtures:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T symfony-api sh -lc 'if bin/console list --raw | grep -q "^app:system:reset$$"; then bin/console app:system:reset --no-interaction; else echo "app:system:reset no disponible. Usando doctrine:fixtures:load."; bin/console doctrine:fixtures:load --no-interaction --append; fi'
+
+reset-db:
+	@echo "Reset DB via API /api/demo/reset ..."
+	@curl -fsS -X POST http://localhost:8080/api/demo/reset > /dev/null
+	@echo "Reset completado."
+
+reset-db-api: reset-db
+
+dev-shell-api:
+	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec symfony-api sh
+
+get_into_symbani_api: dev-shell-api
 
 # --- Inicialización TEST (de arriba a abajo) ---
 

@@ -268,7 +268,10 @@ export function DemoFlow() {
             pax: Math.floor(Math.random() * 5) + 1,
             budget: 100,
             clientName: `Demo ${Math.floor(Math.random() * 1000)}`,
-            clientEmail: `client${Math.floor(Math.random() * 1000)}@test.com`
+            clientEmail: `client${Math.floor(Math.random() * 1000)}@test.com`,
+            country: ['ES', 'FR', 'IT', 'DE', 'PT', 'GB', 'NL', 'BE', 'AT', 'CH'][
+                Math.floor(Math.random() * 10)
+            ]
         });
     const registerRandomUser = () =>
         createUserMutation.mutate({

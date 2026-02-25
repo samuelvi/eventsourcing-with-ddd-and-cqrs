@@ -19,7 +19,7 @@ final readonly class DbalBookingReadRepository implements BookingReadRepositoryI
      */
     public function findAllForList(): array
     {
-        $sql = 'SELECT id, user_id, created_at, data, status FROM bookings ORDER BY created_at DESC';
+        $sql = 'SELECT id, user_id, created_at, data, status, country FROM bookings ORDER BY created_at DESC';
         return $this->entityManager->query($sql);
     }
 
@@ -42,7 +42,7 @@ final readonly class DbalBookingReadRepository implements BookingReadRepositoryI
      */
     public function findById(string $id): ?array
     {
-        $sql = 'SELECT id, user_id, data, created_at, status FROM bookings WHERE id = :id';
+        $sql = 'SELECT id, user_id, data, created_at, status, country FROM bookings WHERE id = :id';
         return $this->entityManager->fetchOne($sql, ['id' => $id]);
     }
 
@@ -51,7 +51,7 @@ final readonly class DbalBookingReadRepository implements BookingReadRepositoryI
      */
     public function findPending(): array
     {
-        $sql = "SELECT id, user_id, data, created_at FROM bookings WHERE status = 'pending' ORDER BY created_at ASC";
+        $sql = "SELECT id, user_id, data, created_at, country FROM bookings WHERE status = 'pending' ORDER BY created_at ASC";
         return $this->entityManager->query($sql);
     }
 }

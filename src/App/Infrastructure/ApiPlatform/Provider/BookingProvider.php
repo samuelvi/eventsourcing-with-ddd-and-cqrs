@@ -69,12 +69,16 @@ final readonly class BookingProvider implements ProviderInterface
             $userRow['address'] ?? null
         );
         
-        return BookingEntity::hydrate(
+        $booking = BookingEntity::hydrate(
             Uuid::fromString(TypeAssert::string($row['id'])),
             $user,
             $bookingData,
             new \DateTimeImmutable(TypeAssert::string($row['created_at'])),
             TypeAssert::string($row['status'] ?? BookingEntity::STATUS_PENDING)
         );
+
+        $booking->country = isset($row['country']) ? TypeAssert::string($row['country']) : null;
+
+        return $booking;
     }
 }

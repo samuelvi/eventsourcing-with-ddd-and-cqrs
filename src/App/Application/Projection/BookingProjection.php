@@ -15,6 +15,7 @@ use App\Domain\ValueObject\Email;
 use App\Domain\ValueObject\NonNegativeAmount;
 use App\Domain\ValueObject\PersonName;
 use App\Domain\ValueObject\PositiveInt;
+use App\Domain\ValueObject\Country;
 use App\Domain\ValueObject\UuidString;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -43,6 +44,7 @@ final readonly class BookingProjection
         $budget = NonNegativeAmount::fromFloat($event->budget);
         $clientName = PersonName::fromString($event->clientName);
         $clientEmail = Email::fromString($event->clientEmail);
+        $country = Country::fromString($event->country);
 
         // DEMO MODE: projection is active only if both master and booking switches are active.
         if (!$this->isProjectionEnabled()) {
@@ -65,6 +67,7 @@ final readonly class BookingProjection
                 'budget' => $budget->toFloat(),
                 'clientName' => $clientName->toString(),
                 'clientEmail' => $clientEmail->toString(),
+                'country' => $country->toString(),
             ];
 
             $booking = BookingEntity::create(
@@ -73,6 +76,7 @@ final readonly class BookingProjection
                 data: $data,
                 createdAt: $event->occurredOn
             );
+            $booking->country = $country->toString();
 
             $this->bookingWriteRepository->save($booking);
         }

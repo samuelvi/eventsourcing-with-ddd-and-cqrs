@@ -32,6 +32,7 @@ final readonly class SubmitBookingWizardHandler
         $bookingId = $command->bookingId();
         $clientEmail = $command->clientEmailVO();
         $clientName = $command->clientNameVO();
+        $country = $command->countryVO();
 
         // Resolve User ID deterministically (No DB call!)
         $userId = Uuid::v5(Uuid::fromString(Constants::USER_NAMESPACE), $clientEmail->toString());
@@ -62,7 +63,8 @@ final readonly class SubmitBookingWizardHandler
             pax: $command->paxVO(),
             budget: $command->budgetVO(),
             clientName: $clientName,
-            clientEmail: $clientEmail
+            clientEmail: $clientEmail,
+            country: $country
         );
 
         $events = $booking->getRecordedEvents();

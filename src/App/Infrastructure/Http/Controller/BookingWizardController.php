@@ -25,7 +25,8 @@ final class BookingWizardController extends AbstractController
             pax: $dto->pax,
             budget: $dto->budget,
             clientName: $dto->clientName,
-            clientEmail: $dto->clientEmail
+            clientEmail: $dto->clientEmail,
+            country: $dto->country
         ));
 
         return new JsonResponse(null, Response::HTTP_ACCEPTED);

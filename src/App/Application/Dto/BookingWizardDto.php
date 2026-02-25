@@ -24,4 +24,8 @@ final class BookingWizardDto
     #[Assert\NotBlank]
     #[Assert\Email]
     public string $clientEmail;
+
+    #[Assert\NotBlank]
+    #[Assert\Country]
+    public string $country;
 }

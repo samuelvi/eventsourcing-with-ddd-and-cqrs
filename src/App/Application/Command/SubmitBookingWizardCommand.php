@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Command;
 
+use App\Domain\ValueObject\Country;
 use App\Domain\ValueObject\Email;
 use App\Domain\ValueObject\NonNegativeAmount;
 use App\Domain\ValueObject\PersonName;
@@ -18,6 +19,7 @@ final readonly class SubmitBookingWizardCommand
         public float $budget,
         public string $clientName,
         public string $clientEmail,
+        public string $country,
     ) {}
 
     public static function create(
@@ -25,9 +27,10 @@ final readonly class SubmitBookingWizardCommand
         int $pax,
         float $budget,
         string $clientName,
-        string $clientEmail
+        string $clientEmail,
+        string $country
     ): self {
-        return new self($id, $pax, $budget, $clientName, $clientEmail);
+        return new self($id, $pax, $budget, $clientName, $clientEmail, $country);
     }
 
     public function bookingId(): Uuid
@@ -53,5 +56,10 @@ final readonly class SubmitBookingWizardCommand
     public function clientEmailVO(): Email
     {
         return Email::fromString($this->clientEmail);
+    }
+
+    public function countryVO(): Country
+    {
+        return Country::fromString($this->country);
     }
 }

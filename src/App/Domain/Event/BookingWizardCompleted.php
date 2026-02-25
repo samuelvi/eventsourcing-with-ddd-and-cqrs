@@ -13,6 +13,7 @@ final readonly class BookingWizardCompleted
         public float $budget,
         public string $clientName,
         public string $clientEmail,
+        public string $country,
         public \DateTimeImmutable $occurredOn
     ) {}
 
@@ -23,8 +24,9 @@ final readonly class BookingWizardCompleted
         float $budget,
         string $clientName,
         string $clientEmail,
+        string $country,
         \DateTimeImmutable $occurredOn
     ): self {
-        return new self($bookingId, $userId, $pax, $budget, $clientName, $clientEmail, $occurredOn);
+        return new self($bookingId, $userId, $pax, $budget, $clientName, $clientEmail, $country, $occurredOn);
     }
 }

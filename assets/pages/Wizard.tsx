@@ -7,6 +7,7 @@ interface FormData {
     budget: number;
     clientName: string;
     clientEmail: string;
+    country: string;
 }
 
 export function Wizard() {
@@ -15,7 +16,8 @@ export function Wizard() {
         pax: 2,
         budget: 50,
         clientName: '',
-        clientEmail: ''
+        clientEmail: '',
+        country: 'ES'
     });
     const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
 
@@ -25,12 +27,13 @@ export function Wizard() {
             pax: 2,
             budget: 50,
             clientName: '',
-            clientEmail: ''
+            clientEmail: '',
+            country: 'ES'
         });
         setStatus('idle');
     };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData((prev) => ({
             ...prev,
@@ -180,6 +183,24 @@ export function Wizard() {
                             style={inputStyle}
                             placeholder="john@example.com"
                         />
+                    </div>
+
+                    <div>
+                        <label htmlFor="country" style={labelStyle}>
+                            Country
+                        </label>
+                        <select
+                            id="country"
+                            name="country"
+                            value={formData.country}
+                            onChange={handleChange}
+                            required
+                            style={inputStyle}
+                        >
+                            <option value="ES">Spain</option>
+                            <option value="FR">France</option>
+                            <option value="GB">United Kingdom</option>
+                        </select>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>

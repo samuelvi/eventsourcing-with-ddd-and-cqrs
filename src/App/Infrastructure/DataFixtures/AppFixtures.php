@@ -13,16 +13,16 @@ use Doctrine\Persistence\ObjectManager;
 final class AppFixtures extends Fixture
 {
     private array $countries = [
-        'Spain',
-        'France',
-        'Italy',
-        'Germany',
-        'Portugal',
-        'United Kingdom',
-        'Netherlands',
-        'Belgium',
-        'Austria',
-        'Switzerland'
+        'ES',
+        'FR',
+        'IT',
+        'DE',
+        'PT',
+        'GB',
+        'NL',
+        'BE',
+        'AT',
+        'CH'
     ];
 
     public function load(ObjectManager $manager): void

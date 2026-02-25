@@ -8,14 +8,14 @@ final readonly class CountryRule implements DerivationRuleInterface
 {
     public function allows(DerivationContext $context): bool
     {
-        if ($context->bookingCountry === null || $context->bookingCountry === '') {
+        if ($context->booking->country === null || $context->booking->country === '') {
             return true;
         }
 
-        if ($context->supplierCountry === null || $context->supplierCountry === '') {
+        if ($context->supplier->country === null || $context->supplier->country === '') {
             return false;
         }
 
-        return strtoupper($context->bookingCountry) === strtoupper($context->supplierCountry);
+        return strtoupper($context->booking->country) === strtoupper($context->supplier->country);
     }
 }

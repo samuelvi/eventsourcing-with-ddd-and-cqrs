@@ -7,6 +7,9 @@ namespace App\Application\Handler;
 use App\Application\Command\GenerateQuotesCommand;
 use App\Domain\Derivation\DerivationContext;
 use App\Domain\Derivation\DerivationRuleEngine;
+use App\Domain\Derivation\Facts\BookingFacts;
+use App\Domain\Derivation\Facts\ProductFacts;
+use App\Domain\Derivation\Facts\SupplierFacts;
 use App\Domain\Event\QuoteRequested;
 use App\Domain\Repository\BookingReadRepositoryInterface;
 use App\Domain\Repository\ProductReadRepositoryInterface;
@@ -45,9 +48,15 @@ final readonly class GenerateQuotesHandler
             ? TypeAssert::string($bookingData['country'])
             : (isset($bookingRow['country']) ? TypeAssert::string($bookingRow['country']) : null);
 
+        $bookingFacts = new BookingFacts(
+            bookingId: $bookingId->toString(),
+            country: $bookingCountry,
+            budget: $budget->toFloat(),
+        );
+
         $matches = $this->productReadRepository->findByBudgetWithSupplierData(
-            $budget->toFloat(),
-            $bookingCountry
+            $bookingFacts->budget,
+            $bookingFacts->country
         );
 
         if (empty($matches)) {
@@ -57,9 +66,21 @@ final readonly class GenerateQuotesHandler
         $occurredOn = new \DateTimeImmutable();
 
         foreach ($matches as $product) {
+            $supplierFacts = new SupplierFacts(
+                supplierId: TypeAssert::string($product['supplier_id']),
+                country: isset($product['supplier_country']) ? TypeAssert::string($product['supplier_country']) : null,
+                isActive: (bool) ($product['supplier_is_active'] ?? false),
+            );
+
+            $productFacts = new ProductFacts(
+                productId: TypeAssert::string($product['id']),
+                price: TypeAssert::float($product['price']),
+            );
+
             $context = new DerivationContext(
-                bookingCountry: $bookingCountry,
-                supplierCountry: isset($product['supplier_country']) ? TypeAssert::string($product['supplier_country']) : null,
+                booking: $bookingFacts,
+                supplier: $supplierFacts,
+                product: $productFacts,
             );
 
             if (!$this->derivationRuleEngine->allows($context)) {

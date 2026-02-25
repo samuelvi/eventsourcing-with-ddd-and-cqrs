@@ -26,12 +26,12 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
     }
 
     /**
-     * @return array<array{id: string, price: float, supplier_id: string, supplier_country: string|null}>
+     * @return array<array{id: string, price: float, supplier_id: string, supplier_country: string|null, supplier_is_active: bool}>
      */
     public function findByBudgetWithSupplierData(float $budget, ?string $country = null): array
     {
         $sql = "
-            SELECT p.id, p.price, p.supplier_id, s.country AS supplier_country
+            SELECT p.id, p.price, p.supplier_id, s.country AS supplier_country, s.is_active AS supplier_is_active
             FROM products p
             INNER JOIN suppliers s ON p.supplier_id = s.id
             WHERE p.price <= :budget AND p.type = 'menu'
@@ -45,7 +45,7 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
 
         $sql .= ' ORDER BY p.price DESC';
 
-        /** @var array<array{id: string, price: float, supplier_id: string, supplier_country: string|null}> */
+        /** @var array<array{id: string, price: float, supplier_id: string, supplier_country: string|null, supplier_is_active: bool}> */
         return $this->entityManager->query($sql, $params);
     }
 

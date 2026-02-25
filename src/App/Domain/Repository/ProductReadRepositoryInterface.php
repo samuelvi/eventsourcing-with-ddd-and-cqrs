@@ -22,7 +22,7 @@ interface ProductReadRepositoryInterface
     public function findByBudget(float $budget): array;
 
     /**
-     * @return array<array{id: string, price: float, supplier_id: string, supplier_country: string|null}>
+     * @return array<array{id: string, price: float, supplier_id: string, supplier_country: string|null, supplier_is_active: bool}>
      */
     public function findByBudgetWithSupplierData(float $budget, ?string $country = null): array;
 

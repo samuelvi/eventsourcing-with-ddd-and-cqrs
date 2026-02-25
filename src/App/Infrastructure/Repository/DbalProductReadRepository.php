@@ -26,6 +26,30 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
     }
 
     /**
+     * @return array<array{id: string, price: float, supplier_id: string, supplier_country: string|null}>
+     */
+    public function findByBudgetWithSupplierData(float $budget, ?string $country = null): array
+    {
+        $sql = "
+            SELECT p.id, p.price, p.supplier_id, s.country AS supplier_country
+            FROM products p
+            INNER JOIN suppliers s ON p.supplier_id = s.id
+            WHERE p.price <= :budget AND p.type = 'menu'
+        ";
+
+        $params = ['budget' => $budget];
+        if ($country !== null && $country !== '') {
+            $sql .= ' AND s.country = :country';
+            $params['country'] = strtoupper($country);
+        }
+
+        $sql .= ' ORDER BY p.price DESC';
+
+        /** @var array<array{id: string, price: float, supplier_id: string, supplier_country: string|null}> */
+        return $this->entityManager->query($sql, $params);
+    }
+
+    /**
      * @param array<int, string> $supplierIds
      * @return array<array<string, mixed>>
      */

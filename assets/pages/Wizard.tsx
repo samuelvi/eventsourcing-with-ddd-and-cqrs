@@ -10,6 +10,19 @@ interface FormData {
     country: string;
 }
 
+const COUNTRY_OPTIONS = [
+    { value: 'ES', label: 'Espana' },
+    { value: 'FR', label: 'Francia' },
+    { value: 'IT', label: 'Italia' },
+    { value: 'DE', label: 'Alemania' },
+    { value: 'PT', label: 'Portugal' },
+    { value: 'GB', label: 'Reino Unido' },
+    { value: 'NL', label: 'Paises Bajos' },
+    { value: 'BE', label: 'Belgica' },
+    { value: 'AT', label: 'Austria' },
+    { value: 'CH', label: 'Suiza' }
+];
+
 export function Wizard() {
     const [formData, setFormData] = useState<FormData>({
         bookingId: uuidv4(),
@@ -197,9 +210,11 @@ export function Wizard() {
                             required
                             style={inputStyle}
                         >
-                            <option value="ES">Spain</option>
-                            <option value="FR">France</option>
-                            <option value="GB">United Kingdom</option>
+                            {COUNTRY_OPTIONS.map((countryOption) => (
+                                <option key={countryOption.value} value={countryOption.value}>
+                                    {countryOption.label}
+                                </option>
+                            ))}
                         </select>
                     </div>
 

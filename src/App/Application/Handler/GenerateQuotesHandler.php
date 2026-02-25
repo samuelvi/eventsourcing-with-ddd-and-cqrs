@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Handler;
 
 use App\Application\Command\GenerateQuotesCommand;
+use App\Domain\Derivation\DerivationContext;
+use App\Domain\Derivation\DerivationRuleEngine;
 use App\Domain\Event\QuoteRequested;
 use App\Domain\Repository\BookingReadRepositoryInterface;
 use App\Domain\Repository\ProductReadRepositoryInterface;
@@ -23,6 +25,7 @@ final readonly class GenerateQuotesHandler
     public function __construct(
         private BookingReadRepositoryInterface $bookingReadRepository,
         private ProductReadRepositoryInterface $productReadRepository,
+        private DerivationRuleEngine $derivationRuleEngine,
         private MongoStore $mongoStore,
         private MessageBusInterface $eventBus,
     ) {}
@@ -38,8 +41,14 @@ final readonly class GenerateQuotesHandler
         /** @var array<string, mixed> $bookingData */
         $bookingData = TypeAssert::array(json_decode(TypeAssert::string($bookingRow['data']), true));
         $budget = NonNegativeAmount::fromFloat(TypeAssert::float($bookingData['budget'] ?? 0.0));
+        $bookingCountry = isset($bookingData['country'])
+            ? TypeAssert::string($bookingData['country'])
+            : (isset($bookingRow['country']) ? TypeAssert::string($bookingRow['country']) : null);
 
-        $matches = $this->productReadRepository->findByBudget($budget->toFloat());
+        $matches = $this->productReadRepository->findByBudgetWithSupplierData(
+            $budget->toFloat(),
+            $bookingCountry
+        );
 
         if (empty($matches)) {
             return;
@@ -48,6 +57,15 @@ final readonly class GenerateQuotesHandler
         $occurredOn = new \DateTimeImmutable();
 
         foreach ($matches as $product) {
+            $context = new DerivationContext(
+                bookingCountry: $bookingCountry,
+                supplierCountry: isset($product['supplier_country']) ? TypeAssert::string($product['supplier_country']) : null,
+            );
+
+            if (!$this->derivationRuleEngine->allows($context)) {
+                continue;
+            }
+
             $quoteId = Uuid::v7();
 
             // 1. Create the Domain Event

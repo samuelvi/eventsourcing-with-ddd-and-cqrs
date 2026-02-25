@@ -34,6 +34,8 @@ services:
     _instanceof:
         App\Domain\Service\ProductDetailFactoryInterface:
             tags: ['app.product_detail_factory']
+        App\Domain\Derivation\DerivationRuleInterface:
+            tags: ['app.derivation_rule']
 
     # --- Infrastructure Services ---
 

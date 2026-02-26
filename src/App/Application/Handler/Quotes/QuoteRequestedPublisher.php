@@ -20,7 +20,7 @@ final readonly class QuoteRequestedPublisher
         private MessageBusInterface $eventBus,
     ) {}
 
-    public function publish(string $bookingId, QuoteCandidate $candidate, \DateTimeImmutable $occurredOn): void
+    public function publish(string $bookingId, QuoteCandidate $candidate, \DateTimeImmutable $occurredOn, ?string $correlationId = null): void
     {
         $quoteId = Uuid::v7();
         $supplierId = UuidString::fromString($candidate->supplierId);
@@ -33,6 +33,7 @@ final readonly class QuoteRequestedPublisher
             supplierId: $supplierId->toString(),
             productId: $productId->toString(),
             requestedPrice: $requestedPrice->toFloat(),
+            correlationId: $correlationId,
             occurredOn: $occurredOn
         );
 
@@ -45,6 +46,7 @@ final readonly class QuoteRequestedPublisher
                 'supplierId' => $supplierId->toString(),
                 'productId' => $productId->toString(),
                 'requestedPrice' => $requestedPrice->toFloat(),
+                'correlationId' => $correlationId,
                 'occurredOn' => $occurredOn->format(\DateTimeInterface::ATOM)
             ],
             occurredOn: $occurredOn

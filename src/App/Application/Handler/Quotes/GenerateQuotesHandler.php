@@ -40,7 +40,7 @@ final readonly class GenerateQuotesHandler
             return;
         }
 
-        $this->publishQuotes($bookingId, $eligibleCandidates);
+        $this->publishQuotes($bookingId, $eligibleCandidates, $command->correlationId);
     }
 
     /**
@@ -62,12 +62,12 @@ final readonly class GenerateQuotesHandler
     /**
      * @param array<int, QuoteCandidate> $candidates
      */
-    private function publishQuotes(string $bookingId, array $candidates): void
+    private function publishQuotes(string $bookingId, array $candidates, ?string $correlationId = null): void
     {
         $occurredOn = new DateTimeImmutable();
 
         foreach ($candidates as $candidate) {
-            $this->quoteRequestedPublisher->publish($bookingId, $candidate, $occurredOn);
+            $this->quoteRequestedPublisher->publish($bookingId, $candidate, $occurredOn, $correlationId);
         }
     }
 }

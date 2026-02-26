@@ -19,7 +19,7 @@ final readonly class N8nBookingReadyController
     public function __invoke(#[MapRequestPayload] N8nBookingReadyDto $payload, MessageBusInterface $messageBus,
     ): Response
     {
-        $messageBus->dispatch(new GenerateQuotesCommand($payload->bookingId), [new TransportNamesStamp(['derivations_events'])]);
+        $messageBus->dispatch(new GenerateQuotesCommand($payload->bookingId, $payload->correlationId), [new TransportNamesStamp(['derivations_events'])]);
 
         return new JsonResponse([
             'status' => 'accepted',

@@ -14,6 +14,7 @@ final readonly class QuoteRequested
         public string $supplierId,
         public string $productId,
         public float $requestedPrice,
-        public \DateTimeImmutable $occurredOn
+        public ?string $correlationId = null,
+        public \DateTimeImmutable $occurredOn = new \DateTimeImmutable()
     ) {}
 }

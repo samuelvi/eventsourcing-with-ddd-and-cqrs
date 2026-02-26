@@ -36,6 +36,8 @@ services:
             tags: ['app.product_detail_factory']
         App\Domain\Derivation\DerivationRuleInterface:
             tags: ['app.derivation_rule']
+        App\Domain\Derivation\DerivationRuleDisabledInterface:
+            tags: ['app.derivation_rule_disabled']
 
     # --- Infrastructure Services ---
 

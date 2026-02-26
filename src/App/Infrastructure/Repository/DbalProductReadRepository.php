@@ -12,7 +12,9 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
 {
     public function __construct(
         private ReadEntityManager $entityManager,
-    ) {}
+    )
+    {
+    }
 
     /**
      * @return array<array{id: string, price: float, supplier_id: string}>
@@ -26,12 +28,16 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
     }
 
     /**
+     * @param float $budget
+     * @param string|null $country
      * @return array<array{id: string, price: float, supplier_id: string, supplier_country: string|null, supplier_is_active: bool}>
      */
     public function findCandidatesFirstFilter(float $budget, ?string $country = null): array
     {
         $sql = "
-            SELECT p.id, p.price, p.supplier_id, s.country AS supplier_country, s.is_active AS supplier_is_active
+            SELECT p.id, p.price, p.supplier_id,
+                   s.country AS supplier_country,
+                   s.is_active AS supplier_is_active
             FROM products p
             INNER JOIN suppliers s ON p.supplier_id = s.id
             WHERE p.price <= :budget AND p.type = 'menu'
@@ -45,7 +51,6 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
 
         $sql .= ' ORDER BY p.price DESC';
 
-        /** @var array<array{id: string, price: float, supplier_id: string, supplier_country: string|null, supplier_is_active: bool}> */
         return $this->entityManager->query($sql, $params);
     }
 
@@ -121,7 +126,7 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
     {
         $sql = 'SELECT COUNT(*) FROM products';
         $result = $this->entityManager->fetchOne($sql);
-        
+
         return isset($result['count']) ? TypeAssert::int($result['count']) : 0;
     }
 }

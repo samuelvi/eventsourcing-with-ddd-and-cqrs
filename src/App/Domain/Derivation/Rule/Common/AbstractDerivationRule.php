@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Derivation\Rule\Common;
 
 use App\Domain\Derivation\DerivationContext;
-use App\Domain\Derivation\DerivationRuleInterface;
+use App\Domain\Derivation\Rule\Interface\DerivationRuleInterface;
 
 abstract readonly class AbstractDerivationRule implements DerivationRuleInterface
 {

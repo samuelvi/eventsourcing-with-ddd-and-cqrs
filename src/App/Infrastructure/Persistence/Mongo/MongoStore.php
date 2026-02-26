@@ -114,6 +114,24 @@ final readonly class MongoStore
     /**
      * @return array<StoredEvent>
      */
+    public function findEventsByBookingId(string $bookingId): array
+    {
+        $cursor = $this->mongoClient->getDatabase()->selectCollection('events')->find(
+            ['payload.bookingId' => $bookingId],
+            ['sort' => ['occurredOn' => 1]]
+        );
+        
+        $events = [];
+        foreach ($cursor as $doc) {
+            $events[] = StoredEvent::fromArray($this->toArrayFromDoc($doc));
+        }
+        
+        return $events;
+    }
+
+    /**
+     * @return array<StoredEvent>
+     */
     public function findAllEventsByAggregateId(Uuid $aggregateId): array
     {
         $cursor = $this->mongoClient->getDatabase()->selectCollection('events')->find(

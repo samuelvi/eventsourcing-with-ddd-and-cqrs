@@ -28,7 +28,7 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
     /**
      * @return array<array{id: string, price: float, supplier_id: string, supplier_country: string|null, supplier_is_active: bool}>
      */
-    public function findByBudgetWithSupplierData(float $budget, ?string $country = null): array
+    public function findCandidatesFirstFilter(float $budget, ?string $country = null): array
     {
         $sql = "
             SELECT p.id, p.price, p.supplier_id, s.country AS supplier_country, s.is_active AS supplier_is_active

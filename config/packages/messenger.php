@@ -92,10 +92,15 @@ return static function (ContainerConfigurator $container): void {
     ];
 
     $routing = [
-        'App\Application\Command\*' => 'async',
-        'App\Domain\Event\*' => 'async',
+        // Explicit derivations routes
         'App\Application\Command\Quotes\GenerateQuotesCommand' => 'derivations_events',
         'App\Domain\Event\QuoteRequested' => 'derivations_events',
+        // Other commands to async
+//        'App\Application\Command\SubmitBookingWizardCommand' => 'async',
+//        'App\Application\Command\CreateUserCommand' => 'async',
+//        'App\Application\Command\CreateProductCommand' => 'async',
+//        'App\Application\Command\DeleteUserCommand' => 'async',
+//        'App\Application\Command\UpdateUserCommand' => 'async',
     ];
 
     if ($container->env() === 'test') {

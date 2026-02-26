@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Derivation;
+namespace App\Domain\Derivation\Rule;
+
+use App\Domain\Derivation\DerivationContext;
+use App\Domain\Derivation\DerivationRuleInterface;
 
 final readonly class CountryRule implements DerivationRuleInterface
 {

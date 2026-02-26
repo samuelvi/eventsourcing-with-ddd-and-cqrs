@@ -24,7 +24,7 @@ interface ProductReadRepositoryInterface
     /**
      * @return array<array{id: string, price: float, supplier_id: string, supplier_country: string|null, supplier_is_active: bool}>
      */
-    public function findByBudgetWithSupplierData(float $budget, ?string $country = null): array;
+    public function findCandidatesFirstFilter(float $budget, ?string $country = null): array;
 
     /**
      * @param array<int, string> $supplierIds

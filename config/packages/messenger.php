@@ -94,7 +94,7 @@ return static function (ContainerConfigurator $container): void {
     $routing = [
         'App\Application\Command\*' => 'async',
         'App\Domain\Event\*' => 'async',
-        'App\Application\Command\GenerateQuotesCommand' => 'derivations_events',
+        'App\Application\Command\Quotes\GenerateQuotesCommand' => 'derivations_events',
         'App\Domain\Event\QuoteRequested' => 'derivations_events',
     ];
 

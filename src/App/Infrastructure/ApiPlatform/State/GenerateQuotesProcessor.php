@@ -6,7 +6,7 @@ namespace App\Infrastructure\ApiPlatform\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Application\Command\GenerateQuotesCommand;
+use App\Application\Command\Quotes\GenerateQuotesCommand;
 use App\Domain\Model\BookingEntity;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\TransportNamesStamp;

@@ -72,7 +72,6 @@ services:
     # --- Application Handlers ---
     App\Application\Handler\:
         resource: '../src/App/Application/Handler'
-        tags: ['messenger.message_handler']
 
     App\Infrastructure\Messenger\Transport\RedisTransportFactory:
         tags: ['messenger.transport_factory']

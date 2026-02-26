@@ -70,6 +70,37 @@ final class AppFixtures extends Fixture
             }
         }
 
+        // 2. Create inactive supplier (for testing derivation rules)
+        $inactiveSupplier = SupplierEntity::create('Inactive Supplier Co.');
+        $inactiveSupplier->country = 'ES';
+        $inactiveSupplier->isActive = false;
+        $manager->persist($inactiveSupplier);
+
+        // Add some menus for inactive supplier
+        for ($i = 1; $i <= 3; $i++) {
+            $title = sprintf('Menu 4 All %d', $i);
+            $price = (float) random_int(25, 75);
+            
+            $productId = \Symfony\Component\Uid\Uuid::v7();
+            $product = ProductEntity::hydrate(
+                id: $productId,
+                name: sprintf('Inactive Supplier Co. - %s', $title),
+                price: $price,
+                currency: 'EUR',
+                type: ProductEntity::TYPE_MENU,
+                supplier: $inactiveSupplier,
+                externalReferenceId: $productId
+            );
+            $manager->persist($product);
+
+            $menu = MenuEntity::hydrate(
+                id: $productId,
+                title: $title,
+                description: 'A special menu from inactive supplier.'
+            );
+            $manager->persist($menu);
+        }
+
         $manager->flush();
     }
 }

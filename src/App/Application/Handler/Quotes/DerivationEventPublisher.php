@@ -55,6 +55,7 @@ final readonly class DerivationEventPublisher
             payload: [
                 'bookingId' => $event->bookingId,
                 'limit' => $event->limit,
+                'totalAfterRules' => $event->totalAfterRules,
                 'totalCandidates' => $event->totalCandidates,
                 'selected' => $event->selected,
                 'correlationId' => $event->correlationId,

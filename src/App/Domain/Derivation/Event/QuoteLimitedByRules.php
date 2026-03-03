@@ -10,6 +10,7 @@ final readonly class QuoteLimitedByRules
         public string $correlationId,
         public string $bookingId,
         public int $limit,
+        public int $totalAfterRules,
         public int $totalCandidates,
         public bool $selected,
         public \DateTimeImmutable $occurredOn = new \DateTimeImmutable(),

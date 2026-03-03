@@ -20,6 +20,8 @@ use Symfony\Component\Uid\Uuid;
 #[AsMessageHandler]
 final readonly class GenerateQuotesHandler
 {
+    private const QUOTE_LIMIT = 4;
+
     public function __construct(
         private DerivationContextBuilder $contextBuilder,
         private ProductReadRepositoryInterface $productReadRepository,
@@ -46,7 +48,7 @@ final readonly class GenerateQuotesHandler
         $this->eventPublisher->publishLimited(new QuoteLimited(
             correlationId: $command->correlationId,
             bookingId: $bookingId,
-            limit: 4,
+            limit: self::QUOTE_LIMIT,
             totalCandidates: count($candidates),
             selected: false,
         ));
@@ -54,21 +56,23 @@ final readonly class GenerateQuotesHandler
 
 
         $eligibleCandidates = $this->quoteCandidatesFilter->eligibleForBooking($bookingFacts, $candidates);
+        $rankedCandidates = $this->rankAndLimitCandidates($eligibleCandidates);
 
         $this->eventPublisher->publishLimitedByRules(new QuoteLimitedByRules(
             correlationId: $command->correlationId,
             bookingId: $bookingId,
-            limit: 4,
-            totalCandidates: count($eligibleCandidates),
+            limit: self::QUOTE_LIMIT,
+            totalAfterRules: count($eligibleCandidates),
+            totalCandidates: count($rankedCandidates),
             selected: false,
         ));
 
-        if ($eligibleCandidates === []) {
+        if ($rankedCandidates === []) {
             return;
         }
 
         //Almaceno las quotes
-        $this->saveQuotes($bookingId, $eligibleCandidates, $command->correlationId);
+        $this->saveQuotes($bookingId, $rankedCandidates, $command->correlationId);
     }
 
     /**
@@ -85,6 +89,31 @@ final readonly class GenerateQuotesHandler
             static fn (array $row): QuoteCandidate => QuoteCandidate::fromRow($row),
             $candidatesData
         );
+    }
+
+    /**
+     * @param array<int, QuoteCandidate> $candidates
+     * @return array<int, QuoteCandidate>
+     */
+    private function rankAndLimitCandidates(array $candidates): array
+    {
+        usort(
+            $candidates,
+            static function (QuoteCandidate $left, QuoteCandidate $right): int {
+                if ($left->price !== $right->price) {
+                    return $right->price <=> $left->price;
+                }
+
+                $supplierComparison = strcmp($left->supplierId, $right->supplierId);
+                if ($supplierComparison !== 0) {
+                    return $supplierComparison;
+                }
+
+                return strcmp($left->productId, $right->productId);
+            }
+        );
+
+        return array_slice($candidates, 0, self::QUOTE_LIMIT);
     }
 
 

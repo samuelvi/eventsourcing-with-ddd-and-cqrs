@@ -6,6 +6,7 @@ namespace App\Application\Handler\Quotes;
 
 use App\Application\Command\Quotes\GenerateQuotesCommand;
 use App\Domain\Derivation\Candidate\QuoteCandidate;
+use App\Domain\Derivation\Event\QuoteCreated;
 use App\Domain\Derivation\Event\QuoteLimited;
 use App\Domain\Derivation\Event\QuoteLimitedByRules;
 use App\Domain\Derivation\Facts\BookingFacts;
@@ -114,6 +115,16 @@ final readonly class GenerateQuotesHandler
             );
 
             $this->quoteWriteRepository->save($quote);
+
+            $this->eventPublisher->publishCreated(new QuoteCreated(
+                quoteId: $quote->id->toRfc4122(),
+                bookingId: $bookingId,
+                supplierId: $candidate->supplierId,
+                productId: $candidate->productId,
+                price: $candidate->price,
+                correlationId: $correlationId,
+                occurredOn: $createdAt,
+            ));
         }
     }
 }

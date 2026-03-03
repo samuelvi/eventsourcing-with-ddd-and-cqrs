@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Handler\Quotes;
 
 use App\Domain\Exception\ConcurrencyException;
+use App\Domain\Derivation\Event\QuoteCreated;
 use App\Domain\Derivation\Event\QuoteLimited;
 use App\Domain\Derivation\Event\QuoteLimitedByRules;
 use App\Domain\Derivation\Event\QuoteNotified;
@@ -56,6 +57,23 @@ final readonly class DerivationEventPublisher
                 'limit' => $event->limit,
                 'totalCandidates' => $event->totalCandidates,
                 'selected' => $event->selected,
+                'correlationId' => $event->correlationId,
+            ],
+            occurredOn: $event->occurredOn,
+        );
+    }
+
+    public function publishCreated(QuoteCreated $event): void
+    {
+        $this->saveEvent(
+            aggregateId: Uuid::fromString($event->quoteId),
+            eventType: QuoteCreated::class,
+            payload: [
+                'quoteId' => $event->quoteId,
+                'bookingId' => $event->bookingId,
+                'supplierId' => $event->supplierId,
+                'productId' => $event->productId,
+                'price' => $event->price,
                 'correlationId' => $event->correlationId,
             ],
             occurredOn: $event->occurredOn,

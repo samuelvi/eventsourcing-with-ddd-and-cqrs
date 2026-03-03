@@ -6,10 +6,15 @@ namespace App\Application\Handler\Quotes;
 
 use App\Application\Command\Quotes\GenerateQuotesCommand;
 use App\Domain\Derivation\Candidate\QuoteCandidate;
+use App\Domain\Derivation\Event\QuoteLimited;
+use App\Domain\Derivation\Event\QuoteLimitedByRules;
 use App\Domain\Derivation\Facts\BookingFacts;
+use App\Domain\Model\QuoteEntity;
 use App\Domain\Repository\ProductReadRepositoryInterface;
+use App\Domain\Repository\QuoteWriteRepositoryInterface;
 use DateTimeImmutable;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\Uid\Uuid;
 
 #[AsMessageHandler]
 final readonly class GenerateQuotesHandler
@@ -18,8 +23,10 @@ final readonly class GenerateQuotesHandler
         private DerivationContextBuilder $contextBuilder,
         private ProductReadRepositoryInterface $productReadRepository,
         private QuoteCandidatesFilter $quoteCandidatesFilter,
-        private QuoteRequestedPublisher $quoteRequestedPublisher,
+        private QuoteWriteRepositoryInterface $quoteWriteRepository,
+        private DerivationEventPublisher $eventPublisher,
     ) {}
+
 
     public function __invoke(GenerateQuotesCommand $command): void
     {
@@ -35,12 +42,32 @@ final readonly class GenerateQuotesHandler
             return;
         }
 
+        $this->eventPublisher->publishLimited(new QuoteLimited(
+            correlationId: $command->correlationId,
+            bookingId: $bookingId,
+            limit: 4,
+            totalCandidates: count($candidates),
+            selected: false,
+        ));
+
+
+
         $eligibleCandidates = $this->quoteCandidatesFilter->eligibleForBooking($bookingFacts, $candidates);
+
+        $this->eventPublisher->publishLimitedByRules(new QuoteLimitedByRules(
+            correlationId: $command->correlationId,
+            bookingId: $bookingId,
+            limit: 4,
+            totalCandidates: count($eligibleCandidates),
+            selected: false,
+        ));
+
         if ($eligibleCandidates === []) {
             return;
         }
 
-        $this->publishQuotes($bookingId, $eligibleCandidates, $command->correlationId);
+        //Almaceno las quotes
+        $this->saveQuotes($bookingId, $eligibleCandidates);
     }
 
     /**
@@ -59,15 +86,34 @@ final readonly class GenerateQuotesHandler
         );
     }
 
+
+
     /**
      * @param array<int, QuoteCandidate> $candidates
      */
-    private function publishQuotes(string $bookingId, array $candidates, ?string $correlationId = null): void
+    private function saveQuotes(string $bookingId, array $candidates): void
     {
-        $occurredOn = new DateTimeImmutable();
+        $createdAt = new DateTimeImmutable();
+        $seenPairs = [];
 
         foreach ($candidates as $candidate) {
-            $this->quoteRequestedPublisher->publish($bookingId, $candidate, $occurredOn, $correlationId);
+            $pairKey = $candidate->supplierId . ':' . $candidate->productId;
+            if (isset($seenPairs[$pairKey])) {
+                continue;
+            }
+
+            $seenPairs[$pairKey] = true;
+
+            $quote = QuoteEntity::hydrate(
+                id: Uuid::v7(),
+                bookingId: Uuid::fromString($bookingId),
+                supplierId: Uuid::fromString($candidate->supplierId),
+                productId: Uuid::fromString($candidate->productId),
+                price: $candidate->price,
+                createdAt: $createdAt,
+            );
+
+            $this->quoteWriteRepository->save($quote);
         }
     }
 }

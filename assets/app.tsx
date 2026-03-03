@@ -6,6 +6,7 @@ import { DataExplorer } from './pages/DataExplorer';
 import { DemoFlow } from './pages/DemoFlow';
 import { UsersManagement } from './pages/UsersManagement';
 import { DashboardPanel } from './pages/DashboardPanel';
+import { SupplierResponses } from './pages/SupplierResponses';
 import { Icons } from './components/Icons';
 import { NavButton, PageType } from './components/NavButton';
 
@@ -38,6 +39,10 @@ function resolveRoute(pathname: string): RouteState {
 
     if (pathname === '/panel') {
         return { page: 'panel', usersMode: 'list', userId: null };
+    }
+
+    if (pathname === '/supplier-responses') {
+        return { page: 'supplier', usersMode: 'list', userId: null };
     }
 
     if (pathname === '/users/new') {
@@ -80,7 +85,9 @@ function App() {
                       ? '/users'
                       : newPage === 'panel'
                         ? '/panel'
-                        : '/';
+                        : newPage === 'supplier'
+                          ? '/supplier-responses'
+                          : '/';
         navigateToPath(url);
     };
 
@@ -124,6 +131,13 @@ function App() {
                     target="users"
                     label="Users"
                     icon={Icons.Users}
+                    currentPage={route.page}
+                    onNavigate={navigateTo}
+                />
+                <NavButton
+                    target="supplier"
+                    label="Supplier Responses"
+                    icon={Icons.Supplier}
                     currentPage={route.page}
                     onNavigate={navigateTo}
                 />
@@ -286,6 +300,7 @@ function App() {
                 {route.page === 'explorer' && <DataExplorer />}
                 {route.page === 'demo' && <DemoFlow />}
                 {route.page === 'panel' && <DashboardPanel />}
+                {route.page === 'supplier' && <SupplierResponses />}
                 {route.page === 'users' && (
                     <UsersManagement
                         mode={route.usersMode}

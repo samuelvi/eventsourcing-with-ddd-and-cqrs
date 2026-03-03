@@ -294,7 +294,6 @@ export function DemoFlow() {
     };
     const executeReset = () => resetMutation.mutate();
     const evolveUserSchema = () => evolveUserSchemaMutation.mutate();
-
     const projectionsEnabled = status.projectionsEnabled;
     const userProjectionsEnabled = status.userProjectionsEnabled;
     const bookingProjectionsEnabled = status.bookingProjectionsEnabled;

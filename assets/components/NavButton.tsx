@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type PageType = 'home' | 'wizard' | 'explorer' | 'demo' | 'users' | 'panel';
+export type PageType = 'home' | 'wizard' | 'explorer' | 'demo' | 'users' | 'panel' | 'supplier';
 
 export const NavButton = ({
     target,

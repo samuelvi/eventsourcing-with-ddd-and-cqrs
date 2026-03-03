@@ -68,7 +68,7 @@ final readonly class GenerateQuotesHandler
         }
 
         //Almaceno las quotes
-        $this->saveQuotes($bookingId, $eligibleCandidates);
+        $this->saveQuotes($bookingId, $eligibleCandidates, $command->correlationId);
     }
 
     /**
@@ -92,7 +92,7 @@ final readonly class GenerateQuotesHandler
     /**
      * @param array<int, QuoteCandidate> $candidates
      */
-    private function saveQuotes(string $bookingId, array $candidates): void
+    private function saveQuotes(string $bookingId, array $candidates, ?string $correlationId): void
     {
         $createdAt = new DateTimeImmutable();
         $seenPairs = [];

@@ -32,6 +32,7 @@ final readonly class N8nNotifier
                     'bookingId' => $bookingId,
                     'event' => 'booking_ready_for_derivation',
                     'correlationId' => $correlationId,
+                    'occurredOn' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
                 ],
                 'timeout' => 10,
             ]);

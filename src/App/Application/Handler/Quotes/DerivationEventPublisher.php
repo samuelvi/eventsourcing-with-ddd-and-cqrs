@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Handler\Quotes;
 
+use App\Domain\Derivation\Event\QuoteFlowFinsih;
 use App\Domain\Exception\ConcurrencyException;
 use App\Domain\Derivation\Event\QuoteCreated;
 use App\Domain\Derivation\Event\QuoteLimited;
@@ -35,6 +36,25 @@ final readonly class DerivationEventPublisher
                 'limit' => $event->limit,
                 'totalCandidates' => $event->totalCandidates,
                 'selected' => $event->selected,
+                'correlationId' => $event->correlationId,
+            ],
+            occurredOn: $event->occurredOn,
+        );
+    }
+
+    public function publishFlowFinished(QuoteFlowFinsih $event): void
+    {
+        $aggregateId = Uuid::fromString($event->bookingId);
+
+        if ($this->alreadyPublishedByTypeAndCorrelation($aggregateId, QuoteLimitedByRules::class, $event->correlationId)) {
+            return;
+        }
+
+        $this->saveEvent(
+            aggregateId: $aggregateId,
+            eventType: QuoteLimitedByRules::class,
+            payload: [
+                'bookingId' => $event->bookingId,
                 'correlationId' => $event->correlationId,
             ],
             occurredOn: $event->occurredOn,

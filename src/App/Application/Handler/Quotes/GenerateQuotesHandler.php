@@ -7,6 +7,7 @@ namespace App\Application\Handler\Quotes;
 use App\Application\Command\Quotes\GenerateQuotesCommand;
 use App\Domain\Derivation\Candidate\QuoteCandidate;
 use App\Domain\Derivation\Event\QuoteCreated;
+use App\Domain\Derivation\Event\QuoteFlowFinsih;
 use App\Domain\Derivation\Event\QuoteLimited;
 use App\Domain\Derivation\Event\QuoteLimitedByRules;
 use App\Domain\Derivation\Facts\BookingFacts;
@@ -23,25 +24,41 @@ final readonly class GenerateQuotesHandler
     private const QUOTE_LIMIT = 4;
 
     public function __construct(
-        private DerivationContextBuilder $contextBuilder,
+        private DerivationContextBuilder       $contextBuilder,
         private ProductReadRepositoryInterface $productReadRepository,
-        private QuoteCandidatesFilter $quoteCandidatesFilter,
-        private QuoteWriteRepositoryInterface $quoteWriteRepository,
-        private DerivationEventPublisher $eventPublisher,
-    ) {}
+        private QuoteCandidatesFilter          $quoteCandidatesFilter,
+        private QuoteWriteRepositoryInterface  $quoteWriteRepository,
+        private DerivationEventPublisher       $eventPublisher,
+    )
+    {
+    }
 
 
     public function __invoke(GenerateQuotesCommand $command): void
     {
+
         $bookingId = $command->bookingIdVO()->toString();
         $bookingFacts = $this->contextBuilder->buildForBooking($bookingId);
 
         if ($bookingFacts === null) {
+            $this->eventPublisher->publishFlowFinished(new QuoteFlowFinsih(
+                bookingId: $bookingId,
+                correlationId: $command->correlationId,
+                lastEvent: null,
+                occurredOn: new DateTimeImmutable(),
+            ));
             return;
         }
 
         $candidates = $this->findCandidates($bookingFacts);
+
         if ($candidates === []) {
+            $this->eventPublisher->publishFlowFinished(new QuoteFlowFinsih(
+                bookingId: $bookingId,
+                correlationId: $command->correlationId,
+                lastEvent: null,
+                occurredOn: new DateTimeImmutable(),
+            ));
             return;
         }
 
@@ -52,7 +69,6 @@ final readonly class GenerateQuotesHandler
             totalCandidates: count($candidates),
             selected: false,
         ));
-
 
 
         $eligibleCandidates = $this->quoteCandidatesFilter->eligibleForBooking($bookingFacts, $candidates);
@@ -86,7 +102,7 @@ final readonly class GenerateQuotesHandler
         );
 
         return array_map(
-            static fn (array $row): QuoteCandidate => QuoteCandidate::fromRow($row),
+            static fn(array $row): QuoteCandidate => QuoteCandidate::fromRow($row),
             $candidatesData
         );
     }
@@ -115,7 +131,6 @@ final readonly class GenerateQuotesHandler
 
         return array_slice($candidates, 0, self::QUOTE_LIMIT);
     }
-
 
 
     /**

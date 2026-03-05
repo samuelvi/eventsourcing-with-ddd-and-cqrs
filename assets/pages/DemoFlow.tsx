@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -75,6 +75,8 @@ export function DemoFlow() {
     const queryClient = useQueryClient();
     const [toast, setToast] = useState<{ text: string; type: 'info' | 'error' } | null>(null);
     const [showResetModal, setShowResetModal] = useState(false);
+    const [correlationFilter, setCorrelationFilter] = useState('');
+    const [eventSortOrder, setEventSortOrder] = useState<'desc' | 'asc'>('desc');
 
     const showToast = (text: string, type: 'info' | 'error' = 'info') => {
         setToast({ text, type });
@@ -301,6 +303,31 @@ export function DemoFlow() {
     const sortedUsers = [...users].sort((a, b) =>
         String(b.id || '').localeCompare(String(a.id || ''))
     );
+    const normalizedCorrelationFilter = correlationFilter.trim().toLowerCase();
+    const filteredSortedEvents = [...events]
+        .filter((event) => {
+            if (normalizedCorrelationFilter === '') {
+                return true;
+            }
+
+            const payload = event.payload;
+            const correlationId =
+                payload && typeof payload === 'object' && !Array.isArray(payload)
+                    ? String((payload as Record<string, unknown>).correlationId || '')
+                    : '';
+
+            return correlationId.toLowerCase().includes(normalizedCorrelationFilter);
+        })
+        .sort((a, b) => {
+            const occurredOnA = new Date(String(a.occurredOn || '')).getTime();
+            const occurredOnB = new Date(String(b.occurredOn || '')).getTime();
+
+            if (Number.isNaN(occurredOnA) || Number.isNaN(occurredOnB)) {
+                return 0;
+            }
+
+            return eventSortOrder === 'asc' ? occurredOnA - occurredOnB : occurredOnB - occurredOnA;
+        });
     const loading =
         toggleMutation.isPending ||
         createBookingMutation.isPending ||
@@ -315,13 +342,15 @@ export function DemoFlow() {
         items,
         columns,
         emptyMsg,
-        badge
+        badge,
+        headerExtra
     }: {
         title: string;
         items: Record<string, unknown>[];
         columns: string[];
         emptyMsg: string;
         badge?: number;
+        headerExtra?: ReactNode;
     }) => (
         <div
             style={{
@@ -346,20 +375,23 @@ export function DemoFlow() {
                 }}
             >
                 {title}
-                {badge !== undefined && (
-                    <span
-                        style={{
-                            backgroundColor: '#f5f5f4',
-                            color: '#78716c',
-                            padding: '2px 10px',
-                            borderRadius: '12px',
-                            fontSize: '11px',
-                            border: '1px solid #e7e5e4'
-                        }}
-                    >
-                        {badge}
-                    </span>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {headerExtra}
+                    {badge !== undefined && (
+                        <span
+                            style={{
+                                backgroundColor: '#f5f5f4',
+                                color: '#78716c',
+                                padding: '2px 10px',
+                                borderRadius: '12px',
+                                fontSize: '11px',
+                                border: '1px solid #e7e5e4'
+                            }}
+                        >
+                            {badge}
+                        </span>
+                    )}
+                </div>
             </div>
             <div style={{ padding: '0', maxHeight: '350px', overflowY: 'auto' }}>
                 {items.length === 0 ? (
@@ -1185,10 +1217,59 @@ export function DemoFlow() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                             <DataList
                                 title="Event Store (Mongo)"
-                                items={events}
-                                columns={['eventType', 'occurredOn']}
+                                items={filteredSortedEvents}
+                                columns={['eventType', 'payload.correlationId', 'occurredOn']}
                                 emptyMsg="No events recorded."
-                                badge={events.length}
+                                badge={filteredSortedEvents.length}
+                                headerExtra={
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}
+                                    >
+                                        <input
+                                            type="text"
+                                            placeholder="correlationId"
+                                            value={correlationFilter}
+                                            onChange={(event) =>
+                                                setCorrelationFilter(event.target.value)
+                                            }
+                                            style={{
+                                                height: '30px',
+                                                padding: '0 10px',
+                                                borderRadius: '10px',
+                                                border: '1px solid #d6d3d1',
+                                                fontSize: '12px',
+                                                color: '#44403c',
+                                                width: '170px',
+                                                backgroundColor: '#fff'
+                                            }}
+                                        />
+                                        <select
+                                            value={eventSortOrder}
+                                            onChange={(event) =>
+                                                setEventSortOrder(
+                                                    event.target.value as 'desc' | 'asc'
+                                                )
+                                            }
+                                            style={{
+                                                height: '30px',
+                                                padding: '0 10px',
+                                                borderRadius: '10px',
+                                                border: '1px solid #d6d3d1',
+                                                fontSize: '12px',
+                                                color: '#44403c',
+                                                backgroundColor: '#fff',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <option value="desc">OccurredOn desc</option>
+                                            <option value="asc">OccurredOn asc</option>
+                                        </select>
+                                    </div>
+                                }
                             />
                             <DataList
                                 title="Projections Checkpoints"

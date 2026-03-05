@@ -34,6 +34,8 @@ export function DataExplorer() {
     const [data, setData] = useState<Record<string, unknown>[]>([]);
     const [counts, setCounts] = useState<Partial<Record<EntityType, number>>>({});
     const [loading, setLoading] = useState(false);
+    const [eventCorrelationFilter, setEventCorrelationFilter] = useState('');
+    const [eventSortOrder, setEventSortOrder] = useState<'desc' | 'asc'>('desc');
 
     const fetchData = async (type: EntityType) => {
         setLoading(true);
@@ -82,6 +84,45 @@ export function DataExplorer() {
             console.error('Error fetching counts:', error);
         }
     }, []);
+
+    const normalizedEventCorrelationFilter = eventCorrelationFilter.trim().toLowerCase();
+    const visibleData =
+        activeTab !== 'event-store'
+            ? data
+            : [...data]
+                  .filter((row) => {
+                      if (normalizedEventCorrelationFilter === '') {
+                          return true;
+                      }
+
+                      const payload = row.payload;
+                      const payloadCorrelationId =
+                          payload && typeof payload === 'object' && !Array.isArray(payload)
+                              ? String((payload as Record<string, unknown>).correlationId || '')
+                              : '';
+                      const topLevelCorrelationId = String(row.correlationId || '');
+
+                      return (
+                          payloadCorrelationId
+                              .toLowerCase()
+                              .includes(normalizedEventCorrelationFilter) ||
+                          topLevelCorrelationId
+                              .toLowerCase()
+                              .includes(normalizedEventCorrelationFilter)
+                      );
+                  })
+                  .sort((a, b) => {
+                      const occurredOnA = new Date(String(a.occurredOn || '')).getTime();
+                      const occurredOnB = new Date(String(b.occurredOn || '')).getTime();
+
+                      if (Number.isNaN(occurredOnA) || Number.isNaN(occurredOnB)) {
+                          return 0;
+                      }
+
+                      return eventSortOrder === 'asc'
+                          ? occurredOnA - occurredOnB
+                          : occurredOnB - occurredOnA;
+                  });
 
     useEffect(() => {
         fetchAllCounts();
@@ -228,6 +269,52 @@ export function DataExplorer() {
                 <TabGroup title="PostgreSQL (Read Models)" tabs={postgresTabs} />
             </div>
 
+            {activeTab === 'event-store' && (
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        marginBottom: '16px',
+                        flexWrap: 'wrap'
+                    }}
+                >
+                    <input
+                        type="text"
+                        placeholder="Filter by correlationId"
+                        value={eventCorrelationFilter}
+                        onChange={(event) => setEventCorrelationFilter(event.target.value)}
+                        style={{
+                            height: '36px',
+                            padding: '0 12px',
+                            borderRadius: '10px',
+                            border: '1px solid #d1d5db',
+                            fontSize: '13px',
+                            minWidth: '260px',
+                            backgroundColor: '#fff'
+                        }}
+                    />
+                    <select
+                        value={eventSortOrder}
+                        onChange={(event) =>
+                            setEventSortOrder(event.target.value as 'asc' | 'desc')
+                        }
+                        style={{
+                            height: '36px',
+                            padding: '0 12px',
+                            borderRadius: '10px',
+                            border: '1px solid #d1d5db',
+                            fontSize: '13px',
+                            backgroundColor: '#fff',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <option value="desc">OccurredOn desc</option>
+                        <option value="asc">OccurredOn asc</option>
+                    </select>
+                </div>
+            )}
+
             {loading ? (
                 <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
                     Loading dataset...
@@ -242,7 +329,7 @@ export function DataExplorer() {
                         boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
                     }}
                 >
-                    {data.length === 0 ? (
+                    {visibleData.length === 0 ? (
                         <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
                             No records found in this collection.
                         </div>
@@ -263,7 +350,7 @@ export function DataExplorer() {
                                             backgroundColor: '#f9fafb'
                                         }}
                                     >
-                                        {Object.keys(data[0])
+                                        {Object.keys(visibleData[0])
                                             .filter((k) => !k.startsWith('@'))
                                             .map((key) => (
                                                 <th
@@ -281,12 +368,12 @@ export function DataExplorer() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {data.map((row, i) => (
+                                    {visibleData.map((row, i) => (
                                         <tr
                                             key={i}
                                             style={{
                                                 borderBottom:
-                                                    i === data.length - 1
+                                                    i === visibleData.length - 1
                                                         ? 'none'
                                                         : '1px solid #f3f4f6'
                                             }}

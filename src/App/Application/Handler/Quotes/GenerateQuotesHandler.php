@@ -14,6 +14,7 @@ use App\Domain\Derivation\Facts\BookingFacts;
 use App\Domain\Model\QuoteEntity;
 use App\Domain\Repository\ProductReadRepositoryInterface;
 use App\Domain\Repository\QuoteWriteRepositoryInterface;
+use App\Integrations\N8n\Application\Service\N8nStartQuoteWatchdogNotifier;
 use DateTimeImmutable;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
@@ -29,6 +30,7 @@ final readonly class GenerateQuotesHandler
         private QuoteCandidatesFilter          $quoteCandidatesFilter,
         private QuoteWriteRepositoryInterface  $quoteWriteRepository,
         private DerivationEventPublisher       $eventPublisher,
+        private N8nStartQuoteWatchdogNotifier  $startQuoteWatchdogNotifier,
     )
     {
     }
@@ -36,6 +38,7 @@ final readonly class GenerateQuotesHandler
 
     public function __invoke(GenerateQuotesCommand $command): void
     {
+        $correlationId = $command->correlationId ?? Uuid::v7()->toRfc4122();
 
         $bookingId = $command->bookingIdVO()->toString();
         $bookingFacts = $this->contextBuilder->buildForBooking($bookingId);
@@ -43,7 +46,7 @@ final readonly class GenerateQuotesHandler
         if ($bookingFacts === null) {
             $this->eventPublisher->publishFlowFinished(new QuoteFlowFinsih(
                 bookingId: $bookingId,
-                correlationId: $command->correlationId,
+                correlationId: $correlationId,
                 lastEvent: null,
                 occurredOn: new DateTimeImmutable(),
             ));
@@ -55,7 +58,7 @@ final readonly class GenerateQuotesHandler
         if ($candidates === []) {
             $this->eventPublisher->publishFlowFinished(new QuoteFlowFinsih(
                 bookingId: $bookingId,
-                correlationId: $command->correlationId,
+                correlationId: $correlationId,
                 lastEvent: null,
                 occurredOn: new DateTimeImmutable(),
             ));
@@ -63,7 +66,7 @@ final readonly class GenerateQuotesHandler
         }
 
         $this->eventPublisher->publishLimited(new QuoteLimited(
-            correlationId: $command->correlationId,
+            correlationId: $correlationId,
             bookingId: $bookingId,
             limit: self::QUOTE_LIMIT,
             totalCandidates: count($candidates),
@@ -75,7 +78,7 @@ final readonly class GenerateQuotesHandler
         $rankedCandidates = $this->rankAndLimitCandidates($eligibleCandidates);
 
         $this->eventPublisher->publishLimitedByRules(new QuoteLimitedByRules(
-            correlationId: $command->correlationId,
+            correlationId: $correlationId,
             bookingId: $bookingId,
             limit: self::QUOTE_LIMIT,
             totalAfterRules: count($eligibleCandidates),
@@ -87,8 +90,11 @@ final readonly class GenerateQuotesHandler
             return;
         }
 
+
         //Almaceno las quotes
-        $this->saveQuotes($bookingId, $rankedCandidates, $command->correlationId);
+        $this->saveQuotes($bookingId, $rankedCandidates, $correlationId);
+
+        $this->startQuoteWatchdogNotifier->notify($bookingId, $correlationId);
     }
 
     /**
@@ -136,7 +142,7 @@ final readonly class GenerateQuotesHandler
     /**
      * @param array<int, QuoteCandidate> $candidates
      */
-    private function saveQuotes(string $bookingId, array $candidates, ?string $correlationId): void
+    private function saveQuotes(string $bookingId, array $candidates, string $correlationId): void
     {
         $createdAt = new DateTimeImmutable();
         $seenPairs = [];

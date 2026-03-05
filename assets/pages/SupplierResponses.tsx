@@ -34,7 +34,7 @@ export function SupplierResponses() {
                     'Content-Type': 'application/merge-patch+json',
                     Accept: 'application/ld+json'
                 },
-                body: JSON.stringify({ status: 'quoted' })
+                body: JSON.stringify({ status: 'quote_sent' })
             });
             if (!res.ok) {
                 throw new Error('Supplier response failed');
@@ -65,7 +65,7 @@ export function SupplierResponses() {
                     Supplier Response Simulator
                 </h1>
                 <p style={{ marginTop: '10px', color: '#78716c', fontSize: '17px' }}>
-                    Simulate provider feedback by moving pending quotes to quoted.
+                    Simulate provider feedback by moving pending quotes to quote_sent.
                 </p>
             </header>
 
@@ -131,7 +131,13 @@ export function SupplierResponses() {
                                         borderBottom: '1px solid #f5f5f4'
                                     }}
                                 >
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px'
+                                        }}
+                                    >
                                         <div
                                             style={{
                                                 display: 'flex',
@@ -172,8 +178,12 @@ export function SupplierResponses() {
                                     </div>
 
                                     <button
-                                        onClick={() => simulateSupplierResponseMutation.mutate(quoteId)}
-                                        disabled={!quoteId || simulateSupplierResponseMutation.isPending}
+                                        onClick={() =>
+                                            simulateSupplierResponseMutation.mutate(quoteId)
+                                        }
+                                        disabled={
+                                            !quoteId || simulateSupplierResponseMutation.isPending
+                                        }
                                         style={{
                                             border: 'none',
                                             backgroundColor: '#166534',

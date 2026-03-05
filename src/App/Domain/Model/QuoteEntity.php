@@ -57,7 +57,8 @@ class QuoteEntity
     public private(set) Uuid $productId;
 
     public const STATUS_PENDING = 'pending';
-    public const STATUS_QUOTED = 'quoted';
+    public const STATUS_QUOTE_SENT = 'quote_sent';
+    public const STATUS_QUOTED = self::STATUS_QUOTE_SENT;
     public const STATUS_DISCARDED = 'discarded';
     public const STATUS_EXPIRED = 'expired';
 

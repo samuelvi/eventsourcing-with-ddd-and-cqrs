@@ -10,11 +10,12 @@ use App\Domain\Derivation\Event\QuoteCreated;
 use App\Domain\Derivation\Event\QuoteFlowFinsih;
 use App\Domain\Derivation\Event\QuoteLimited;
 use App\Domain\Derivation\Event\QuoteLimitedByRules;
+use App\Domain\Derivation\Event\StartQuoteProcess;
 use App\Domain\Derivation\Facts\BookingFacts;
 use App\Domain\Model\QuoteEntity;
 use App\Domain\Repository\ProductReadRepositoryInterface;
 use App\Domain\Repository\QuoteWriteRepositoryInterface;
-use App\Integrations\N8n\Application\Service\SupplierProcess\SupplierResponseProcessCallbackRegistrar;
+use App\Integrations\N8n\Application\Service\SupplierProcess\QuoteStartedProcess;
 use DateTimeImmutable;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
@@ -30,7 +31,7 @@ final readonly class GenerateQuotesHandler
         private QuoteCandidatesFilter          $quoteCandidatesFilter,
         private QuoteWriteRepositoryInterface  $quoteWriteRepository,
         private DerivationEventPublisher       $eventPublisher,
-        private SupplierResponseProcessCallbackRegistrar $supplierResponseProcessCallbackRegistrar,
+        private QuoteStartedProcess            $quoteStartedProcess,
     )
     {
     }
@@ -47,7 +48,7 @@ final readonly class GenerateQuotesHandler
             $this->eventPublisher->publishFlowFinished(new QuoteFlowFinsih(
                 bookingId: $bookingId,
                 correlationId: $correlationId,
-                lastEvent: null,
+                lastEvent: 'booking facts null',
                 occurredOn: new DateTimeImmutable(),
             ));
             return;
@@ -59,7 +60,7 @@ final readonly class GenerateQuotesHandler
             $this->eventPublisher->publishFlowFinished(new QuoteFlowFinsih(
                 bookingId: $bookingId,
                 correlationId: $correlationId,
-                lastEvent: null,
+                lastEvent: 'candidates null',
                 occurredOn: new DateTimeImmutable(),
             ));
             return;
@@ -86,15 +87,11 @@ final readonly class GenerateQuotesHandler
             selected: false,
         ));
 
-        if ($rankedCandidates === []) {
-            return;
-        }
-
 
         //Almaceno las quotes
-        $this->saveQuotes($bookingId, $rankedCandidates, $correlationId);
+        $quoteIds = $this->saveQuotes($bookingId, $rankedCandidates, $correlationId);
 
-        $this->supplierResponseProcessCallbackRegistrar->notify($bookingId, $correlationId);
+        $this->quoteStartedProcess->notify($bookingId, $correlationId, $quoteIds);
     }
 
     /**
@@ -141,11 +138,13 @@ final readonly class GenerateQuotesHandler
 
     /**
      * @param array<int, QuoteCandidate> $candidates
+     * @return array<int, string>
      */
-    private function saveQuotes(string $bookingId, array $candidates, string $correlationId): void
+    private function saveQuotes(string $bookingId, array $candidates, string $correlationId): array
     {
         $createdAt = new DateTimeImmutable();
         $seenPairs = [];
+        $quoteIds = [];
 
         foreach ($candidates as $candidate) {
             $pairKey = $candidate->supplierId . ':' . $candidate->productId;
@@ -165,6 +164,7 @@ final readonly class GenerateQuotesHandler
             );
 
             $this->quoteWriteRepository->save($quote);
+            $quoteIds[] = $quote->id->toRfc4122();
 
             $this->eventPublisher->publishCreated(new QuoteCreated(
                 quoteId: $quote->id->toRfc4122(),
@@ -176,5 +176,7 @@ final readonly class GenerateQuotesHandler
                 occurredOn: $createdAt,
             ));
         }
+
+        return $quoteIds;
     }
 }

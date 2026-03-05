@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Repository;
+namespace App\Infrastructure\Repository\User;
 
 use App\Domain\Repository\UserReadRepositoryInterface;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;

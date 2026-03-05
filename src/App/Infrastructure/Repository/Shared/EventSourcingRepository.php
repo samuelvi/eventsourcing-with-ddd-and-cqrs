@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Repository;
+namespace App\Infrastructure\Repository\Shared;
 
 use App\Domain\Model\AggregateRootInterface;
 use App\Domain\Repository\EventStoreRepositoryInterface;

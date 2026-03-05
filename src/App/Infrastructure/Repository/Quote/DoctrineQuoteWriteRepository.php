@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Repository;
+namespace App\Infrastructure\Repository\Quote;
 
 use App\Domain\Model\QuoteEntity;
 use App\Domain\Repository\QuoteWriteRepositoryInterface;

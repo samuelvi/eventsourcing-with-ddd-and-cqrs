@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Repository;
+namespace App\Infrastructure\Repository\Product;
 
 use App\Domain\Model\Product;
 use App\Domain\Repository\ProductEventStoreRepositoryInterface;
+use App\Infrastructure\Repository\Shared\EventSourcingRepository;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Serializer\SerializerInterface;
 

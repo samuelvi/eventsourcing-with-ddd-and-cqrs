@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Repository;
+namespace App\Infrastructure\Repository\Booking;
 
 use App\Domain\Model\Booking;
 use App\Domain\Repository\BookingEventStoreRepositoryInterface;
+use App\Infrastructure\Repository\Shared\EventSourcingRepository;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Serializer\SerializerInterface;
 

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\ApiPlatform\State;
+namespace App\Quotes\Infrastructure\ApiPlatform\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Application\Service\N8nQuoteSentNotifier;
+use App\Integrations\N8n\Application\Service\N8nQuoteSentNotifier;
 use App\Domain\Event\QuoteStatusChanged;
 use App\Domain\Model\QuoteEntity;
 use App\Domain\Repository\QuoteWriteRepositoryInterface;
@@ -33,7 +33,7 @@ final readonly class QuoteStatusProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): QuoteEntity
     {
         $occurredOn = new \DateTimeImmutable();
-        $correlationId = $this->resolveCorrelationId($data->bookingId);
+        $correlationId = $this->resolveCorrelationId($data->bookingId) ?? Uuid::v7()->toRfc4122();
         $version = $this->nextVersionForAggregate($data->id);
 
         

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Handler;
 
 use App\Application\Command\SubmitBookingWizardCommand;
-use App\Application\Service\N8nNotifier;
+use App\Integrations\N8n\Application\Service\N8nNotifier;
 use App\Domain\Exception\ConcurrencyException;
 use App\Domain\Model\Booking;
 use App\Domain\Model\User;

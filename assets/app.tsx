@@ -6,7 +6,7 @@ import { DataExplorer } from './pages/DataExplorer';
 import { DemoFlow } from './pages/DemoFlow';
 import { UsersManagement } from './pages/UsersManagement';
 import { DashboardPanel } from './pages/DashboardPanel';
-import { SupplierResponses } from './pages/SupplierResponses';
+import { SupplierResponses } from './features/quotes/pages/SupplierResponses';
 import { Icons } from './components/Icons';
 import { NavButton, PageType } from './components/NavButton';
 

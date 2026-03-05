@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Repository;
+namespace App\Infrastructure\Repository\Product;
 
 use App\Domain\Repository\ProductReadRepositoryInterface;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;
@@ -51,7 +51,10 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
 
         $sql .= ' ORDER BY p.price DESC';
 
-        return $this->entityManager->query($sql, $params);
+        /** @var array<array{id: string, price: float, supplier_id: string, supplier_country: string|null, supplier_is_active: bool}> */
+        $rows = $this->entityManager->query($sql, $params);
+
+        return $rows;
     }
 
     /**

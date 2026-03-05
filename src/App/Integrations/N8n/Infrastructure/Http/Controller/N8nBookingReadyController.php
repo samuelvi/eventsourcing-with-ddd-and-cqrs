@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Http\Controller;
+namespace App\Integrations\N8n\Infrastructure\Http\Controller;
 
 use App\Application\Command\Quotes\GenerateQuotesCommand;
-use App\Application\Dto\N8nBookingReadyDto;
+use App\Integrations\N8n\Application\Dto\N8nBookingReadyDto;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;

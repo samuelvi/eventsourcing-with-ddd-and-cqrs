@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Repository;
+namespace App\Infrastructure\Repository\Menu;
 
 use App\Domain\Repository\MenuReadRepositoryInterface;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;

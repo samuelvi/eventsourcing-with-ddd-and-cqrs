@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Repository;
+namespace App\Infrastructure\Repository\Quote;
 
 use App\Domain\Repository\QuoteReadRepositoryInterface;
 use App\Infrastructure\Persistence\Doctrine\ReadEntityManager;

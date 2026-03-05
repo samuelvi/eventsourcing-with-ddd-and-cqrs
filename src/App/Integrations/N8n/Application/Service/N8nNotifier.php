@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Service;
+namespace App\Integrations\N8n\Application\Service;
 
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -22,6 +22,11 @@ final readonly class N8nNotifier
     public function notifyBookingReady(Uuid $bookingId): void
     {
         $webhookUrl = getenv('N8N_WEBHOOK_BOOKING_URL');
+        if ($webhookUrl === false || $webhookUrl === '') {
+            $this->n8nLogger?->warning('N8n booking webhook url is not configured');
+
+            return;
+        }
 
         $correlationId = Uuid::v7()->toRfc4122();
 

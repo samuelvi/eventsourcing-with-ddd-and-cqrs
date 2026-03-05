@@ -17,18 +17,18 @@ services:
     # --- Domain Repositories Bindings ---
 
     # Write Side
-    App\Domain\Repository\UserWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineUserWriteRepository'
-    App\Domain\Repository\ProductWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineProductWriteRepository'
-    App\Domain\Repository\SupplierWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineSupplierWriteRepository'
-    App\Domain\Repository\MenuWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineMenuWriteRepository'
-    App\Domain\Repository\BookingWriteRepositoryInterface: '@App\Infrastructure\Repository\DoctrineBookingWriteRepository'
+    App\Domain\Repository\UserWriteRepositoryInterface: '@App\Infrastructure\Repository\User\DoctrineUserWriteRepository'
+    App\Domain\Repository\ProductWriteRepositoryInterface: '@App\Infrastructure\Repository\Product\DoctrineProductWriteRepository'
+    App\Domain\Repository\SupplierWriteRepositoryInterface: '@App\Infrastructure\Repository\Supplier\DoctrineSupplierWriteRepository'
+    App\Domain\Repository\MenuWriteRepositoryInterface: '@App\Infrastructure\Repository\Menu\DoctrineMenuWriteRepository'
+    App\Domain\Repository\BookingWriteRepositoryInterface: '@App\Infrastructure\Repository\Booking\DoctrineBookingWriteRepository'
 
     # Read Side
-    App\Domain\Repository\UserReadRepositoryInterface: '@App\Infrastructure\Repository\DbalUserReadRepository'
-    App\Domain\Repository\BookingReadRepositoryInterface: '@App\Infrastructure\Repository\DbalBookingReadRepository'
-    App\Domain\Repository\SupplierReadRepositoryInterface: '@App\Infrastructure\Repository\DbalSupplierReadRepository'
-    App\Domain\Repository\ProductReadRepositoryInterface: '@App\Infrastructure\Repository\DbalProductReadRepository'
-    App\Domain\Repository\MenuReadRepositoryInterface: '@App\Infrastructure\Repository\DbalMenuReadRepository'
+    App\Domain\Repository\UserReadRepositoryInterface: '@App\Infrastructure\Repository\User\DbalUserReadRepository'
+    App\Domain\Repository\BookingReadRepositoryInterface: '@App\Infrastructure\Repository\Booking\DbalBookingReadRepository'
+    App\Domain\Repository\SupplierReadRepositoryInterface: '@App\Infrastructure\Repository\Supplier\DbalSupplierReadRepository'
+    App\Domain\Repository\ProductReadRepositoryInterface: '@App\Infrastructure\Repository\Product\DbalProductReadRepository'
+    App\Domain\Repository\MenuReadRepositoryInterface: '@App\Infrastructure\Repository\Menu\DbalMenuReadRepository'
 
     # --- Factories ---
     _instanceof:
@@ -53,14 +53,14 @@ services:
             $dbName: '%env(MONGODB_DB)%'
 
     # Event Sourcing Repositories
-    App\Domain\Repository\UserEventStoreRepositoryInterface: '@App\Infrastructure\Repository\UserEventSourcingRepository'
-    App\Domain\Repository\BookingEventStoreRepositoryInterface: '@App\Infrastructure\Repository\BookingEventSourcingRepository'
-    App\Domain\Repository\ProductEventStoreRepositoryInterface: '@App\Infrastructure\Repository\ProductEventSourcingRepository'
+    App\Domain\Repository\UserEventStoreRepositoryInterface: '@App\Infrastructure\Repository\User\UserEventSourcingRepository'
+    App\Domain\Repository\BookingEventStoreRepositoryInterface: '@App\Infrastructure\Repository\Booking\BookingEventSourcingRepository'
+    App\Domain\Repository\ProductEventStoreRepositoryInterface: '@App\Infrastructure\Repository\Product\ProductEventSourcingRepository'
     App\Application\Bus\AsyncCommandBusInterface: '@App\Infrastructure\Messenger\Bus\MessengerAsyncCommandBus'
     App\Application\Bus\SyncCommandBusInterface: '@App\Infrastructure\Messenger\Bus\MessengerSyncCommandBus'
 
     # --- N8n Logger ---
-    App\Application\Service\N8nNotifier:
+    App\Integrations\N8n\Application\Service\N8nNotifier:
         arguments:
             $n8nLogger: '@monolog.logger.n8n'
 

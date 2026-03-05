@@ -64,6 +64,18 @@ services:
         arguments:
             $n8nLogger: '@monolog.logger.n8n'
 
+    App\Integrations\N8n\Application\Service\SupplierProcess\N8nQuoteSentNotifier:
+        arguments:
+            $n8nLogger: '@monolog.logger.n8n'
+
+    App\Integrations\N8n\Application\Service\SupplierProcess\SupplierResponseProcessCallbackRegistrar:
+        arguments:
+            $n8nLogger: '@monolog.logger.n8n'
+
+    App\Integrations\N8n\Application\Service\SupplierProcess\SupplierResponseProcessCallbackUrlRegistrar:
+        arguments:
+            $n8nLogger: '@monolog.logger.n8n'
+
     # --- Custom App Logger ---
     App\Application\Logger\AppLogger:
         arguments:

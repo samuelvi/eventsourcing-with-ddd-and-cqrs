@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Integrations\N8n\Application\Service;
+namespace App\Integrations\N8n\Application\Service\SupplierProcess;
 
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -23,8 +23,9 @@ final readonly class N8nQuoteSentNotifier
         Uuid $productId,
         float $price,
         string $correlationId,
+        ?string $callbackUrl = null,
     ): void {
-        $webhookUrl = getenv('N8N_WEBHOOK_QUOTE_SENT_URL');
+        $webhookUrl = $callbackUrl ?: getenv('N8N_WEBHOOK_QUOTE_SENT_URL');
         if ($webhookUrl === false || $webhookUrl === '') {
             $this->n8nLogger?->warning('N8n quote-sent webhook url is not configured');
 

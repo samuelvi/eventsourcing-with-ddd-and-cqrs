@@ -14,7 +14,7 @@ use App\Domain\Derivation\Facts\BookingFacts;
 use App\Domain\Model\QuoteEntity;
 use App\Domain\Repository\ProductReadRepositoryInterface;
 use App\Domain\Repository\QuoteWriteRepositoryInterface;
-use App\Integrations\N8n\Application\Service\N8nStartQuoteWatchdogNotifier;
+use App\Integrations\N8n\Application\Service\SupplierProcess\SupplierResponseProcessCallbackRegistrar;
 use DateTimeImmutable;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
@@ -30,7 +30,7 @@ final readonly class GenerateQuotesHandler
         private QuoteCandidatesFilter          $quoteCandidatesFilter,
         private QuoteWriteRepositoryInterface  $quoteWriteRepository,
         private DerivationEventPublisher       $eventPublisher,
-        private N8nStartQuoteWatchdogNotifier  $startQuoteWatchdogNotifier,
+        private SupplierResponseProcessCallbackRegistrar $supplierResponseProcessCallbackRegistrar,
     )
     {
     }
@@ -94,7 +94,7 @@ final readonly class GenerateQuotesHandler
         //Almaceno las quotes
         $this->saveQuotes($bookingId, $rankedCandidates, $correlationId);
 
-        $this->startQuoteWatchdogNotifier->notify($bookingId, $correlationId);
+        $this->supplierResponseProcessCallbackRegistrar->notify($bookingId, $correlationId);
     }
 
     /**

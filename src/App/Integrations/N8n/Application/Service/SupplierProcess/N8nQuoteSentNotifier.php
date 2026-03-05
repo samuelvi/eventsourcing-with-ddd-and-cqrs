@@ -26,8 +26,10 @@ final readonly class N8nQuoteSentNotifier
         ?string $callbackUrl = null,
     ): void {
         $webhookUrl = $callbackUrl ?: getenv('N8N_WEBHOOK_QUOTE_SENT_URL');
+        $this->n8nLogger?->warning('El callbackUrl es', [$callbackUrl] );
+
         if ($webhookUrl === false || $webhookUrl === '') {
-            $this->n8nLogger?->warning('N8n quote-sent webhook url is not configured');
+            $this->n8nLogger?->warning('N8n quote-sent webhook url is not configured', );
 
             return;
         }
@@ -42,6 +44,7 @@ final readonly class N8nQuoteSentNotifier
                     'productId' => $productId->toRfc4122(),
                     'price' => $price,
                     'correlationId' => $correlationId,
+
                     'occurredOn' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
                 ],
                 'timeout' => 10,

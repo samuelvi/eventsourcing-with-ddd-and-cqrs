@@ -37,14 +37,12 @@ final readonly class QuoteStatusProcessor implements ProcessorInterface
         $version = $this->nextVersionForAggregate($data->id);
 
         
-        // 1. Create Domain Event
         $event = new QuoteStatusChanged(
             quoteId: $data->id->toRfc4122(),
             newStatus: $data->status,
             occurredOn: $occurredOn
         );
 
-        // 2. Persist to Event Store
         $storedEvent = StoredEvent::commit(
             aggregateId: $data->id,
             eventType: QuoteStatusChanged::class,

@@ -21,7 +21,8 @@ final readonly class N8nQuoteSentNotifier
         Uuid $bookingId,
         Uuid $supplierId,
         Uuid $productId,
-        float $price
+        float $price,
+        string $correlationId,
     ): void {
         $webhookUrl = getenv('N8N_WEBHOOK_QUOTE_SENT_URL');
         if ($webhookUrl === false || $webhookUrl === '') {
@@ -29,8 +30,6 @@ final readonly class N8nQuoteSentNotifier
 
             return;
         }
-
-        $correlationId = Uuid::v7()->toRfc4122();
 
         try {
             $response = $this->httpClient->request('POST', $webhookUrl, [

@@ -4,6 +4,12 @@ infrastructure_controllers:
         namespace: App\Infrastructure\Http\Controller
     type: attribute
 
+integrations_n8n_controllers:
+    resource:
+        path: ../src/App/Integrations/N8n/Infrastructure/Http/Controller/
+        namespace: App\Integrations\N8n\Infrastructure\Http\Controller
+    type: attribute
+
 api_platform:
     resource: .
     type: api_platform

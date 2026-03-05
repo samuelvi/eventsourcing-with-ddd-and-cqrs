@@ -6,12 +6,12 @@ namespace App\Quotes\Infrastructure\ApiPlatform\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Integrations\N8n\Application\Service\N8nQuoteSentNotifier;
 use App\Domain\Event\QuoteStatusChanged;
 use App\Domain\Model\QuoteEntity;
 use App\Domain\Repository\QuoteWriteRepositoryInterface;
 use App\Infrastructure\EventSourcing\StoredEvent;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
+use App\Integrations\N8n\Application\Service\SupplierProcess\N8nQuoteSentNotifier;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -73,6 +73,7 @@ final readonly class QuoteStatusProcessor implements ProcessorInterface
                 productId: $data->productId,
                 price: $data->price,
                 correlationId: $correlationId,
+                callbackUrl: $data->n8nCallbackUrl,
             );
         }
 

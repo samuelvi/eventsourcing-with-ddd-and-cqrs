@@ -70,6 +70,10 @@ class QuoteEntity
     #[Groups(['quote:read'])]
     public float $price;
 
+    #[ORM\Column(type: 'string', length: 2048, nullable: true)]
+    #[Groups(['quote:read'])]
+    public ?string $n8nCallbackUrl = null;
+
     #[ORM\Column]
     #[Groups(['quote:read'])]
     public \DateTimeImmutable $createdAt;
@@ -80,7 +84,8 @@ class QuoteEntity
         Uuid $supplierId,
         Uuid $productId,
         float $price,
-        \DateTimeImmutable $createdAt
+        \DateTimeImmutable $createdAt,
+        ?string $n8nCallbackUrl = null,
     ) {
         $this->id = $id;
         $this->bookingId = $bookingId;
@@ -88,6 +93,7 @@ class QuoteEntity
         $this->productId = $productId;
         $this->price = $price;
         $this->createdAt = $createdAt;
+        $this->n8nCallbackUrl = $n8nCallbackUrl;
     }
 
     public static function hydrate(
@@ -96,8 +102,9 @@ class QuoteEntity
         Uuid $supplierId,
         Uuid $productId,
         float $price,
-        \DateTimeImmutable $createdAt
+        \DateTimeImmutable $createdAt,
+        ?string $n8nCallbackUrl = null,
     ): self {
-        return new self($id, $bookingId, $supplierId, $productId, $price, $createdAt);
+        return new self($id, $bookingId, $supplierId, $productId, $price, $createdAt, $n8nCallbackUrl);
     }
 }

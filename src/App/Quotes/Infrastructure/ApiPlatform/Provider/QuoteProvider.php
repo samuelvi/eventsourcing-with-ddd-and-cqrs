@@ -57,7 +57,8 @@ final readonly class QuoteProvider implements ProviderInterface
             Uuid::fromString(TypeAssert::string($data['supplier_id'])),
             Uuid::fromString(TypeAssert::string($data['product_id'])),
             TypeAssert::float($data['price']),
-            new \DateTimeImmutable(TypeAssert::string($data['created_at']))
+            new \DateTimeImmutable(TypeAssert::string($data['created_at'])),
+            is_string($data['n8n_callback_url'] ?? null) ? $data['n8n_callback_url'] : null,
         );
     }
 }

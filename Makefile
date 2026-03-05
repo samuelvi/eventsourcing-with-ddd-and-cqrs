@@ -14,8 +14,8 @@ ENV_FILES_TEST = $(strip $(foreach f,$(ENV_FILE_BASE) $(ENV_FILE_TEST),$(if $(wi
 .PHONY: test-up test-down test-build test-logs test-ps test-restart test-clean test-wait
 .PHONY: test-ci-up test-ci-down test-init-ci setup-api-test-ci setup-api-test-common test-e2e-ci
 .PHONY: setup-api setup-api-test load-fixtures load-fixtures-test init-front build-front
-.PHONY: reset-db reset-db-api dev-shell-api get_into_symbani_api
-.PHONY: test test-unit test-e2e test-e2e-ui test-e2e-debug test-e2e-report test-all phpstan
+.PHONY: reset-db reset-db-api dev-shell-api get_into_symbani_api shell-api
+.PHONY: test test-unit test-e2e test-e2e-ui test-e2e-debug test-e2e-report test-all phpstan run_migrations
 
 # --- Inicialización DEV (de arriba a abajo) ---
 
@@ -57,6 +57,8 @@ reset-db-api: reset-db
 
 dev-shell-api:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec symfony-api sh
+
+shell-api: dev-shell-api
 
 get_into_symbani_api: dev-shell-api
 
@@ -160,6 +162,9 @@ test-all: test-init
 
 phpstan:
 	$(DOCKER_COMPOSE_DEV) $(ENV_FILES_DEV) exec -T symfony-api vendor/bin/phpstan analyse --memory-limit=1G
+
+run_migrations:
+	php bin/console doctrine:migrations:migrate --no-interaction
 
 # --- Comandos Docker varios ---
 

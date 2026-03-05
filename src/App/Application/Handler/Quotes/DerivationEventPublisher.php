@@ -10,6 +10,7 @@ use App\Domain\Derivation\Event\QuoteCreated;
 use App\Domain\Derivation\Event\QuoteLimited;
 use App\Domain\Derivation\Event\QuoteLimitedByRules;
 use App\Domain\Derivation\Event\QuoteNotified;
+use App\Domain\Derivation\Event\StartQuoteProcess;
 use App\Infrastructure\EventSourcing\StoredEvent;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Uid\Uuid;
@@ -46,16 +47,17 @@ final readonly class DerivationEventPublisher
     {
         $aggregateId = Uuid::fromString($event->bookingId);
 
-        if ($this->alreadyPublishedByTypeAndCorrelation($aggregateId, QuoteLimitedByRules::class, $event->correlationId)) {
+        if ($this->alreadyPublishedByTypeAndCorrelation($aggregateId, QuoteFlowFinsih::class, $event->correlationId)) {
             return;
         }
 
         $this->saveEvent(
             aggregateId: $aggregateId,
-            eventType: QuoteLimitedByRules::class,
+            eventType: QuoteFlowFinsih::class,
             payload: [
                 'bookingId' => $event->bookingId,
                 'correlationId' => $event->correlationId,
+                'lastEvent' => $event->lastEvent,
             ],
             occurredOn: $event->occurredOn,
         );
@@ -95,6 +97,25 @@ final readonly class DerivationEventPublisher
                 'supplierId' => $event->supplierId,
                 'productId' => $event->productId,
                 'price' => $event->price,
+                'correlationId' => $event->correlationId,
+            ],
+            occurredOn: $event->occurredOn,
+        );
+    }
+
+    public function publishStartQuoteProcess(StartQuoteProcess $event): void
+    {
+        $aggregateId = Uuid::fromString($event->bookingId);
+
+        if ($this->alreadyPublishedByTypeAndCorrelation($aggregateId, StartQuoteProcess::class, $event->correlationId)) {
+            return;
+        }
+
+        $this->saveEvent(
+            aggregateId: $aggregateId,
+            eventType: StartQuoteProcess::class,
+            payload: [
+                'bookingId' => $event->bookingId,
                 'correlationId' => $event->correlationId,
             ],
             occurredOn: $event->occurredOn,

@@ -68,11 +68,7 @@ services:
         arguments:
             $n8nLogger: '@monolog.logger.n8n'
 
-    App\Integrations\N8n\Application\Service\SupplierProcess\SupplierResponseProcessCallbackRegistrar:
-        arguments:
-            $n8nLogger: '@monolog.logger.n8n'
-
-    App\Integrations\N8n\Application\Service\SupplierProcess\SupplierResponseProcessCallbackUrlRegistrar:
+    App\Integrations\N8n\Application\Service\SupplierProcess\QuoteStartedProcess:
         arguments:
             $n8nLogger: '@monolog.logger.n8n'
 

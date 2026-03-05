@@ -19,4 +19,15 @@ final readonly class DoctrineQuoteWriteRepository implements QuoteWriteRepositor
         $this->entityManager->persist($quote);
         $this->entityManager->flush();
     }
+
+    public function callbackUpdate(string $quoteId, string $callbackUrl): int
+    {
+        return (int) $this->entityManager->getConnection()->executeStatement(
+            'UPDATE quotes SET n8n_callback_url = :callbackUrl WHERE id = :quoteId',
+            [
+                'quoteId' => $quoteId,
+                'callbackUrl' => $callbackUrl,
+            ]
+        );
+    }
 }

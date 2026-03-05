@@ -21,8 +21,7 @@ final readonly class N8nSupplierResponseProcessController
     public function __invoke(#[MapRequestPayload] N8nSupplierResponseProcessDto $payload): Response
     {
         $updatedQuotes = $this->callbackUrlRegistrar->register(
-            bookingId: $payload->bookingId,
-            correlationId: $payload->correlationId,
+            quoteId: $payload->quoteId,
             callbackUrl: $payload->callbackUrl,
         );
 
@@ -30,6 +29,7 @@ final readonly class N8nSupplierResponseProcessController
             'status' => 'accepted',
             'bookingId' => $payload->bookingId,
             'correlationId' => $payload->correlationId,
+            'quoteId' => $payload->quoteId,
             'event' => $payload->event,
             'callbackUrl' => $payload->callbackUrl,
             'supplierResponded' => $payload->supplierResponded,

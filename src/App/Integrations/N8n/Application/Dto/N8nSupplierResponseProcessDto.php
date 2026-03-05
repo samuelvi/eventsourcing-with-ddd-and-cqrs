@@ -17,6 +17,10 @@ final class N8nSupplierResponseProcessDto
     public string $correlationId;
 
     #[Assert\NotBlank]
+    #[Assert\Uuid]
+    public string $quoteId;
+
+    #[Assert\NotBlank]
     public string $event;
 
     #[Assert\Type('bool')]

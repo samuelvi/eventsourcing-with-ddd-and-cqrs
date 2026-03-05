@@ -9,4 +9,6 @@ use App\Domain\Model\QuoteEntity;
 interface QuoteWriteRepositoryInterface
 {
     public function save(QuoteEntity $quote): void;
+
+    public function callbackUpdate(string $quoteId, string $callbackUrl): int;
 }

@@ -12,7 +12,6 @@ use App\Domain\Repository\QuoteWriteRepositoryInterface;
 use App\Infrastructure\EventSourcing\StoredEvent;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use App\Integrations\N8n\Application\Service\SupplierProcess\N8nQuoteSentNotifier;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -22,7 +21,6 @@ final readonly class QuoteStatusProcessor implements ProcessorInterface
 {
     public function __construct(
         private MongoStore $mongoStore,
-        private MessageBusInterface $eventBus,
         private QuoteWriteRepositoryInterface $writeRepository,
         private N8nQuoteSentNotifier $quoteSentNotifier,
     ) {}
@@ -80,7 +78,6 @@ final readonly class QuoteStatusProcessor implements ProcessorInterface
         }
 
         // 5. Dispatch for other potential listeners
-        $this->eventBus->dispatch($event);
 
         return $data;
     }

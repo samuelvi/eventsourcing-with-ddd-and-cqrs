@@ -18,6 +18,15 @@ final readonly class DerivationRunTracker
         $this->derivationRunStore->open(DerivationRun::open($context));
     }
 
+    public function updateStatus(string $derivationRunId, string $status): void
+    {
+        $this->derivationRunStore->updateStatus(
+            DerivationRunId::fromString($derivationRunId)->toString(),
+            $status,
+            new \DateTimeImmutable(),
+        );
+    }
+
     /**
      * @return array<int, DerivationRun>
      */

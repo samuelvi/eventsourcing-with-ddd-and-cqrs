@@ -24,6 +24,17 @@ final readonly class DerivationRunStore
         );
     }
 
+    public function updateStatus(string $derivationRunId, string $status, \DateTimeImmutable $updatedAt): void
+    {
+        $this->collection()->updateOne(
+            ['derivationRunId' => $derivationRunId],
+            ['$set' => [
+                'status' => $status,
+                'updatedAt' => $updatedAt->format(\DateTimeInterface::ATOM),
+            ]],
+        );
+    }
+
     /**
      * @return array<int, DerivationRun>
      */

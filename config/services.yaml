@@ -72,6 +72,16 @@ services:
         arguments:
             $n8nLogger: '@monolog.logger.n8n'
 
+    App\Application\Quotes\Derivation\Facts\BookingDerivationFactsProviderInterface: '@App\Application\Quotes\Derivation\Facts\BookingDerivationFactsProvider'
+    App\Application\Quotes\Derivation\Candidate\QuoteCandidateFinderInterface: '@App\Application\Quotes\Derivation\Candidate\QuoteCandidateFinder'
+    App\Application\Quotes\Derivation\Policy\QuoteEligibilityPolicyInterface: '@App\Application\Quotes\Derivation\Policy\QuoteEligibilityPolicy'
+    App\Application\Quotes\Derivation\Ranking\QuoteRankingStrategyInterface: '@App\Application\Quotes\Derivation\Ranking\HighestPriceFirstQuoteRankingStrategy'
+    App\Application\Quotes\Derivation\Selection\QuoteSelectionLimiterInterface: '@App\Application\Quotes\Derivation\Selection\QuoteSelectionLimiter'
+    App\Application\Quotes\Derivation\Persistence\QuoteBatchCreatorInterface: '@App\Application\Quotes\Derivation\Persistence\QuoteBatchCreator'
+    App\Application\Quotes\Derivation\Process\SupplierProcessStarterInterface: '@App\Application\Quotes\Derivation\Process\SupplierProcessStarter'
+    App\Application\Quotes\Derivation\Run\DerivationRunRecorderInterface: '@App\Application\Quotes\Derivation\Run\DerivationRunRecorder'
+    App\Application\Quotes\Derivation\Run\DerivationEventPublisherInterface: '@App\Application\Quotes\Derivation\Run\MongoDerivationEventPublisher'
+
     # --- Custom App Logger ---
     App\Application\Logger\AppLogger:
         arguments:

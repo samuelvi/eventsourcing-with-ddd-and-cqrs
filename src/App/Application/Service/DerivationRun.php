@@ -9,6 +9,10 @@ use App\Domain\Shared\TypeAssert;
 final readonly class DerivationRun
 {
     public const STATUS_OPENED = 'opened';
+    public const STATUS_PROCESSING = 'processing';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_COMPLETED_NO_BOOKING_FACTS = 'completed_no_booking_facts';
+    public const STATUS_COMPLETED_NO_CANDIDATES = 'completed_no_candidates';
 
     private function __construct(
         public string $derivationRunId,
@@ -30,6 +34,18 @@ final readonly class DerivationRun
             status: self::STATUS_OPENED,
             openedAt: $timestamp,
             updatedAt: $timestamp,
+        );
+    }
+
+    public function withStatus(string $status, ?\DateTimeImmutable $updatedAt = null): self
+    {
+        return new self(
+            derivationRunId: $this->derivationRunId,
+            bookingId: $this->bookingId,
+            correlationId: $this->correlationId,
+            status: $status,
+            openedAt: $this->openedAt,
+            updatedAt: $updatedAt ?? new \DateTimeImmutable(),
         );
     }
 

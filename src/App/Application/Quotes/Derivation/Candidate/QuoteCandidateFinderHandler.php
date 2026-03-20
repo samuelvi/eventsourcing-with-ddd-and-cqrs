@@ -8,7 +8,7 @@ use App\Domain\Derivation\Candidate\QuoteCandidate;
 use App\Domain\Derivation\Facts\BookingFacts;
 use App\Domain\Repository\ProductReadRepositoryInterface;
 
-final readonly class QuoteCandidateFinder implements QuoteCandidateFinderInterface
+final readonly class QuoteCandidateFinderHandler
 {
     public function __construct(
         private ProductReadRepositoryInterface $productReadRepository,

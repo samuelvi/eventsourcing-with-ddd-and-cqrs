@@ -6,7 +6,7 @@ namespace App\Application\Quotes\Derivation\Ranking;
 
 use App\Domain\Derivation\Candidate\QuoteCandidate;
 
-final readonly class HighestPriceFirstQuoteRankingStrategy implements QuoteRankingStrategyInterface
+final readonly class QuoteRankingHandler
 {
     /**
      * @param array<int, QuoteCandidate> $candidates

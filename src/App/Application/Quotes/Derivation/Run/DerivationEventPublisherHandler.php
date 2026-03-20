@@ -16,7 +16,7 @@ use App\Infrastructure\EventSourcing\StoredEvent;
 use App\Infrastructure\Persistence\Mongo\MongoStore;
 use Symfony\Component\Uid\Uuid;
 
-final readonly class MongoDerivationEventPublisher implements DerivationEventPublisherInterface
+final readonly class DerivationEventPublisherHandler
 {
     public function __construct(
         private MongoStore $mongoStore,

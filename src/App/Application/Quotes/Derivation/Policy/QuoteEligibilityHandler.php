@@ -8,7 +8,7 @@ use App\Domain\Derivation\Candidate\QuoteCandidate;
 use App\Domain\Derivation\DerivationRuleEngine;
 use App\Domain\Derivation\Facts\BookingFacts;
 
-final readonly class QuoteEligibilityPolicy implements QuoteEligibilityPolicyInterface
+final readonly class QuoteEligibilityHandler
 {
     public function __construct(
         private DerivationRuleEngine $derivationRuleEngine,

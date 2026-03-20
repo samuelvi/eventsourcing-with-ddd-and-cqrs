@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Quotes\Derivation\Persistence;
 
-use App\Application\Quotes\Derivation\Run\DerivationEventPublisherInterface;
+use App\Application\Quotes\Derivation\Run\DerivationEventPublisherHandler;
 use App\Application\Service\DerivationRunContext;
 use App\Domain\Derivation\Candidate\QuoteCandidate;
 use App\Domain\Derivation\Event\QuoteCreated;
@@ -13,11 +13,11 @@ use App\Domain\Repository\QuoteWriteRepositoryInterface;
 use DateTimeImmutable;
 use Symfony\Component\Uid\Uuid;
 
-final readonly class QuoteBatchCreator implements QuoteBatchCreatorInterface
+final readonly class QuoteBatchCreatorHandler
 {
     public function __construct(
         private QuoteWriteRepositoryInterface $quoteWriteRepository,
-        private DerivationEventPublisherInterface $eventPublisher,
+        private DerivationEventPublisherHandler $eventPublisher,
     ) {}
 
     /**

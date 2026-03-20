@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\N8n\Application\Service\SupplierProcess;
 
-use App\Application\Quotes\Derivation\Run\DerivationEventPublisherInterface;
+use App\Application\Quotes\Derivation\Run\DerivationEventPublisherHandler;
 use App\Application\Service\DerivationRunContext;
 use App\Domain\Derivation\Event\StartQuoteProcess;
 use App\Domain\Repository\QuoteWriteRepositoryInterface;
@@ -17,7 +17,7 @@ final readonly class QuoteStartedProcess
 {
     public function __construct(
         private HttpClientInterface           $httpClient,
-        private DerivationEventPublisherInterface $eventPublisher,
+        private DerivationEventPublisherHandler $eventPublisher,
         private QuoteWriteRepositoryInterface $quoteWriteRepository,
         private ?LoggerInterface              $n8nLogger = null,
     )

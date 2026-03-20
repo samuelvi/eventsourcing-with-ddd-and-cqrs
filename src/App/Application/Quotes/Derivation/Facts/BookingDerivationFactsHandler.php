@@ -9,7 +9,7 @@ use App\Domain\Repository\BookingReadRepositoryInterface;
 use App\Domain\Shared\TypeAssert;
 use App\Domain\ValueObject\NonNegativeAmount;
 
-final readonly class BookingDerivationFactsProvider implements BookingDerivationFactsProviderInterface
+final readonly class BookingDerivationFactsHandler
 {
     public function __construct(
         private BookingReadRepositoryInterface $bookingReadRepository,

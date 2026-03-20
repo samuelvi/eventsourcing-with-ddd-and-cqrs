@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\N8n\Infrastructure\Http\Controller;
 
 use App\Application\Command\Quotes\GenerateQuotesCommand;
-use App\Application\Quotes\Derivation\Run\DerivationEventPublisherInterface;
+use App\Application\Quotes\Derivation\Run\DerivationEventPublisherHandler;
 use App\Application\Service\DerivationRunContextFactory;
 use App\Application\Service\DerivationRunTracker;
 use App\Domain\Derivation\Event\QuoteRestartProcess;
@@ -22,7 +22,7 @@ final readonly class N8nBookingReadyController
     public function __construct(
         private DerivationRunContextFactory $derivationRunContextFactory,
         private DerivationRunTracker $derivationRunTracker,
-        private DerivationEventPublisherInterface $derivationEventPublisher,
+        private DerivationEventPublisherHandler $derivationEventPublisherHandler,
     ) {}
 
     #[Route('/api/integrations/n8n/booking-ready', name: 'api_n8n_booking_ready', methods: ['POST'])]
@@ -42,7 +42,7 @@ final readonly class N8nBookingReadyController
         $this->derivationRunTracker->open($derivationContext);
 
         if ($payload->event === N8nBookingReadyDto::EVENT_QUOTE_RESTART_PROCESS) {
-            $this->derivationEventPublisher->publishQuoteRestartProcess(new QuoteRestartProcess(
+            $this->derivationEventPublisherHandler->publishQuoteRestartProcess(new QuoteRestartProcess(
                 derivationRunId: $derivationContext->derivationRunId,
                 correlationId: $derivationContext->correlationId,
                 bookingId: $derivationContext->bookingId,

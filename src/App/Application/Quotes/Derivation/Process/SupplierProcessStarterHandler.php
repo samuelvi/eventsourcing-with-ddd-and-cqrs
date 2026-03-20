@@ -7,7 +7,7 @@ namespace App\Application\Quotes\Derivation\Process;
 use App\Application\Service\DerivationRunContext;
 use App\Integrations\N8n\Application\Service\SupplierProcess\QuoteStartedProcess;
 
-final readonly class SupplierProcessStarter implements SupplierProcessStarterInterface
+final readonly class SupplierProcessStarterHandler
 {
     public function __construct(
         private QuoteStartedProcess $quoteStartedProcess,

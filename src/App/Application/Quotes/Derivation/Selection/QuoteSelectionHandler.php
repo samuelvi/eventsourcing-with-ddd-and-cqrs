@@ -6,7 +6,7 @@ namespace App\Application\Quotes\Derivation\Selection;
 
 use App\Domain\Derivation\Candidate\QuoteCandidate;
 
-final readonly class QuoteSelectionLimiter implements QuoteSelectionLimiterInterface
+final readonly class QuoteSelectionHandler
 {
     private const DEFAULT_LIMIT = 4;
 

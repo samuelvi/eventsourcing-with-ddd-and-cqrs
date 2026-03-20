@@ -12,11 +12,11 @@ use App\Domain\Derivation\Event\QuoteLimited;
 use App\Domain\Derivation\Event\QuoteLimitedByRules;
 use DateTimeImmutable;
 
-final readonly class DerivationRunRecorder implements DerivationRunRecorderInterface
+final readonly class DerivationRunRecorderHandler
 {
     public function __construct(
         private DerivationRunTracker $derivationRunTracker,
-        private DerivationEventPublisherInterface $eventPublisher,
+        private DerivationEventPublisherHandler $eventPublisher,
     ) {}
 
     public function recordStarted(DerivationRunContext $context): void

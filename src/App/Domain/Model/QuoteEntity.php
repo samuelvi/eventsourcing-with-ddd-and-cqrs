@@ -59,6 +59,7 @@ class QuoteEntity
     public const STATUS_PENDING = 'pending';
     public const STATUS_QUOTE_SENT = 'quote_sent';
     public const STATUS_QUOTED = self::STATUS_QUOTE_SENT;
+    public const STATUS_NOT_RESPONDED = 'not_responded';
     public const STATUS_DISCARDED = 'discarded';
     public const STATUS_EXPIRED = 'expired';
 
@@ -85,6 +86,7 @@ class QuoteEntity
         Uuid $productId,
         float $price,
         \DateTimeImmutable $createdAt,
+        string $status = self::STATUS_PENDING,
         ?string $n8nCallbackUrl = null,
     ) {
         $this->id = $id;
@@ -93,6 +95,7 @@ class QuoteEntity
         $this->productId = $productId;
         $this->price = $price;
         $this->createdAt = $createdAt;
+        $this->status = $status;
         $this->n8nCallbackUrl = $n8nCallbackUrl;
     }
 
@@ -103,8 +106,9 @@ class QuoteEntity
         Uuid $productId,
         float $price,
         \DateTimeImmutable $createdAt,
+        string $status = self::STATUS_PENDING,
         ?string $n8nCallbackUrl = null,
     ): self {
-        return new self($id, $bookingId, $supplierId, $productId, $price, $createdAt, $n8nCallbackUrl);
+        return new self($id, $bookingId, $supplierId, $productId, $price, $createdAt, $status, $n8nCallbackUrl);
     }
 }

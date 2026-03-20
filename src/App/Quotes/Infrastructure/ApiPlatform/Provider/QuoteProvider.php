@@ -52,13 +52,14 @@ final readonly class QuoteProvider implements ProviderInterface
     private function hydrate(array $data): QuoteEntity
     {
         return QuoteEntity::hydrate(
-            Uuid::fromString(TypeAssert::string($data['id'])),
-            Uuid::fromString(TypeAssert::string($data['booking_id'])),
-            Uuid::fromString(TypeAssert::string($data['supplier_id'])),
-            Uuid::fromString(TypeAssert::string($data['product_id'])),
-            TypeAssert::float($data['price']),
-            new \DateTimeImmutable(TypeAssert::string($data['created_at'])),
-            is_string($data['n8n_callback_url'] ?? null) ? $data['n8n_callback_url'] : null,
+            id: Uuid::fromString(TypeAssert::string($data['id'])),
+            bookingId: Uuid::fromString(TypeAssert::string($data['booking_id'])),
+            supplierId: Uuid::fromString(TypeAssert::string($data['supplier_id'])),
+            productId: Uuid::fromString(TypeAssert::string($data['product_id'])),
+            price: TypeAssert::float($data['price']),
+            createdAt: new \DateTimeImmutable(TypeAssert::string($data['created_at'])),
+            status: TypeAssert::string($data['status'] ?? QuoteEntity::STATUS_PENDING),
+            n8nCallbackUrl: is_string($data['n8n_callback_url'] ?? null) ? $data['n8n_callback_url'] : null,
         );
     }
 }

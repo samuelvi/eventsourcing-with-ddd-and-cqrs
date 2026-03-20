@@ -9,6 +9,7 @@ use App\Domain\Derivation\Event\QuoteFlowFinsih;
 use App\Domain\Derivation\Event\QuoteLimited;
 use App\Domain\Derivation\Event\QuoteLimitedByRules;
 use App\Domain\Derivation\Event\QuoteNotified;
+use App\Domain\Derivation\Event\QuoteRestartProcess;
 use App\Domain\Derivation\Event\StartQuoteProcess;
 
 interface DerivationEventPublisherInterface
@@ -22,6 +23,8 @@ interface DerivationEventPublisherInterface
     public function publishCreated(QuoteCreated $event): void;
 
     public function publishStartQuoteProcess(StartQuoteProcess $event): void;
+
+    public function publishQuoteRestartProcess(QuoteRestartProcess $event): void;
 
     public function publishNotified(QuoteNotified $event): void;
 }

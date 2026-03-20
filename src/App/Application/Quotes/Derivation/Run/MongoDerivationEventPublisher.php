@@ -9,6 +9,7 @@ use App\Domain\Derivation\Event\QuoteFlowFinsih;
 use App\Domain\Derivation\Event\QuoteLimited;
 use App\Domain\Derivation\Event\QuoteLimitedByRules;
 use App\Domain\Derivation\Event\QuoteNotified;
+use App\Domain\Derivation\Event\QuoteRestartProcess;
 use App\Domain\Derivation\Event\StartQuoteProcess;
 use App\Domain\Exception\ConcurrencyException;
 use App\Infrastructure\EventSourcing\StoredEvent;
@@ -122,6 +123,23 @@ final readonly class MongoDerivationEventPublisher implements DerivationEventPub
                 'bookingId' => $event->bookingId,
                 'derivationRunId' => $event->derivationRunId,
                 'correlationId' => $event->correlationId,
+            ],
+            occurredOn: $event->occurredOn,
+        );
+    }
+
+    public function publishQuoteRestartProcess(QuoteRestartProcess $event): void
+    {
+        $aggregateId = Uuid::fromString($event->bookingId);
+
+        $this->saveEvent(
+            aggregateId: $aggregateId,
+            eventType: QuoteRestartProcess::class,
+            payload: [
+                'bookingId' => $event->bookingId,
+                'derivationRunId' => $event->derivationRunId,
+                'correlationId' => $event->correlationId,
+                'excludedProductIds' => $event->excludedProductIds,
             ],
             occurredOn: $event->occurredOn,
         );

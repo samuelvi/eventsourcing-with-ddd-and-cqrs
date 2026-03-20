@@ -20,20 +20,28 @@ final readonly class QuoteCandidateSelectionCriteria
     public array $productIds;
 
     /**
+     * @var array<int, string>
+     */
+    public array $excludedProductIds;
+
+    /**
      * @param array<int, string> $supplierIds
      * @param array<int, string> $productIds
+     * @param array<int, string> $excludedProductIds
      */
     public function __construct(
         array $supplierIds = [],
         array $productIds = [],
+        array $excludedProductIds = [],
     ) {
         $this->supplierIds = self::normalizeIds($supplierIds);
         $this->productIds = self::normalizeIds($productIds);
+        $this->excludedProductIds = self::normalizeIds($excludedProductIds);
     }
 
     public function hasFilters(): bool
     {
-        return $this->supplierIds !== [] || $this->productIds !== [];
+        return $this->supplierIds !== [] || $this->productIds !== [] || $this->excludedProductIds !== [];
     }
 
     public function allows(QuoteCandidate $candidate): bool
@@ -43,6 +51,10 @@ final readonly class QuoteCandidateSelectionCriteria
         }
 
         if ($this->productIds !== [] && !in_array($candidate->productId, $this->productIds, true)) {
+            return false;
+        }
+
+        if (in_array($candidate->productId, $this->excludedProductIds, true)) {
             return false;
         }
 

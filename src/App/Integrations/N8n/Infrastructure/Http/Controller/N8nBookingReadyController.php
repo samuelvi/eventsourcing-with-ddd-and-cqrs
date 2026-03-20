@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Integrations\N8n\Infrastructure\Http\Controller;
 
 use App\Application\Command\Quotes\GenerateQuotesCommand;
+use App\Application\Quotes\Derivation\Run\DerivationEventPublisherInterface;
 use App\Application\Service\DerivationRunContextFactory;
 use App\Application\Service\DerivationRunTracker;
+use App\Domain\Derivation\Event\QuoteRestartProcess;
 use App\Integrations\N8n\Application\Dto\N8nBookingReadyDto;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,18 +22,33 @@ final readonly class N8nBookingReadyController
     public function __construct(
         private DerivationRunContextFactory $derivationRunContextFactory,
         private DerivationRunTracker $derivationRunTracker,
+        private DerivationEventPublisherInterface $derivationEventPublisher,
     ) {}
 
     #[Route('/api/integrations/n8n/booking-ready', name: 'api_n8n_booking_ready', methods: ['POST'])]
     public function __invoke(#[MapRequestPayload] N8nBookingReadyDto $payload, MessageBusInterface $messageBus,
     ): Response
     {
-        $derivationContext = $this->derivationRunContextFactory->create(
-            bookingId: $payload->bookingId,
-            derivationRunId: $payload->derivationRunId,
-            correlationId: $payload->correlationId,
-        );
+        $derivationContext = $payload->event === N8nBookingReadyDto::EVENT_QUOTE_RESTART_PROCESS
+            ? $this->derivationRunContextFactory->create(
+                bookingId: $payload->bookingId,
+                correlationId: $payload->correlationId,
+            )
+            : $this->derivationRunContextFactory->create(
+                bookingId: $payload->bookingId,
+                derivationRunId: $payload->derivationRunId,
+                correlationId: $payload->correlationId,
+            );
         $this->derivationRunTracker->open($derivationContext);
+
+        if ($payload->event === N8nBookingReadyDto::EVENT_QUOTE_RESTART_PROCESS) {
+            $this->derivationEventPublisher->publishQuoteRestartProcess(new QuoteRestartProcess(
+                derivationRunId: $derivationContext->derivationRunId,
+                correlationId: $derivationContext->correlationId,
+                bookingId: $derivationContext->bookingId,
+                excludedProductIds: $payload->excludedProductIds,
+            ));
+        }
 
         $messageBus->dispatch(new GenerateQuotesCommand(
             bookingId: $derivationContext->bookingId,
@@ -39,6 +56,7 @@ final readonly class N8nBookingReadyController
             correlationId: $derivationContext->correlationId,
             supplierIds: $payload->supplierIds,
             productIds: $payload->productIds,
+            excludedProductIds: $payload->excludedProductIds,
         ), [new TransportNamesStamp(['derivations_events'])]);
 
         return new JsonResponse([
@@ -49,6 +67,7 @@ final readonly class N8nBookingReadyController
             'correlationId' => $derivationContext->correlationId,
             'supplierIds' => $payload->supplierIds,
             'productIds' => $payload->productIds,
+            'excludedProductIds' => $payload->excludedProductIds,
         ], Response::HTTP_ACCEPTED);
     }
 }

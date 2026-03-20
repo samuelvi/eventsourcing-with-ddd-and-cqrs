@@ -14,6 +14,7 @@ final readonly class GenerateQuotesCommand
     /**
      * @param array<int, string> $supplierIds
      * @param array<int, string> $productIds
+     * @param array<int, string> $excludedProductIds
      */
     public function __construct(
         public string $bookingId,
@@ -21,6 +22,7 @@ final readonly class GenerateQuotesCommand
         public string $correlationId,
         public array $supplierIds = [],
         public array $productIds = [],
+        public array $excludedProductIds = [],
     ) {}
 
     public function bookingIdVO(): UuidString
@@ -47,6 +49,7 @@ final readonly class GenerateQuotesCommand
         return new QuoteCandidateSelectionCriteria(
             supplierIds: $this->supplierIds,
             productIds: $this->productIds,
+            excludedProductIds: $this->excludedProductIds,
         );
     }
 }

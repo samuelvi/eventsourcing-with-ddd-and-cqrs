@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Quotes\Derivation\Run;
 
 use App\Domain\Derivation\Event\QuoteCreated;
+use App\Domain\Derivation\Event\QuoteCandidatesNotFound;
 use App\Domain\Derivation\Event\QuoteFlowFinsih;
 use App\Domain\Derivation\Event\QuoteLimited;
 use App\Domain\Derivation\Event\QuoteLimitedByRules;
@@ -102,6 +103,26 @@ final readonly class DerivationEventPublisherHandler
                 'supplierId' => $event->supplierId,
                 'productId' => $event->productId,
                 'price' => $event->price,
+                'correlationId' => $event->correlationId,
+            ],
+            occurredOn: $event->occurredOn,
+        );
+    }
+
+    public function publishCandidatesNotFound(QuoteCandidatesNotFound $event): void
+    {
+        $aggregateId = Uuid::fromString($event->bookingId);
+
+        if ($this->alreadyPublishedByTypeAndCorrelation($aggregateId, QuoteCandidatesNotFound::class, $event->correlationId)) {
+            return;
+        }
+
+        $this->saveEvent(
+            aggregateId: $aggregateId,
+            eventType: QuoteCandidatesNotFound::class,
+            payload: [
+                'bookingId' => $event->bookingId,
+                'derivationRunId' => $event->derivationRunId,
                 'correlationId' => $event->correlationId,
             ],
             occurredOn: $event->occurredOn,

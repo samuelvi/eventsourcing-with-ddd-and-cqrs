@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Application\Quotes\Derivation\Run;
 
+use App\Application\Logger\AppLogger;
 use App\Application\Service\DerivationRun;
 use App\Application\Service\DerivationRunContext;
 use App\Application\Service\DerivationRunTracker;
+use App\Domain\Derivation\Event\QuoteCandidatesNotFound;
 use App\Domain\Derivation\Event\QuoteFlowFinsih;
 use App\Domain\Derivation\Event\QuoteLimited;
 use App\Domain\Derivation\Event\QuoteLimitedByRules;
@@ -17,6 +19,7 @@ final readonly class DerivationRunRecorderHandler
     public function __construct(
         private DerivationRunTracker $derivationRunTracker,
         private DerivationEventPublisherHandler $eventPublisher,
+        private AppLogger $appLogger,
     ) {}
 
     public function recordStarted(DerivationRunContext $context): void
@@ -40,6 +43,13 @@ final readonly class DerivationRunRecorderHandler
 
     public function recordNoCandidates(DerivationRunContext $context): void
     {
+        $this->eventPublisher->publishCandidatesNotFound(new QuoteCandidatesNotFound(
+            bookingId: $context->bookingId,
+            derivationRunId: $context->derivationRunId,
+            correlationId: $context->correlationId,
+            occurredOn: new DateTimeImmutable(),
+        ));
+
         $this->eventPublisher->publishFlowFinished(new QuoteFlowFinsih(
             bookingId: $context->bookingId,
             derivationRunId: $context->derivationRunId,
@@ -47,6 +57,12 @@ final readonly class DerivationRunRecorderHandler
             lastEvent: 'candidates null',
             occurredOn: new DateTimeImmutable(),
         ));
+
+        $this->appLogger->error('No quote candidates found for derivation run', [
+            'bookingId' => $context->bookingId,
+            'derivationRunId' => $context->derivationRunId,
+            'correlationId' => $context->correlationId,
+        ]);
 
         $this->derivationRunTracker->updateStatus($context->derivationRunId, DerivationRun::STATUS_COMPLETED_NO_CANDIDATES);
     }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Handler\Quotes;
 
 use App\Application\Command\Quotes\GenerateQuotesCommand;
+use App\Application\Service\DerivationRunContext;
+use App\Application\Service\DerivationRunTracker;
 use App\Domain\Derivation\Candidate\QuoteCandidate;
 use App\Domain\Derivation\Event\QuoteCreated;
 use App\Domain\Derivation\Event\QuoteFlowFinsih;
@@ -32,6 +34,7 @@ final readonly class GenerateQuotesHandler
         private QuoteWriteRepositoryInterface  $quoteWriteRepository,
         private DerivationEventPublisher       $eventPublisher,
         private QuoteStartedProcess            $quoteStartedProcess,
+        private DerivationRunTracker           $derivationRunTracker,
     )
     {
     }
@@ -39,14 +42,18 @@ final readonly class GenerateQuotesHandler
 
     public function __invoke(GenerateQuotesCommand $command): void
     {
-        $correlationId = $command->correlationId ?? Uuid::v7()->toRfc4122();
+        $context = $command->context();
+        $this->derivationRunTracker->open($context);
 
-        $bookingId = $command->bookingIdVO()->toString();
+        $bookingId = $context->bookingId;
+        $derivationRunId = $context->derivationRunId;
+        $correlationId = $context->correlationId;
         $bookingFacts = $this->contextBuilder->buildForBooking($bookingId);
 
         if ($bookingFacts === null) {
             $this->eventPublisher->publishFlowFinished(new QuoteFlowFinsih(
                 bookingId: $bookingId,
+                derivationRunId: $derivationRunId,
                 correlationId: $correlationId,
                 lastEvent: 'booking facts null',
                 occurredOn: new DateTimeImmutable(),
@@ -59,6 +66,7 @@ final readonly class GenerateQuotesHandler
         if ($candidates === []) {
             $this->eventPublisher->publishFlowFinished(new QuoteFlowFinsih(
                 bookingId: $bookingId,
+                derivationRunId: $derivationRunId,
                 correlationId: $correlationId,
                 lastEvent: 'candidates null',
                 occurredOn: new DateTimeImmutable(),
@@ -67,6 +75,7 @@ final readonly class GenerateQuotesHandler
         }
 
         $this->eventPublisher->publishLimited(new QuoteLimited(
+            derivationRunId: $derivationRunId,
             correlationId: $correlationId,
             bookingId: $bookingId,
             limit: self::QUOTE_LIMIT,
@@ -79,6 +88,7 @@ final readonly class GenerateQuotesHandler
         $rankedCandidates = $this->rankAndLimitCandidates($eligibleCandidates);
 
         $this->eventPublisher->publishLimitedByRules(new QuoteLimitedByRules(
+            derivationRunId: $derivationRunId,
             correlationId: $correlationId,
             bookingId: $bookingId,
             limit: self::QUOTE_LIMIT,
@@ -89,9 +99,9 @@ final readonly class GenerateQuotesHandler
 
 
         //Almaceno las quotes
-        $quoteIds = $this->saveQuotes($bookingId, $rankedCandidates, $correlationId);
+        $quoteIds = $this->saveQuotes($context, $rankedCandidates);
 
-        $this->quoteStartedProcess->notify($bookingId, $correlationId, $quoteIds);
+        $this->quoteStartedProcess->notify($context, $quoteIds);
     }
 
     /**
@@ -140,7 +150,7 @@ final readonly class GenerateQuotesHandler
      * @param array<int, QuoteCandidate> $candidates
      * @return array<int, string>
      */
-    private function saveQuotes(string $bookingId, array $candidates, string $correlationId): array
+    private function saveQuotes(DerivationRunContext $context, array $candidates): array
     {
         $createdAt = new DateTimeImmutable();
         $seenPairs = [];
@@ -156,7 +166,7 @@ final readonly class GenerateQuotesHandler
 
             $quote = QuoteEntity::hydrate(
                 id: Uuid::v7(),
-                bookingId: Uuid::fromString($bookingId),
+                bookingId: Uuid::fromString($context->bookingId),
                 supplierId: Uuid::fromString($candidate->supplierId),
                 productId: Uuid::fromString($candidate->productId),
                 price: $candidate->price,
@@ -168,11 +178,12 @@ final readonly class GenerateQuotesHandler
 
             $this->eventPublisher->publishCreated(new QuoteCreated(
                 quoteId: $quote->id->toRfc4122(),
-                bookingId: $bookingId,
+                bookingId: $context->bookingId,
+                derivationRunId: $context->derivationRunId,
                 supplierId: $candidate->supplierId,
                 productId: $candidate->productId,
                 price: $candidate->price,
-                correlationId: $correlationId,
+                correlationId: $context->correlationId,
                 occurredOn: $createdAt,
             ));
         }

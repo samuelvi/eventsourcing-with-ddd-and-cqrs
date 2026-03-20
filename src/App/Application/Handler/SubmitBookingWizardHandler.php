@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Handler;
 
 use App\Application\Command\SubmitBookingWizardCommand;
+use App\Application\Service\DerivationRunContextFactory;
+use App\Application\Service\DerivationRunTracker;
 use App\Integrations\N8n\Application\Service\N8nNotifier;
 use App\Domain\Exception\ConcurrencyException;
 use App\Domain\Model\Booking;
@@ -24,7 +26,9 @@ final readonly class SubmitBookingWizardHandler
         private BookingEventStoreRepositoryInterface $bookingRepository,
         private UserEventStoreRepositoryInterface $userRepository,
         private MessageBusInterface $eventBus,
-        private N8nNotifier $n8nNotifier
+        private N8nNotifier $n8nNotifier,
+        private DerivationRunContextFactory $derivationRunContextFactory,
+        private DerivationRunTracker $derivationRunTracker,
     ) {}
 
     public function __invoke(SubmitBookingWizardCommand $command): void
@@ -81,7 +85,10 @@ final readonly class SubmitBookingWizardHandler
         foreach ($events as $event) {
             $this->eventBus->dispatch($event);
         }
-        $this->n8nNotifier->notifyBookingReady($bookingId);
+
+        $derivationContext = $this->derivationRunContextFactory->create($bookingId->toRfc4122());
+        $this->derivationRunTracker->open($derivationContext);
+        $this->n8nNotifier->notifyBookingReady($derivationContext);
 
     }
 }

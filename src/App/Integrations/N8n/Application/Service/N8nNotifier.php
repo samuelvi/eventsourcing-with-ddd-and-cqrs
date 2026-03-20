@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Integrations\N8n\Application\Service;
 
+use App\Application\Service\DerivationRunContext;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 
@@ -19,7 +19,7 @@ final readonly class N8nNotifier
 
     }
 
-    public function notifyBookingReady(Uuid $bookingId): void
+    public function notifyBookingReady(DerivationRunContext $context): void
     {
         $webhookUrl = getenv('N8N_WEBHOOK_BOOKING_URL');
         if ($webhookUrl === false || $webhookUrl === '') {
@@ -28,30 +28,31 @@ final readonly class N8nNotifier
             return;
         }
 
-        $correlationId = Uuid::v7()->toRfc4122();
-
         try {
 
             $response = $this->httpClient->request('POST', $webhookUrl, [
                 'json' => [
-                    'bookingId' => $bookingId,
+                    'bookingId' => $context->bookingId,
+                    'derivationRunId' => $context->derivationRunId,
                     'event' => 'booking_ready_for_derivation',
-                    'correlationId' => $correlationId,
+                    'correlationId' => $context->correlationId,
                     'occurredOn' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
                 ],
                 'timeout' => 10,
             ]);
 
             $this->n8nLogger?->info('N8n notification sent', [
-                'bookingId' => $bookingId,
-                'correlationId' => $correlationId,
+                'bookingId' => $context->bookingId,
+                'derivationRunId' => $context->derivationRunId,
+                'correlationId' => $context->correlationId,
                 'status' => $response->getStatusCode(),
             ]);
 
         } catch (Throwable $e) {
             $this->n8nLogger?->error('N8n notification failed', [
-                'bookingId' => $bookingId,
-                'correlationId' => $correlationId,
+                'bookingId' => $context->bookingId,
+                'derivationRunId' => $context->derivationRunId,
+                'correlationId' => $context->correlationId,
                 'error' => $e->getMessage(),
             ]);
         }

@@ -17,5 +17,8 @@ final class N8nBookingReadyDto
     public string $event;
 
     #[Assert\Uuid]
+    public ?string $derivationRunId = null;
+
+    #[Assert\Uuid]
     public ?string $correlationId = null;
 }

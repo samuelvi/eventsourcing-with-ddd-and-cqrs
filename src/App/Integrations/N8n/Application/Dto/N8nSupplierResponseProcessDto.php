@@ -12,9 +12,11 @@ final class N8nSupplierResponseProcessDto
     #[Assert\Uuid]
     public string $bookingId;
 
-    #[Assert\NotBlank]
     #[Assert\Uuid]
-    public string $correlationId;
+    public ?string $derivationRunId = null;
+
+    #[Assert\Uuid]
+    public ?string $correlationId = null;
 
     #[Assert\NotBlank]
     #[Assert\Uuid]

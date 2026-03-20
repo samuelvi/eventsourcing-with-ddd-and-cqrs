@@ -9,6 +9,7 @@ final readonly class QuoteNotified
     public function __construct(
         public string $quoteId,
         public string $bookingId,
+        public string $derivationRunId,
         public string $supplierId,
         public string $notificationMethod,
         public ?string $correlationId = null,

@@ -34,6 +34,7 @@ final readonly class DerivationEventPublisher
             eventType: QuoteLimited::class,
             payload: [
                 'bookingId' => $event->bookingId,
+                'derivationRunId' => $event->derivationRunId,
                 'limit' => $event->limit,
                 'totalCandidates' => $event->totalCandidates,
                 'selected' => $event->selected,
@@ -56,6 +57,7 @@ final readonly class DerivationEventPublisher
             eventType: QuoteFlowFinsih::class,
             payload: [
                 'bookingId' => $event->bookingId,
+                'derivationRunId' => $event->derivationRunId,
                 'correlationId' => $event->correlationId,
                 'lastEvent' => $event->lastEvent,
             ],
@@ -76,6 +78,7 @@ final readonly class DerivationEventPublisher
             eventType: QuoteLimitedByRules::class,
             payload: [
                 'bookingId' => $event->bookingId,
+                'derivationRunId' => $event->derivationRunId,
                 'limit' => $event->limit,
                 'totalAfterRules' => $event->totalAfterRules,
                 'totalCandidates' => $event->totalCandidates,
@@ -94,6 +97,7 @@ final readonly class DerivationEventPublisher
             payload: [
                 'quoteId' => $event->quoteId,
                 'bookingId' => $event->bookingId,
+                'derivationRunId' => $event->derivationRunId,
                 'supplierId' => $event->supplierId,
                 'productId' => $event->productId,
                 'price' => $event->price,
@@ -116,6 +120,7 @@ final readonly class DerivationEventPublisher
             eventType: StartQuoteProcess::class,
             payload: [
                 'bookingId' => $event->bookingId,
+                'derivationRunId' => $event->derivationRunId,
                 'correlationId' => $event->correlationId,
             ],
             occurredOn: $event->occurredOn,
@@ -131,6 +136,7 @@ final readonly class DerivationEventPublisher
             payload: [
                 'quoteId' => $event->quoteId,
                 'bookingId' => $event->bookingId,
+                'derivationRunId' => $event->derivationRunId,
                 'supplierId' => $event->supplierId,
                 'notificationMethod' => $event->notificationMethod,
                 'correlationId' => $event->correlationId,

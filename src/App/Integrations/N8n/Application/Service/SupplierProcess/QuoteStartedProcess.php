@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\N8n\Application\Service\SupplierProcess;
 
 use App\Application\Handler\Quotes\DerivationEventPublisher;
+use App\Application\Service\DerivationRunContext;
 use App\Domain\Derivation\Event\StartQuoteProcess;
 use App\Domain\Repository\QuoteWriteRepositoryInterface;
 use DateTimeImmutable;
@@ -15,10 +16,10 @@ use Throwable;
 final readonly class QuoteStartedProcess
 {
     public function __construct(
-        private HttpClientInterface $httpClient,
-        private DerivationEventPublisher $eventPublisher,
+        private HttpClientInterface           $httpClient,
+        private DerivationEventPublisher      $eventPublisher,
         private QuoteWriteRepositoryInterface $quoteWriteRepository,
-        private ?LoggerInterface $n8nLogger = null,
+        private ?LoggerInterface              $n8nLogger = null,
     )
     {
     }
@@ -26,7 +27,7 @@ final readonly class QuoteStartedProcess
     /**
      * @param array<int, string> $quoteIds
      */
-    public function notify(string $bookingId, string $correlationId, array $quoteIds): void
+    public function notify(DerivationRunContext $context, array $quoteIds): void
     {
         $webhookUrl = getenv('N8N_WEBHOOK_START_QUOTE_URL');
 
@@ -40,16 +41,19 @@ final readonly class QuoteStartedProcess
             $response = $this->httpClient->request('POST', $webhookUrl, [
                 'json' => [
                     'event' => StartQuoteProcess::class,
-                    'bookingId' => $bookingId,
-                    'correlationId' => $correlationId,
+                    'bookingId' => $context->bookingId,
+                    'derivationRunId' => $context->derivationRunId,
+                    'correlationId' => $context->correlationId,
+                    'quoteIds' => $quoteIds,
                     'occurredOn' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
                 ],
                 'timeout' => 10,
             ]);
 
             $this->eventPublisher->publishStartQuoteProcess(new StartQuoteProcess(
-                correlationId: $correlationId,
-                bookingId: $bookingId,
+                derivationRunId: $context->derivationRunId,
+                correlationId: $context->correlationId,
+                bookingId: $context->bookingId,
                 occurredOn: new DateTimeImmutable(),
             ));
 
@@ -65,26 +69,38 @@ final readonly class QuoteStartedProcess
                 }
             }
 
-            if ( $response->getStatusCode() !== 200 ) {
+            if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
                 $this->n8nLogger?->warning('Error to send quote webhook', [
                     'response' => $response->getStatusCode(),
                     'webhookUrl' => $webhookUrl,
-                    'correlationId' => $correlationId,
+                    'derivationRunId' => $context->derivationRunId,
+                    'correlationId' => $context->correlationId,
                     'errorMessage' => $response->getContent(),
                 ]);
             }
 
+            if ($callbackUrl === null) {
+                $this->n8nLogger?->warning('N8n start-quote response without callback url', [
+                    'bookingId' => $context->bookingId,
+                    'derivationRunId' => $context->derivationRunId,
+                    'correlationId' => $context->correlationId,
+                    'responsePayload' => $responsePayload,
+                ]);
+            }
+
             $this->n8nLogger?->info('N8n supplier-response-process notification sent', [
-                'bookingId' => $bookingId,
-                'correlationId' => $correlationId,
+                'bookingId' => $context->bookingId,
+                'derivationRunId' => $context->derivationRunId,
+                'correlationId' => $context->correlationId,
                 'status' => $response->getStatusCode(),
                 'callbackUrl' => $callbackUrl,
                 'updatedQuotes' => $updatedQuotes,
             ]);
         } catch (Throwable $e) {
             $this->n8nLogger?->error('N8n supplier-response-process notification failed', [
-                'bookingId' => $bookingId,
-                'correlationId' => $correlationId,
+                'bookingId' => $context->bookingId,
+                'derivationRunId' => $context->derivationRunId,
+                'correlationId' => $context->correlationId,
                 'error' => $e->getMessage(),
             ]);
         }

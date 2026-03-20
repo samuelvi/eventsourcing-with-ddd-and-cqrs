@@ -8,6 +8,7 @@ final readonly class QuoteFlowFinsih
 {
     public function __construct(
         public string $bookingId,
+        public string $derivationRunId,
         public string $correlationId,
         public ?string $lastEvent = null,
         public \DateTimeImmutable $occurredOn = new \DateTimeImmutable(),

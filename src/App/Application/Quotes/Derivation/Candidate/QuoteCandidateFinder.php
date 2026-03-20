@@ -17,16 +17,25 @@ final readonly class QuoteCandidateFinder implements QuoteCandidateFinderInterfa
     /**
      * @return array<int, QuoteCandidate>
      */
-    public function findFor(BookingFacts $bookingFacts): array
+    public function findFor(BookingFacts $bookingFacts, QuoteCandidateSelectionCriteria $selectionCriteria): array
     {
         $candidatesData = $this->productReadRepository->findCandidatesFirstFilter(
             $bookingFacts->budget,
             $bookingFacts->country,
         );
 
-        return array_map(
+        $candidates = array_map(
             static fn(array $row): QuoteCandidate => QuoteCandidate::fromRow($row),
             $candidatesData,
         );
+
+        if (!$selectionCriteria->hasFilters()) {
+            return $candidates;
+        }
+
+        return array_values(array_filter(
+            $candidates,
+            static fn(QuoteCandidate $candidate): bool => $selectionCriteria->allows($candidate),
+        ));
     }
 }

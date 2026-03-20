@@ -21,4 +21,18 @@ final class N8nBookingReadyDto
 
     #[Assert\Uuid]
     public ?string $correlationId = null;
+
+    /**
+     * @var array<int, string>
+     */
+    #[Assert\Type('array')]
+    #[Assert\All(constraints: [new Assert\Uuid()])]
+    public array $supplierIds = [];
+
+    /**
+     * @var array<int, string>
+     */
+    #[Assert\Type('array')]
+    #[Assert\All(constraints: [new Assert\Uuid()])]
+    public array $productIds = [];
 }

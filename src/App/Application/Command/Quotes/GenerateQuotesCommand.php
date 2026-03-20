@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 namespace App\Application\Command\Quotes;
 
+use App\Application\Quotes\Derivation\Candidate\QuoteCandidateSelectionCriteria;
 use App\Application\Service\DerivationRunContext;
 use App\Application\Service\DerivationRunId;
 use App\Domain\ValueObject\UuidString;
 
 final readonly class GenerateQuotesCommand
 {
+    /**
+     * @param array<int, string> $supplierIds
+     * @param array<int, string> $productIds
+     */
     public function __construct(
         public string $bookingId,
         public string $derivationRunId,
         public string $correlationId,
+        public array $supplierIds = [],
+        public array $productIds = [],
     ) {}
 
     public function bookingIdVO(): UuidString
@@ -32,6 +39,14 @@ final readonly class GenerateQuotesCommand
             bookingId: $this->bookingId,
             derivationRunId: $this->derivationRunId,
             correlationId: $this->correlationId,
+        );
+    }
+
+    public function candidateSelectionCriteria(): QuoteCandidateSelectionCriteria
+    {
+        return new QuoteCandidateSelectionCriteria(
+            supplierIds: $this->supplierIds,
+            productIds: $this->productIds,
         );
     }
 }

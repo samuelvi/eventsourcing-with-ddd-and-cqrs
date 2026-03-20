@@ -35,6 +35,7 @@ final readonly class GenerateQuotesHandler
     public function __invoke(GenerateQuotesCommand $command): void
     {
         $context = $command->context();
+        $selectionCriteria = $command->candidateSelectionCriteria();
         $this->derivationRunRecorder->recordStarted($context);
 
         $bookingFacts = $this->bookingFactsProvider->forBookingId($context->bookingId);
@@ -44,7 +45,7 @@ final readonly class GenerateQuotesHandler
             return;
         }
 
-        $candidates = $this->quoteCandidateFinder->findFor($bookingFacts);
+        $candidates = $this->quoteCandidateFinder->findFor($bookingFacts, $selectionCriteria);
 
         if ($candidates === []) {
             $this->derivationRunRecorder->recordNoCandidates($context);

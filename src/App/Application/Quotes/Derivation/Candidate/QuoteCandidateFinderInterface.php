@@ -12,5 +12,5 @@ interface QuoteCandidateFinderInterface
     /**
      * @return array<int, QuoteCandidate>
      */
-    public function findFor(BookingFacts $bookingFacts): array;
+    public function findFor(BookingFacts $bookingFacts, QuoteCandidateSelectionCriteria $selectionCriteria): array;
 }

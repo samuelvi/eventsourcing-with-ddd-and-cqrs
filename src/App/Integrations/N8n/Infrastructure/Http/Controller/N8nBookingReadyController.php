@@ -37,6 +37,8 @@ final readonly class N8nBookingReadyController
             bookingId: $derivationContext->bookingId,
             derivationRunId: $derivationContext->derivationRunId,
             correlationId: $derivationContext->correlationId,
+            supplierIds: $payload->supplierIds,
+            productIds: $payload->productIds,
         ), [new TransportNamesStamp(['derivations_events'])]);
 
         return new JsonResponse([
@@ -45,6 +47,8 @@ final readonly class N8nBookingReadyController
             'derivationRunId' => $derivationContext->derivationRunId,
             'event' => $payload->event,
             'correlationId' => $derivationContext->correlationId,
+            'supplierIds' => $payload->supplierIds,
+            'productIds' => $payload->productIds,
         ], Response::HTTP_ACCEPTED);
     }
 }

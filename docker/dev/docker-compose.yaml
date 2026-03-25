@@ -95,6 +95,17 @@ services:
             - N8N_EDITOR_BASE_URL=http://localhost:5678
             - NODE_ENV=${NODE_ENV}
             - WEBHOOK_URL=${WEBHOOK_URL}
+            - EXECUTIONS_MODE=queue
+            - OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true
+            - DB_TYPE=postgresdb
+            - DB_POSTGRESDB_HOST=${N8N_DB_HOST:-postgres}
+            - DB_POSTGRESDB_PORT=${N8N_DB_PORT:-5432}
+            - DB_POSTGRESDB_DATABASE=${N8N_DB_NAME:-event_sourcing_dev}
+            - DB_POSTGRESDB_USER=${N8N_DB_USER:-user}
+            - DB_POSTGRESDB_PASSWORD=${N8N_DB_PASSWORD:-password}
+            - QUEUE_BULL_REDIS_HOST=${N8N_REDIS_HOST:-redis}
+            - QUEUE_BULL_REDIS_PORT=${N8N_REDIS_PORT:-6379}
+            - QUEUE_BULL_REDIS_DB=${N8N_REDIS_DB:-0}
             - N8N_USER_MANAGEMENT_DISABLED=true
             - N8N_PERSONALIZATION_ENABLED=false
             - N8N_METRICS_ENABLED=false
@@ -107,6 +118,38 @@ services:
         depends_on:
             postgres:
                 condition: service_healthy
+            redis:
+                condition: service_healthy
+        restart: unless-stopped
+
+    # n8n Queue Worker
+    n8n-worker:
+        image: n8nio/n8n:latest
+        command: worker --concurrency=${N8N_WORKER_CONCURRENCY:-5}
+        env_file:
+            - ../../.env
+        environment:
+            - NODE_ENV=${NODE_ENV}
+            - EXECUTIONS_MODE=queue
+            - DB_TYPE=postgresdb
+            - DB_POSTGRESDB_HOST=${N8N_DB_HOST:-postgres}
+            - DB_POSTGRESDB_PORT=${N8N_DB_PORT:-5432}
+            - DB_POSTGRESDB_DATABASE=${N8N_DB_NAME:-event_sourcing_dev}
+            - DB_POSTGRESDB_USER=${N8N_DB_USER:-user}
+            - DB_POSTGRESDB_PASSWORD=${N8N_DB_PASSWORD:-password}
+            - QUEUE_BULL_REDIS_HOST=${N8N_REDIS_HOST:-redis}
+            - QUEUE_BULL_REDIS_PORT=${N8N_REDIS_PORT:-6379}
+            - QUEUE_BULL_REDIS_DB=${N8N_REDIS_DB:-0}
+            - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
+        volumes:
+            - ./n8n/data:/home/node/.n8n
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        networks:
+            - app-network
         restart: unless-stopped
 
     # MongoDB for Event Store and Checkpoints
@@ -248,6 +291,7 @@ services:
     redisinsight:
         image: redis/redisinsight:latest
         container_name: redisinsight
+        user: '0:0'
         ports:
             - '${DEV_BIND_HOST:-127.0.0.1}:8084:5540'
         volumes:

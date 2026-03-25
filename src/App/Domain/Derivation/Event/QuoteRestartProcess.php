@@ -10,7 +10,6 @@ final readonly class QuoteRestartProcess
      * @param array<int, string> $excludedProductIds
      */
     public function __construct(
-        public string $derivationRunId,
         public string $correlationId,
         public string $bookingId,
         public array $excludedProductIds = [],

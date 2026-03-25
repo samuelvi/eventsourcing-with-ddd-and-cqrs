@@ -22,7 +22,6 @@ final readonly class N8nQuoteSentNotifier
         Uuid $supplierId,
         Uuid $productId,
         float $price,
-        ?string $derivationRunId = null,
         ?string $correlationId = null,
         ?string $callbackUrl = null,
     ): void {
@@ -44,7 +43,6 @@ final readonly class N8nQuoteSentNotifier
                     'supplierId' => $supplierId->toRfc4122(),
                     'productId' => $productId->toRfc4122(),
                     'price' => $price,
-                    'derivationRunId' => $derivationRunId,
                     'correlationId' => $correlationId,
                     'callbackUrl' => $callbackUrl,
                     'occurredOn' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
@@ -55,7 +53,6 @@ final readonly class N8nQuoteSentNotifier
             $this->n8nLogger?->info('N8n quote-sent notification sent', [
                 'quoteId' => $quoteId->toRfc4122(),
                 'bookingId' => $bookingId->toRfc4122(),
-                'derivationRunId' => $derivationRunId,
                 'correlationId' => $correlationId,
                 'status' => $response->getStatusCode(),
             ]);
@@ -63,7 +60,6 @@ final readonly class N8nQuoteSentNotifier
             $this->n8nLogger?->error('N8n quote-sent notification failed', [
                 'quoteId' => $quoteId->toRfc4122(),
                 'bookingId' => $bookingId->toRfc4122(),
-                'derivationRunId' => $derivationRunId,
                 'correlationId' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

@@ -36,7 +36,6 @@ final readonly class DerivationEventPublisherHandler
             eventType: QuoteLimited::class,
             payload: [
                 'bookingId' => $event->bookingId,
-                'derivationRunId' => $event->derivationRunId,
                 'limit' => $event->limit,
                 'totalCandidates' => $event->totalCandidates,
                 'selected' => $event->selected,
@@ -59,7 +58,6 @@ final readonly class DerivationEventPublisherHandler
             eventType: QuoteFlowFinsih::class,
             payload: [
                 'bookingId' => $event->bookingId,
-                'derivationRunId' => $event->derivationRunId,
                 'correlationId' => $event->correlationId,
                 'lastEvent' => $event->lastEvent,
             ],
@@ -80,7 +78,6 @@ final readonly class DerivationEventPublisherHandler
             eventType: QuoteLimitedByRules::class,
             payload: [
                 'bookingId' => $event->bookingId,
-                'derivationRunId' => $event->derivationRunId,
                 'limit' => $event->limit,
                 'totalAfterRules' => $event->totalAfterRules,
                 'totalCandidates' => $event->totalCandidates,
@@ -99,7 +96,6 @@ final readonly class DerivationEventPublisherHandler
             payload: [
                 'quoteId' => $event->quoteId,
                 'bookingId' => $event->bookingId,
-                'derivationRunId' => $event->derivationRunId,
                 'supplierId' => $event->supplierId,
                 'productId' => $event->productId,
                 'price' => $event->price,
@@ -122,7 +118,6 @@ final readonly class DerivationEventPublisherHandler
             eventType: QuoteCandidatesNotFound::class,
             payload: [
                 'bookingId' => $event->bookingId,
-                'derivationRunId' => $event->derivationRunId,
                 'correlationId' => $event->correlationId,
             ],
             occurredOn: $event->occurredOn,
@@ -142,7 +137,6 @@ final readonly class DerivationEventPublisherHandler
             eventType: StartQuoteProcess::class,
             payload: [
                 'bookingId' => $event->bookingId,
-                'derivationRunId' => $event->derivationRunId,
                 'correlationId' => $event->correlationId,
             ],
             occurredOn: $event->occurredOn,
@@ -158,7 +152,6 @@ final readonly class DerivationEventPublisherHandler
             eventType: QuoteRestartProcess::class,
             payload: [
                 'bookingId' => $event->bookingId,
-                'derivationRunId' => $event->derivationRunId,
                 'correlationId' => $event->correlationId,
                 'excludedProductIds' => $event->excludedProductIds,
             ],
@@ -174,7 +167,6 @@ final readonly class DerivationEventPublisherHandler
             payload: [
                 'quoteId' => $event->quoteId,
                 'bookingId' => $event->bookingId,
-                'derivationRunId' => $event->derivationRunId,
                 'supplierId' => $event->supplierId,
                 'notificationMethod' => $event->notificationMethod,
                 'correlationId' => $event->correlationId,

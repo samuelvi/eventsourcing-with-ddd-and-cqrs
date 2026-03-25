@@ -24,7 +24,6 @@ final readonly class BookingDerivationController
         $history = array_map(function ($event) {
             return [
                 'eventType' => $event->eventType,
-                'derivationRunId' => $event->payload['derivationRunId'] ?? null,
                 'quoteId' => $event->payload['quoteId'] ?? null,
                 'supplierId' => $event->payload['supplierId'] ?? null,
                 'productId' => $event->payload['productId'] ?? null,
@@ -36,7 +35,6 @@ final readonly class BookingDerivationController
 
         $runs = array_map(static function ($run): array {
             return [
-                'derivationRunId' => $run->derivationRunId,
                 'bookingId' => $run->bookingId,
                 'correlationId' => $run->correlationId,
                 'status' => $run->status,

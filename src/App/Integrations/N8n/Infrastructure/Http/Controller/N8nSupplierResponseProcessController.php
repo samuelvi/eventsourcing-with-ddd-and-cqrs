@@ -23,14 +23,12 @@ final readonly class N8nSupplierResponseProcessController
         $updatedQuotes = $this->callbackUrlRegistrar->register(
             quoteId: $payload->quoteId,
             callbackUrl: $payload->callbackUrl,
-            derivationRunId: $payload->derivationRunId,
             correlationId: $payload->correlationId,
         );
 
         return new JsonResponse([
             'status' => 'accepted',
             'bookingId' => $payload->bookingId,
-            'derivationRunId' => $payload->derivationRunId,
             'correlationId' => $payload->correlationId,
             'quoteId' => $payload->quoteId,
             'event' => $payload->event,

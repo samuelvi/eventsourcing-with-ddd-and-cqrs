@@ -7,7 +7,6 @@ namespace App\Domain\Derivation\Event;
 final readonly class QuoteLimited
 {
     public function __construct(
-        public string $derivationRunId,
         public string $correlationId,
         public string $bookingId,
         public int $limit,

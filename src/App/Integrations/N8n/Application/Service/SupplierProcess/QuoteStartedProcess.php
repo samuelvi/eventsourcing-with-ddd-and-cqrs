@@ -37,7 +37,6 @@ final readonly class QuoteStartedProcess
         }
 
         $this->eventPublisher->publishStartQuoteProcess(new StartQuoteProcess(
-            derivationRunId: $context->derivationRunId,
             correlationId: $context->correlationId,
             bookingId: $context->bookingId,
             occurredOn: new DateTimeImmutable(),
@@ -49,7 +48,6 @@ final readonly class QuoteStartedProcess
                     'json' => [
                         'event' => StartQuoteProcess::class,
                         'bookingId' => $context->bookingId,
-                        'derivationRunId' => $context->derivationRunId,
                         'correlationId' => $context->correlationId,
                         'quoteId' => $quoteId,      // singular, solo esta quote
                         'quoteIds' => $quoteIds,    // el array completo del round, para contexto

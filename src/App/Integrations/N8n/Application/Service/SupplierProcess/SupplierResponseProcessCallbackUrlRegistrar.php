@@ -17,7 +17,6 @@ final readonly class SupplierResponseProcessCallbackUrlRegistrar
     public function register(
         string $quoteId,
         string $callbackUrl,
-        ?string $derivationRunId = null,
         ?string $correlationId = null,
     ): int
     {
@@ -25,7 +24,6 @@ final readonly class SupplierResponseProcessCallbackUrlRegistrar
 
         $this->n8nLogger?->info('Registered supplier response callback url', [
             'quoteId' => $quoteId,
-            'derivationRunId' => $derivationRunId,
             'correlationId' => $correlationId,
             'updatedQuotes' => $updated,
         ]);

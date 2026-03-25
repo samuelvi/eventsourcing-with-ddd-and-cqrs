@@ -18,16 +18,22 @@ final readonly class DerivationRunStore
     public function open(DerivationRun $derivationRun): void
     {
         $this->collection()->updateOne(
-            ['derivationRunId' => $derivationRun->derivationRunId],
+            [
+                'bookingId' => $derivationRun->bookingId,
+                'correlationId' => $derivationRun->correlationId,
+            ],
             ['$setOnInsert' => $derivationRun->toArray()],
             ['upsert' => true],
         );
     }
 
-    public function updateStatus(string $derivationRunId, string $status, \DateTimeImmutable $updatedAt): void
+    public function updateStatus(string $bookingId, string $correlationId, string $status, \DateTimeImmutable $updatedAt): void
     {
         $this->collection()->updateOne(
-            ['derivationRunId' => $derivationRunId],
+            [
+                'bookingId' => $bookingId,
+                'correlationId' => $correlationId,
+            ],
             ['$set' => [
                 'status' => $status,
                 'updatedAt' => $updatedAt->format(\DateTimeInterface::ATOM),
@@ -56,9 +62,8 @@ final readonly class DerivationRunStore
     private function ensureIndexes(): void
     {
         $collection = $this->collection();
-        $collection->createIndex(['derivationRunId' => 1], ['unique' => true]);
         $collection->createIndex(['bookingId' => 1, 'openedAt' => -1]);
-        $collection->createIndex(['correlationId' => 1]);
+        $collection->createIndex(['bookingId' => 1, 'correlationId' => 1]);
     }
 
     private function collection(): Collection

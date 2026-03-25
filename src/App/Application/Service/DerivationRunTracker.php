@@ -18,10 +18,11 @@ final readonly class DerivationRunTracker
         $this->derivationRunStore->open(DerivationRun::open($context));
     }
 
-    public function updateStatus(string $derivationRunId, string $status): void
+    public function updateStatus(string $bookingId, string $correlationId, string $status): void
     {
         $this->derivationRunStore->updateStatus(
-            DerivationRunId::fromString($derivationRunId)->toString(),
+            UuidString::fromString($bookingId)->toString(),
+            UuidString::fromString($correlationId)->toString(),
             $status,
             new \DateTimeImmutable(),
         );

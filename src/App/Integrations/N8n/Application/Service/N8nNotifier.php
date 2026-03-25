@@ -33,7 +33,6 @@ final readonly class N8nNotifier
             $response = $this->httpClient->request('POST', $webhookUrl, [
                 'json' => [
                     'bookingId' => $context->bookingId,
-                    'derivationRunId' => $context->derivationRunId,
                     'event' => 'booking_ready_for_derivation',
                     'correlationId' => $context->correlationId,
                     'occurredOn' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
@@ -43,7 +42,6 @@ final readonly class N8nNotifier
 
             $this->n8nLogger?->info('N8n notification sent', [
                 'bookingId' => $context->bookingId,
-                'derivationRunId' => $context->derivationRunId,
                 'correlationId' => $context->correlationId,
                 'status' => $response->getStatusCode(),
             ]);
@@ -51,7 +49,6 @@ final readonly class N8nNotifier
         } catch (Throwable $e) {
             $this->n8nLogger?->error('N8n notification failed', [
                 'bookingId' => $context->bookingId,
-                'derivationRunId' => $context->derivationRunId,
                 'correlationId' => $context->correlationId,
                 'error' => $e->getMessage(),
             ]);

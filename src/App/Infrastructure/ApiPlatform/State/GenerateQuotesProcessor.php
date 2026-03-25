@@ -34,9 +34,7 @@ final readonly class GenerateQuotesProcessor implements ProcessorInterface
 
         $command = new GenerateQuotesCommand(
             bookingId: $derivationContext->bookingId,
-            derivationRunId: $derivationContext->derivationRunId,
             correlationId: $derivationContext->correlationId,
-            excludedProductIds: $data['excludedProductIds'],
         );
         $this->messageBus->dispatch($command, [new TransportNamesStamp(['derivations_events'])]);
 

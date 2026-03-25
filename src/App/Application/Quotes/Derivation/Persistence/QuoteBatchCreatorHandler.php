@@ -53,7 +53,6 @@ final readonly class QuoteBatchCreatorHandler
             $this->eventPublisher->publishCreated(new QuoteCreated(
                 quoteId: $quote->id->toRfc4122(),
                 bookingId: $context->bookingId,
-                derivationRunId: $context->derivationRunId,
                 supplierId: $candidate->supplierId,
                 productId: $candidate->productId,
                 price: $candidate->price,

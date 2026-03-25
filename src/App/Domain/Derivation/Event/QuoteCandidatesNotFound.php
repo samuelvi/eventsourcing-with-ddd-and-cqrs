@@ -8,7 +8,6 @@ final readonly class QuoteCandidatesNotFound
 {
     public function __construct(
         public string $bookingId,
-        public string $derivationRunId,
         public string $correlationId,
         public \DateTimeImmutable $occurredOn = new \DateTimeImmutable(),
     ) {}

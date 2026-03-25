@@ -21,9 +21,6 @@ final class N8nBookingReadyDto
     ])]
     public string $event = self::EVENT_QUOTE_RESTART_PROCESS;
 
-    #[Assert\Uuid]
-    public ?string $derivationRunId = null;
-
     #[Assert\When(
         expression: 'this.event == "quote_restart_process"',
         constraints: [

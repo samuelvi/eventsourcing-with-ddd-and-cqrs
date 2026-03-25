@@ -48,7 +48,6 @@ final readonly class GenerateQuotesHandler
 
         $this->n8nLogger?->info('GenerateQuotesCommand first-filter query by bookingId', [
             'bookingId' => $context->bookingId,
-            'derivationRunId' => $context->derivationRunId,
             'correlationId' => $context->correlationId,
         ]);
 

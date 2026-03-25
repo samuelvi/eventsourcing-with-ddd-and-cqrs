@@ -15,7 +15,6 @@ final readonly class DerivationRun
     public const STATUS_COMPLETED_NO_CANDIDATES = 'completed_no_candidates';
 
     private function __construct(
-        public string $derivationRunId,
         public string $bookingId,
         public string $correlationId,
         public string $status,
@@ -28,7 +27,6 @@ final readonly class DerivationRun
         $timestamp = $openedAt ?? new \DateTimeImmutable();
 
         return new self(
-            derivationRunId: $context->derivationRunId,
             bookingId: $context->bookingId,
             correlationId: $context->correlationId,
             status: self::STATUS_OPENED,
@@ -40,7 +38,6 @@ final readonly class DerivationRun
     public function withStatus(string $status, ?\DateTimeImmutable $updatedAt = null): self
     {
         return new self(
-            derivationRunId: $this->derivationRunId,
             bookingId: $this->bookingId,
             correlationId: $this->correlationId,
             status: $status,
@@ -55,7 +52,6 @@ final readonly class DerivationRun
     public static function fromArray(array $data): self
     {
         return new self(
-            derivationRunId: TypeAssert::string($data['derivationRunId']),
             bookingId: TypeAssert::string($data['bookingId']),
             correlationId: TypeAssert::string($data['correlationId']),
             status: TypeAssert::string($data['status']),
@@ -70,7 +66,6 @@ final readonly class DerivationRun
     public function toArray(): array
     {
         return [
-            'derivationRunId' => $this->derivationRunId,
             'bookingId' => $this->bookingId,
             'correlationId' => $this->correlationId,
             'status' => $this->status,

@@ -9,7 +9,6 @@ final readonly class QuoteCreated
     public function __construct(
         public string $quoteId,
         public string $bookingId,
-        public string $derivationRunId,
         public string $supplierId,
         public string $productId,
         public float $price,

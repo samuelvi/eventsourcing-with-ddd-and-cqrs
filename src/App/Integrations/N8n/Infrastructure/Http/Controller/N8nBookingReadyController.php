@@ -30,30 +30,26 @@ final readonly class N8nBookingReadyController
     ): Response
     {
         $isQuoteRestartProcess = $payload->event === N8nBookingReadyDto::EVENT_QUOTE_RESTART_PROCESS;
-        $derivationContext = $isQuoteRestartProcess
-            ? $this->derivationRunContextFactory->create(
-                bookingId: $payload->bookingId,
-                correlationId: $payload->correlationId,
-            )
-            : $this->derivationRunContextFactory->create(
-                bookingId: $payload->bookingId,
-                derivationRunId: $payload->derivationRunId,
-                correlationId: $payload->correlationId,
-            );
+        $derivationContext = $this->derivationRunContextFactory->create(
+            bookingId: $payload->bookingId,
+            correlationId: $payload->correlationId,
+        );
         $this->derivationRunTracker->open($derivationContext);
 
         if ($isQuoteRestartProcess) {
             $this->derivationEventPublisherHandler->publishQuoteRestartProcess(new QuoteRestartProcess(
-                derivationRunId: $derivationContext->derivationRunId,
                 correlationId: $derivationContext->correlationId,
                 bookingId: $derivationContext->bookingId,
+                excludedProductIds: $payload->excludedProductIds,
             ));
         }
 
         $messageBus->dispatch(new GenerateQuotesCommand(
             bookingId: $derivationContext->bookingId,
-            derivationRunId: $derivationContext->derivationRunId,
             correlationId: $derivationContext->correlationId,
+            supplierIds: $payload->supplierIds,
+            productIds: $payload->productIds,
+            excludedProductIds: $payload->excludedProductIds,
         ), [new TransportNamesStamp(['derivations_events'])]);
 
         if ($isQuoteRestartProcess) {
@@ -67,7 +63,6 @@ final readonly class N8nBookingReadyController
         return new JsonResponse([
             'status' => 'accepted',
             'bookingId' => $derivationContext->bookingId,
-            'derivationRunId' => $derivationContext->derivationRunId,
             'event' => $payload->event,
             'correlationId' => $derivationContext->correlationId,
         ], Response::HTTP_ACCEPTED);

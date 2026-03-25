@@ -25,34 +25,31 @@ final readonly class DerivationRunRecorderHandler
     public function recordStarted(DerivationRunContext $context): void
     {
         $this->derivationRunTracker->open($context);
-        $this->derivationRunTracker->updateStatus($context->derivationRunId, DerivationRun::STATUS_PROCESSING);
+        $this->derivationRunTracker->updateStatus($context->bookingId, $context->correlationId, DerivationRun::STATUS_PROCESSING);
     }
 
     public function recordNoBookingFacts(DerivationRunContext $context): void
     {
         $this->eventPublisher->publishFlowFinished(new QuoteFlowFinsih(
             bookingId: $context->bookingId,
-            derivationRunId: $context->derivationRunId,
             correlationId: $context->correlationId,
             lastEvent: 'booking facts null',
             occurredOn: new DateTimeImmutable(),
         ));
 
-        $this->derivationRunTracker->updateStatus($context->derivationRunId, DerivationRun::STATUS_COMPLETED_NO_BOOKING_FACTS);
+        $this->derivationRunTracker->updateStatus($context->bookingId, $context->correlationId, DerivationRun::STATUS_COMPLETED_NO_BOOKING_FACTS);
     }
 
     public function recordNoCandidates(DerivationRunContext $context): void
     {
         $this->eventPublisher->publishCandidatesNotFound(new QuoteCandidatesNotFound(
             bookingId: $context->bookingId,
-            derivationRunId: $context->derivationRunId,
             correlationId: $context->correlationId,
             occurredOn: new DateTimeImmutable(),
         ));
 
         $this->eventPublisher->publishFlowFinished(new QuoteFlowFinsih(
             bookingId: $context->bookingId,
-            derivationRunId: $context->derivationRunId,
             correlationId: $context->correlationId,
             lastEvent: 'candidates null',
             occurredOn: new DateTimeImmutable(),
@@ -60,17 +57,15 @@ final readonly class DerivationRunRecorderHandler
 
         $this->appLogger->error('No quote candidates found for derivation run', [
             'bookingId' => $context->bookingId,
-            'derivationRunId' => $context->derivationRunId,
             'correlationId' => $context->correlationId,
         ]);
 
-        $this->derivationRunTracker->updateStatus($context->derivationRunId, DerivationRun::STATUS_COMPLETED_NO_CANDIDATES);
+        $this->derivationRunTracker->updateStatus($context->bookingId, $context->correlationId, DerivationRun::STATUS_COMPLETED_NO_CANDIDATES);
     }
 
     public function recordCandidatesLoaded(DerivationRunContext $context, int $totalCandidates, int $limit): void
     {
         $this->eventPublisher->publishLimited(new QuoteLimited(
-            derivationRunId: $context->derivationRunId,
             correlationId: $context->correlationId,
             bookingId: $context->bookingId,
             limit: $limit,
@@ -82,7 +77,6 @@ final readonly class DerivationRunRecorderHandler
     public function recordCandidatesSelected(DerivationRunContext $context, int $eligibleCandidates, int $selectedCandidates, int $limit): void
     {
         $this->eventPublisher->publishLimitedByRules(new QuoteLimitedByRules(
-            derivationRunId: $context->derivationRunId,
             correlationId: $context->correlationId,
             bookingId: $context->bookingId,
             limit: $limit,
@@ -94,6 +88,6 @@ final readonly class DerivationRunRecorderHandler
 
     public function recordCompleted(DerivationRunContext $context): void
     {
-        $this->derivationRunTracker->updateStatus($context->derivationRunId, DerivationRun::STATUS_COMPLETED);
+        $this->derivationRunTracker->updateStatus($context->bookingId, $context->correlationId, DerivationRun::STATUS_COMPLETED);
     }
 }

@@ -17,11 +17,12 @@ final readonly class QuoteCandidateFinderHandler
     /**
      * @return array<int, QuoteCandidate>
      */
-    public function findFor(BookingFacts $bookingFacts, QuoteCandidateSelectionCriteria $selectionCriteria): array
+    public function findFor(BookingFacts $bookingFacts): array
     {
         $candidatesData = $this->productReadRepository->findCandidatesFirstFilter(
-            $bookingFacts->budget,
-            $bookingFacts->country,
+            budget: $bookingFacts->budget,
+            bookingId: $bookingFacts->bookingId,
+            country: $bookingFacts->country,
         );
 
         $candidates = array_map(
@@ -29,13 +30,6 @@ final readonly class QuoteCandidateFinderHandler
             $candidatesData,
         );
 
-        if (!$selectionCriteria->hasFilters()) {
-            return $candidates;
-        }
-
-        return array_values(array_filter(
-            $candidates,
-            static fn(QuoteCandidate $candidate): bool => $selectionCriteria->allows($candidate),
-        ));
+        return $candidates;
     }
 }

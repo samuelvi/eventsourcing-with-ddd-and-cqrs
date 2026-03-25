@@ -13,6 +13,7 @@ use App\Application\Quotes\Derivation\Process\SupplierProcessStarterHandler;
 use App\Application\Quotes\Derivation\Ranking\QuoteRankingHandler;
 use App\Application\Quotes\Derivation\Run\DerivationRunRecorderHandler;
 use App\Application\Quotes\Derivation\Selection\QuoteSelectionHandler;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -27,6 +28,7 @@ final readonly class GenerateQuotesHandler
         private QuoteBatchCreatorHandler $quoteBatchCreatorHandler,
         private SupplierProcessStarterHandler $supplierProcessStarterHandler,
         private DerivationRunRecorderHandler $derivationRunRecorderHandler,
+        private ?LoggerInterface $n8nLogger = null,
     )
     {
     }
@@ -35,7 +37,6 @@ final readonly class GenerateQuotesHandler
     public function __invoke(GenerateQuotesCommand $command): void
     {
         $context = $command->context();
-        $selectionCriteria = $command->candidateSelectionCriteria();
         $this->derivationRunRecorderHandler->recordStarted($context);
 
         $bookingFacts = $this->bookingFactsHandler->forBookingId($context->bookingId);
@@ -45,7 +46,13 @@ final readonly class GenerateQuotesHandler
             return;
         }
 
-        $candidates = $this->quoteCandidateFinderHandler->findFor($bookingFacts, $selectionCriteria);
+        $this->n8nLogger?->info('GenerateQuotesCommand first-filter query by bookingId', [
+            'bookingId' => $context->bookingId,
+            'derivationRunId' => $context->derivationRunId,
+            'correlationId' => $context->correlationId,
+        ]);
+
+        $candidates = $this->quoteCandidateFinderHandler->findFor($bookingFacts);
 
         if ($candidates === []) {
             $this->derivationRunRecorderHandler->recordNoCandidates($context);

@@ -29,10 +29,11 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
 
     /**
      * @param float $budget
+     * @param string $bookingId
      * @param string|null $country
      * @return array<array{id: string, price: float, supplier_id: string, supplier_country: string|null, supplier_is_active: bool}>
      */
-    public function findCandidatesFirstFilter(float $budget, ?string $country = null): array
+    public function findCandidatesFirstFilter(float $budget, string $bookingId, ?string $country = null): array
     {
         $sql = "
             SELECT p.id, p.price, p.supplier_id,
@@ -40,10 +41,20 @@ final readonly class DbalProductReadRepository implements ProductReadRepositoryI
                    s.is_active AS supplier_is_active
             FROM products p
             INNER JOIN suppliers s ON p.supplier_id = s.id
-            WHERE p.price <= :budget AND p.type = 'menu'
+            WHERE p.price <= :budget
+              AND p.type = 'menu'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM quotes q
+                  WHERE q.product_id = p.id
+                    AND q.booking_id = :bookingId
+              )
         ";
 
-        $params = ['budget' => $budget];
+        $params = [
+            'budget' => $budget,
+            'bookingId' => $bookingId,
+        ];
         if ($country !== null && $country !== '') {
             $sql .= ' AND s.country = :country';
             $params['country'] = strtoupper($country);

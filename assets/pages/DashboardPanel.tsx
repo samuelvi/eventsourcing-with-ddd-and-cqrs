@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type ToolInfo = {
     name: string;
@@ -58,6 +58,12 @@ type RedisJobRow = {
     finishedOn?: string | null;
 };
 
+type RedisJobSnapshot = RedisJobRow & {
+    firstSeenAt: string;
+    lastSeenAt: string;
+    seenCount: number;
+};
+
 type PostgresExecutionRow = {
     id: number;
     status?: string | null;
@@ -65,6 +71,12 @@ type PostgresExecutionRow = {
     workflowId?: string | null;
     startedAt?: string | null;
     stoppedAt?: string | null;
+    data?: {
+        bookingId?: string | null;
+        productId?: string | null;
+        supplierId?: string | null;
+        quoteId?: string | null;
+    };
 };
 
 type RedisJobsPayload = {
@@ -87,6 +99,9 @@ const REDIS_COMMANDS: RedisCommand[] = [
     { id: 'scan-n8n-cache', label: 'Scan n8n:cache:*', tone: 'default' },
     { id: 'clear-n8n-cache', label: 'Clear n8n:cache:*', tone: 'danger' }
 ];
+
+const REDIS_JOB_SNAPSHOT_STORAGE_KEY = 'redis-job-snapshots-v1';
+const MAX_REDIS_JOB_SNAPSHOTS = 250;
 
 const TOOLS: ToolInfo[] = [
     {
@@ -152,8 +167,69 @@ export function DashboardPanel() {
     const [redisCommandResult, setRedisCommandResult] = useState<RedisCommandPayload | null>(null);
     const [redisJobsLoading, setRedisJobsLoading] = useState(false);
     const [redisJobsData, setRedisJobsData] = useState<RedisJobsPayload | null>(null);
+    const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+    const [redisJobSnapshots, setRedisJobSnapshots] = useState<RedisJobSnapshot[]>(() => {
+        if (typeof window === 'undefined') {
+            return [];
+        }
 
-    const loadRedisStatus = async () => {
+        const raw = window.localStorage.getItem(REDIS_JOB_SNAPSHOT_STORAGE_KEY);
+        if (!raw) {
+            return [];
+        }
+
+        try {
+            const parsed = JSON.parse(raw) as RedisJobSnapshot[];
+            return Array.isArray(parsed) ? parsed.slice(0, MAX_REDIS_JOB_SNAPSHOTS) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const upsertRedisJobSnapshots = useCallback((jobs: RedisJobRow[]) => {
+        if (jobs.length === 0) {
+            return;
+        }
+
+        const seenAt = new Date().toISOString();
+
+        setRedisJobSnapshots((current) => {
+            const byKey = new Map(current.map((snapshot) => [snapshot.key, snapshot]));
+
+            for (const job of jobs) {
+                const existing = byKey.get(job.key);
+                if (existing) {
+                    byKey.set(job.key, {
+                        ...existing,
+                        ...job,
+                        lastSeenAt: seenAt,
+                        seenCount: existing.seenCount + 1
+                    });
+                    continue;
+                }
+
+                byKey.set(job.key, {
+                    ...job,
+                    firstSeenAt: seenAt,
+                    lastSeenAt: seenAt,
+                    seenCount: 1
+                });
+            }
+
+            return Array.from(byKey.values())
+                .sort((a, b) => new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime())
+                .slice(0, MAX_REDIS_JOB_SNAPSHOTS);
+        });
+    }, []);
+
+    const clearRedisJobSnapshots = () => {
+        setRedisJobSnapshots([]);
+        if (typeof window !== 'undefined') {
+            window.localStorage.removeItem(REDIS_JOB_SNAPSHOT_STORAGE_KEY);
+        }
+    };
+
+    const loadRedisStatus = useCallback(async () => {
         setRedisStatusLoading(true);
         try {
             const res = await fetch('/api/redis-control/status');
@@ -167,7 +243,7 @@ export function DashboardPanel() {
         } finally {
             setRedisStatusLoading(false);
         }
-    };
+    }, []);
 
     const runRedisCommand = async (command: RedisCommand['id']) => {
         if (
@@ -197,12 +273,13 @@ export function DashboardPanel() {
         }
     };
 
-    const loadRedisJobs = async () => {
+    const loadRedisJobs = useCallback(async () => {
         setRedisJobsLoading(true);
         try {
             const res = await fetch('/api/redis-control/jobs?limit=25');
             const payload = (await res.json()) as RedisJobsPayload;
             setRedisJobsData(payload);
+            upsertRedisJobSnapshots(payload.redisJobs ?? []);
         } catch {
             setRedisJobsData({
                 status: 'error',
@@ -211,7 +288,7 @@ export function DashboardPanel() {
         } finally {
             setRedisJobsLoading(false);
         }
-    };
+    }, [upsertRedisJobSnapshots]);
 
     useEffect(() => {
         const loadStats = async () => {
@@ -230,12 +307,39 @@ export function DashboardPanel() {
         void loadStats();
         void loadRedisStatus();
         void loadRedisJobs();
-    }, []);
+    }, [loadRedisJobs, loadRedisStatus]);
+
+    useEffect(() => {
+        if (!autoRefreshEnabled) {
+            return;
+        }
+
+        const interval = window.setInterval(() => {
+            void loadRedisStatus();
+            void loadRedisJobs();
+        }, 4000);
+
+        return () => {
+            window.clearInterval(interval);
+        };
+    }, [autoRefreshEnabled, loadRedisJobs, loadRedisStatus]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        window.localStorage.setItem(
+            REDIS_JOB_SNAPSHOT_STORAGE_KEY,
+            JSON.stringify(redisJobSnapshots.slice(0, MAX_REDIS_JOB_SNAPSHOTS))
+        );
+    }, [redisJobSnapshots]);
 
     const queueMetricRows = Object.entries(redisStatus?.queueMetrics ?? {}) as Array<
         [string, RedisQueueMetric]
     >;
     const redisJobs = redisJobsData?.redisJobs ?? [];
+    const bufferedRedisJobs = redisJobSnapshots.slice(0, 25);
     const postgresExecutions = redisJobsData?.postgresExecutions ?? [];
     const formatTs = (value?: string | null) => {
         if (!value) {
@@ -248,6 +352,26 @@ export function DashboardPanel() {
         }
 
         return date.toLocaleString();
+    };
+
+    const formatExecutionData = (execution: PostgresExecutionRow) => {
+        const bookingId = execution.data?.bookingId;
+        if (!bookingId) {
+            return '—';
+        }
+
+        const chunks = [`bookingId=${bookingId}`];
+        if (execution.data?.productId) {
+            chunks.push(`productId=${execution.data.productId}`);
+        }
+        if (execution.data?.supplierId) {
+            chunks.push(`supplierId=${execution.data.supplierId}`);
+        }
+        if (execution.data?.quoteId) {
+            chunks.push(`quoteId=${execution.data.quoteId}`);
+        }
+
+        return chunks.join(' | ');
     };
 
     return (
@@ -317,26 +441,42 @@ export function DashboardPanel() {
                             localhost.
                         </p>
                     </div>
-                    <button
-                        onClick={async () => {
-                            await loadRedisStatus();
-                            await loadRedisJobs();
-                        }}
-                        disabled={redisStatusLoading || redisJobsLoading}
-                        style={{
-                            padding: '10px 16px',
-                            border: '1px solid #e7e5e4',
-                            borderRadius: '12px',
-                            backgroundColor: '#fafaf9',
-                            color: '#44403c',
-                            cursor: redisStatusLoading || redisJobsLoading ? 'wait' : 'pointer',
-                            fontWeight: 700
-                        }}
-                    >
-                        {redisStatusLoading || redisJobsLoading
-                            ? 'Refreshing...'
-                            : 'Refresh Redis Status'}
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            onClick={() => setAutoRefreshEnabled((current) => !current)}
+                            style={{
+                                padding: '10px 16px',
+                                border: `1px solid ${autoRefreshEnabled ? '#86efac' : '#e7e5e4'}`,
+                                borderRadius: '12px',
+                                backgroundColor: autoRefreshEnabled ? '#f0fdf4' : '#fafaf9',
+                                color: autoRefreshEnabled ? '#166534' : '#44403c',
+                                cursor: 'pointer',
+                                fontWeight: 700
+                            }}
+                        >
+                            Auto refresh {autoRefreshEnabled ? 'ON' : 'OFF'}
+                        </button>
+                        <button
+                            onClick={async () => {
+                                await loadRedisStatus();
+                                await loadRedisJobs();
+                            }}
+                            disabled={redisStatusLoading || redisJobsLoading}
+                            style={{
+                                padding: '10px 16px',
+                                border: '1px solid #e7e5e4',
+                                borderRadius: '12px',
+                                backgroundColor: '#fafaf9',
+                                color: '#44403c',
+                                cursor: redisStatusLoading || redisJobsLoading ? 'wait' : 'pointer',
+                                fontWeight: 700
+                            }}
+                        >
+                            {redisStatusLoading || redisJobsLoading
+                                ? 'Refreshing...'
+                                : 'Refresh Redis Status'}
+                        </button>
+                    </div>
                 </div>
 
                 <div
@@ -770,6 +910,197 @@ export function DashboardPanel() {
                             }}
                         >
                             <div style={{ fontWeight: 700, color: '#1c1917' }}>
+                                Redis jobs snapshot buffer (browser)
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '12px', color: '#78716c' }}>
+                                    {bufferedRedisJobs.length} rows (max {MAX_REDIS_JOB_SNAPSHOTS})
+                                </span>
+                                <button
+                                    onClick={clearRedisJobSnapshots}
+                                    style={{
+                                        padding: '6px 10px',
+                                        borderRadius: '10px',
+                                        border: '1px solid #fecaca',
+                                        backgroundColor: '#fff1f2',
+                                        color: '#b91c1c',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        fontWeight: 700
+                                    }}
+                                >
+                                    Clear buffer
+                                </button>
+                            </div>
+                        </div>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table
+                                style={{
+                                    width: '100%',
+                                    borderCollapse: 'collapse',
+                                    fontSize: '12px',
+                                    minWidth: '1040px'
+                                }}
+                            >
+                                <thead>
+                                    <tr style={{ backgroundColor: '#fafaf9', color: '#44403c' }}>
+                                        <th
+                                            style={{
+                                                textAlign: 'left',
+                                                padding: '8px',
+                                                borderBottom: '1px solid #e7e5e4'
+                                            }}
+                                        >
+                                            ID
+                                        </th>
+                                        <th
+                                            style={{
+                                                textAlign: 'left',
+                                                padding: '8px',
+                                                borderBottom: '1px solid #e7e5e4'
+                                            }}
+                                        >
+                                            State
+                                        </th>
+                                        <th
+                                            style={{
+                                                textAlign: 'left',
+                                                padding: '8px',
+                                                borderBottom: '1px solid #e7e5e4'
+                                            }}
+                                        >
+                                            Seen
+                                        </th>
+                                        <th
+                                            style={{
+                                                textAlign: 'left',
+                                                padding: '8px',
+                                                borderBottom: '1px solid #e7e5e4'
+                                            }}
+                                        >
+                                            First seen
+                                        </th>
+                                        <th
+                                            style={{
+                                                textAlign: 'left',
+                                                padding: '8px',
+                                                borderBottom: '1px solid #e7e5e4'
+                                            }}
+                                        >
+                                            Last seen
+                                        </th>
+                                        <th
+                                            style={{
+                                                textAlign: 'left',
+                                                padding: '8px',
+                                                borderBottom: '1px solid #e7e5e4'
+                                            }}
+                                        >
+                                            Payload
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {bufferedRedisJobs.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan={6}
+                                                style={{
+                                                    padding: '12px',
+                                                    color: '#78716c',
+                                                    borderBottom: '1px solid #f5f5f4'
+                                                }}
+                                            >
+                                                No buffered jobs yet. Enable auto refresh and run
+                                                workflows to capture transient queue jobs.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        bufferedRedisJobs.map((job) => (
+                                            <tr key={`${job.key}-snapshot`}>
+                                                <td
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderBottom: '1px solid #f5f5f4'
+                                                    }}
+                                                >
+                                                    {job.id}
+                                                </td>
+                                                <td
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderBottom: '1px solid #f5f5f4'
+                                                    }}
+                                                >
+                                                    {job.state}
+                                                </td>
+                                                <td
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderBottom: '1px solid #f5f5f4'
+                                                    }}
+                                                >
+                                                    {job.seenCount}
+                                                </td>
+                                                <td
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderBottom: '1px solid #f5f5f4'
+                                                    }}
+                                                >
+                                                    {formatTs(job.firstSeenAt)}
+                                                </td>
+                                                <td
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderBottom: '1px solid #f5f5f4'
+                                                    }}
+                                                >
+                                                    {formatTs(job.lastSeenAt)}
+                                                </td>
+                                                <td
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderBottom: '1px solid #f5f5f4',
+                                                        maxWidth: '360px'
+                                                    }}
+                                                >
+                                                    <div
+                                                        style={{
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            fontFamily: 'JetBrains Mono, monospace'
+                                                        }}
+                                                        title={job.payload ?? ''}
+                                                    >
+                                                        {job.payload ?? '—'}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div
+                        style={{
+                            border: '1px solid #e7e5e4',
+                            borderRadius: '14px',
+                            padding: '14px'
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '10px'
+                            }}
+                        >
+                            <div style={{ fontWeight: 700, color: '#1c1917' }}>
                                 Postgres executions (persistent)
                             </div>
                             <div style={{ fontSize: '12px', color: '#78716c' }}>
@@ -784,7 +1115,7 @@ export function DashboardPanel() {
                                     width: '100%',
                                     borderCollapse: 'collapse',
                                     fontSize: '12px',
-                                    minWidth: '860px'
+                                    minWidth: '1120px'
                                 }}
                             >
                                 <thead>
@@ -832,6 +1163,15 @@ export function DashboardPanel() {
                                                 borderBottom: '1px solid #e7e5e4'
                                             }}
                                         >
+                                            Data
+                                        </th>
+                                        <th
+                                            style={{
+                                                textAlign: 'left',
+                                                padding: '8px',
+                                                borderBottom: '1px solid #e7e5e4'
+                                            }}
+                                        >
                                             Started
                                         </th>
                                         <th
@@ -849,7 +1189,7 @@ export function DashboardPanel() {
                                     {postgresExecutions.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan={6}
+                                                colSpan={7}
                                                 style={{
                                                     padding: '12px',
                                                     color: '#78716c',
@@ -893,6 +1233,25 @@ export function DashboardPanel() {
                                                     }}
                                                 >
                                                     {execution.workflowId ?? '—'}
+                                                </td>
+                                                <td
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderBottom: '1px solid #f5f5f4',
+                                                        maxWidth: '380px'
+                                                    }}
+                                                >
+                                                    <div
+                                                        style={{
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            fontFamily: 'JetBrains Mono, monospace'
+                                                        }}
+                                                        title={formatExecutionData(execution)}
+                                                    >
+                                                        {formatExecutionData(execution)}
+                                                    </div>
                                                 </td>
                                                 <td
                                                     style={{

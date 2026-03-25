@@ -398,13 +398,28 @@ final class RedisControlController extends AbstractController
     }
 
     /**
-     * @return list<array{id: int, status: ?string, mode: ?string, workflowId: ?string, startedAt: ?string, stoppedAt: ?string}>
+     * @return list<array{id: int, status: ?string, mode: ?string, workflowId: ?string, startedAt: ?string, stoppedAt: ?string, data: array{bookingId: ?string, productId: ?string, supplierId: ?string, quoteId: ?string}}>
      */
     private function listN8nExecutions(int $limit): array
     {
         try {
+            $query = <<<'SQL'
+SELECT
+    e.id,
+    e.status,
+    e.mode,
+    e."workflowId",
+    e."startedAt",
+    e."stoppedAt",
+    ed.data AS "executionData"
+FROM execution_entity e
+LEFT JOIN execution_data ed ON ed."executionId" = e.id
+ORDER BY e.id DESC
+LIMIT :limit
+SQL;
+
             $rows = $this->defaultConnection->fetchAllAssociative(
-                'SELECT id, status, mode, "workflowId", "startedAt", "stoppedAt" FROM execution_entity ORDER BY id DESC LIMIT :limit',
+                $query,
                 ['limit' => $limit],
                 ['limit' => ParameterType::INTEGER]
             );
@@ -420,9 +435,141 @@ final class RedisControlController extends AbstractController
                 'workflowId' => $this->nullableString($row['workflowId'] ?? null),
                 'startedAt' => $this->normalizeDateTime($row['startedAt'] ?? null),
                 'stoppedAt' => $this->normalizeDateTime($row['stoppedAt'] ?? null),
+                'data' => $this->extractExecutionIdentifiers(
+                    is_string($row['executionData'] ?? null) ? $row['executionData'] : null
+                ),
             ],
             $rows
         );
+    }
+
+    /**
+     * @return array{bookingId: ?string, productId: ?string, supplierId: ?string, quoteId: ?string}
+     */
+    private function extractExecutionIdentifiers(?string $rawData): array
+    {
+        $identifiers = [
+            'bookingId' => null,
+            'productId' => null,
+            'supplierId' => null,
+            'quoteId' => null,
+        ];
+
+        if ($rawData === null || trim($rawData) === '') {
+            return $identifiers;
+        }
+
+        $decoded = $this->decodeExecutionData($rawData);
+        if ($decoded === null) {
+            return $identifiers;
+        }
+
+        $this->collectIdentifiers($decoded, $identifiers);
+
+        return $identifiers;
+    }
+
+    private function decodeExecutionData(string $rawData): mixed
+    {
+        try {
+            $parsed = json_decode($rawData, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+
+        if (!is_array($parsed)) {
+            return null;
+        }
+
+        if (!array_key_exists(0, $parsed)) {
+            return $parsed;
+        }
+
+        $cache = [];
+        $resolving = [];
+
+        return $this->resolveFlattedValue($parsed[0], $parsed, $cache, $resolving);
+    }
+
+    /**
+     * @param array<int, mixed> $store
+     * @param array<int, mixed> $cache
+     * @param array<int, bool> $resolving
+     */
+    private function resolveFlattedValue(mixed $value, array $store, array &$cache, array &$resolving): mixed
+    {
+        if (is_string($value) && ctype_digit($value)) {
+            $index = (int) $value;
+            if (!array_key_exists($index, $store)) {
+                return $value;
+            }
+
+            if (array_key_exists($index, $cache)) {
+                return $cache[$index];
+            }
+
+            if (($resolving[$index] ?? false) === true) {
+                return null;
+            }
+
+            $resolving[$index] = true;
+            $resolved = $this->resolveFlattedValue($store[$index], $store, $cache, $resolving);
+            unset($resolving[$index]);
+            $cache[$index] = $resolved;
+
+            return $resolved;
+        }
+
+        if (!is_array($value)) {
+            return $value;
+        }
+
+        $result = [];
+        foreach ($value as $key => $child) {
+            $result[$key] = $this->resolveFlattedValue($child, $store, $cache, $resolving);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array{bookingId: ?string, productId: ?string, supplierId: ?string, quoteId: ?string} $identifiers
+     */
+    private function collectIdentifiers(mixed $value, array &$identifiers, int $depth = 0): void
+    {
+        if ($depth > 30) {
+            return;
+        }
+
+        if (!is_array($value)) {
+            return;
+        }
+
+        foreach ($value as $key => $child) {
+            if (is_string($key) && array_key_exists($key, $identifiers)) {
+                $candidate = $this->scalarToString($child);
+                if ($candidate !== null && $identifiers[$key] === null) {
+                    $identifiers[$key] = $candidate;
+                }
+            }
+
+            $this->collectIdentifiers($child, $identifiers, $depth + 1);
+        }
+    }
+
+    private function scalarToString(mixed $value): ?string
+    {
+        if (is_string($value)) {
+            $trimmed = trim($value);
+
+            return $trimmed === '' ? null : $trimmed;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (string) $value;
+        }
+
+        return null;
     }
 
     /**

@@ -267,9 +267,9 @@ final readonly class MongoStore
 
     public function clearAll(): void
     {
-        $this->mongoClient->getDatabase()->selectCollection('events')->deleteMany([]);
-        $this->mongoClient->getDatabase()->selectCollection('derivation_runs')->deleteMany([]);
-        $this->mongoClient->getDatabase()->selectCollection('snapshots')->deleteMany([]);
-        $this->mongoClient->getDatabase()->selectCollection('checkpoints')->deleteMany([]);
+        $this->mongoClient->getDatabase()->drop();
+
+        // Recreate critical indexes after dropping the whole database.
+        $this->ensureIndexes();
     }
 }

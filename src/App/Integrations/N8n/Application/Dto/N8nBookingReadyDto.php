@@ -15,16 +15,22 @@ final class N8nBookingReadyDto
     #[Assert\Uuid]
     public string $bookingId;
 
-    #[Assert\NotBlank]
-    #[Assert\Choice([
+    #[Assert\Choice(choices: [
         self::EVENT_BOOKING_READY_FOR_DERIVATION,
         self::EVENT_QUOTE_RESTART_PROCESS,
     ])]
-    public string $event;
+    public string $event = self::EVENT_QUOTE_RESTART_PROCESS;
 
     #[Assert\Uuid]
     public ?string $derivationRunId = null;
 
+    #[Assert\When(
+        expression: 'this.event == "quote_restart_process"',
+        constraints: [
+            new Assert\NotBlank(),
+            new Assert\Uuid(),
+        ],
+    )]
     #[Assert\Uuid]
     public ?string $correlationId = null;
 

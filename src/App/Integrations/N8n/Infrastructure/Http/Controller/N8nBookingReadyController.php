@@ -29,7 +29,8 @@ final readonly class N8nBookingReadyController
     public function __invoke(#[MapRequestPayload] N8nBookingReadyDto $payload, MessageBusInterface $messageBus,
     ): Response
     {
-        $derivationContext = $payload->event === N8nBookingReadyDto::EVENT_QUOTE_RESTART_PROCESS
+        $isQuoteRestartProcess = $payload->event === N8nBookingReadyDto::EVENT_QUOTE_RESTART_PROCESS;
+        $derivationContext = $isQuoteRestartProcess
             ? $this->derivationRunContextFactory->create(
                 bookingId: $payload->bookingId,
                 correlationId: $payload->correlationId,
@@ -41,12 +42,11 @@ final readonly class N8nBookingReadyController
             );
         $this->derivationRunTracker->open($derivationContext);
 
-        if ($payload->event === N8nBookingReadyDto::EVENT_QUOTE_RESTART_PROCESS) {
+        if ($isQuoteRestartProcess) {
             $this->derivationEventPublisherHandler->publishQuoteRestartProcess(new QuoteRestartProcess(
                 derivationRunId: $derivationContext->derivationRunId,
                 correlationId: $derivationContext->correlationId,
                 bookingId: $derivationContext->bookingId,
-                excludedProductIds: $payload->excludedProductIds,
             ));
         }
 
@@ -54,10 +54,15 @@ final readonly class N8nBookingReadyController
             bookingId: $derivationContext->bookingId,
             derivationRunId: $derivationContext->derivationRunId,
             correlationId: $derivationContext->correlationId,
-            supplierIds: $payload->supplierIds,
-            productIds: $payload->productIds,
-            excludedProductIds: $payload->excludedProductIds,
         ), [new TransportNamesStamp(['derivations_events'])]);
+
+        if ($isQuoteRestartProcess) {
+            return new JsonResponse([
+                'bookingId' => $derivationContext->bookingId,
+                'event' => $payload->event,
+                'correlationId' => $derivationContext->correlationId,
+            ], Response::HTTP_ACCEPTED);
+        }
 
         return new JsonResponse([
             'status' => 'accepted',
@@ -65,9 +70,6 @@ final readonly class N8nBookingReadyController
             'derivationRunId' => $derivationContext->derivationRunId,
             'event' => $payload->event,
             'correlationId' => $derivationContext->correlationId,
-            'supplierIds' => $payload->supplierIds,
-            'productIds' => $payload->productIds,
-            'excludedProductIds' => $payload->excludedProductIds,
         ], Response::HTTP_ACCEPTED);
     }
 }

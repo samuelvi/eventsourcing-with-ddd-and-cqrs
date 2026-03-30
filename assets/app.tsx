@@ -6,6 +6,7 @@ import { DataExplorer } from './pages/DataExplorer';
 import { DemoFlow } from './pages/DemoFlow';
 import { UsersManagement } from './pages/UsersManagement';
 import { DashboardPanel } from './pages/DashboardPanel';
+import { PostgresExecutionsPage } from './pages/PostgresExecutionsPage';
 import { SupplierResponses } from './features/quotes/pages/SupplierResponses';
 import { Icons } from './components/Icons';
 import { NavButton, PageType } from './components/NavButton';
@@ -39,6 +40,10 @@ function resolveRoute(pathname: string): RouteState {
 
     if (pathname === '/panel') {
         return { page: 'panel', usersMode: 'list', userId: null };
+    }
+
+    if (pathname === '/executions') {
+        return { page: 'executions', usersMode: 'list', userId: null };
     }
 
     if (pathname === '/supplier-responses') {
@@ -85,9 +90,11 @@ function App() {
                       ? '/users'
                       : newPage === 'panel'
                         ? '/panel'
-                        : newPage === 'supplier'
-                          ? '/supplier-responses'
-                          : '/';
+                        : newPage === 'executions'
+                          ? '/executions'
+                          : newPage === 'supplier'
+                            ? '/supplier-responses'
+                            : '/';
         navigateToPath(url);
     };
 
@@ -159,6 +166,13 @@ function App() {
                     target="panel"
                     label="Control Panel"
                     icon={Icons.Dashboard}
+                    currentPage={route.page}
+                    onNavigate={navigateTo}
+                />
+                <NavButton
+                    target="executions"
+                    label="Postgres Executions"
+                    icon={Icons.Executions}
                     currentPage={route.page}
                     onNavigate={navigateTo}
                 />
@@ -300,6 +314,7 @@ function App() {
                 {route.page === 'explorer' && <DataExplorer />}
                 {route.page === 'demo' && <DemoFlow />}
                 {route.page === 'panel' && <DashboardPanel />}
+                {route.page === 'executions' && <PostgresExecutionsPage />}
                 {route.page === 'supplier' && <SupplierResponses />}
                 {route.page === 'users' && (
                     <UsersManagement

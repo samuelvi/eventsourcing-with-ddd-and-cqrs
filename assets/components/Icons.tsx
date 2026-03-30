@@ -113,6 +113,25 @@ export const Icons: Record<string, React.FC> = {
             <rect x="3" y="14" width="7" height="7" />
         </svg>
     ),
+    Executions: () => (
+        <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M4 6h16" />
+            <path d="M4 12h16" />
+            <path d="M4 18h16" />
+            <circle cx="7" cy="6" r="1" />
+            <circle cx="7" cy="12" r="1" />
+            <circle cx="7" cy="18" r="1" />
+        </svg>
+    ),
     ArrowRight: () => (
         <svg
             width="18"

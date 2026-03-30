@@ -64,25 +64,9 @@ type RedisJobSnapshot = RedisJobRow & {
     seenCount: number;
 };
 
-type PostgresExecutionRow = {
-    id: number;
-    status?: string | null;
-    mode?: string | null;
-    workflowId?: string | null;
-    startedAt?: string | null;
-    stoppedAt?: string | null;
-    data?: {
-        bookingId?: string | null;
-        productId?: string | null;
-        supplierId?: string | null;
-        quoteId?: string | null;
-    };
-};
-
 type RedisJobsPayload = {
     status: string;
     redisJobs?: RedisJobRow[];
-    postgresExecutions?: PostgresExecutionRow[];
     message?: string;
     generatedAt?: string;
 };
@@ -340,7 +324,6 @@ export function DashboardPanel() {
     >;
     const redisJobs = redisJobsData?.redisJobs ?? [];
     const bufferedRedisJobs = redisJobSnapshots.slice(0, 25);
-    const postgresExecutions = redisJobsData?.postgresExecutions ?? [];
     const formatTs = (value?: string | null) => {
         if (!value) {
             return '—';
@@ -352,26 +335,6 @@ export function DashboardPanel() {
         }
 
         return date.toLocaleString();
-    };
-
-    const formatExecutionData = (execution: PostgresExecutionRow) => {
-        const bookingId = execution.data?.bookingId;
-        if (!bookingId) {
-            return '—';
-        }
-
-        const chunks = [`bookingId=${bookingId}`];
-        if (execution.data?.productId) {
-            chunks.push(`productId=${execution.data.productId}`);
-        }
-        if (execution.data?.supplierId) {
-            chunks.push(`supplierId=${execution.data.supplierId}`);
-        }
-        if (execution.data?.quoteId) {
-            chunks.push(`quoteId=${execution.data.quoteId}`);
-        }
-
-        return chunks.join(' | ');
     };
 
     return (
@@ -1076,198 +1039,6 @@ export function DashboardPanel() {
                                                     >
                                                         {job.payload ?? '—'}
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div
-                        style={{
-                            border: '1px solid #e7e5e4',
-                            borderRadius: '14px',
-                            padding: '14px'
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: '10px'
-                            }}
-                        >
-                            <div style={{ fontWeight: 700, color: '#1c1917' }}>
-                                Postgres executions (persistent)
-                            </div>
-                            <div style={{ fontSize: '12px', color: '#78716c' }}>
-                                {redisJobsLoading
-                                    ? 'Loading...'
-                                    : `${postgresExecutions.length} rows`}
-                            </div>
-                        </div>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table
-                                style={{
-                                    width: '100%',
-                                    borderCollapse: 'collapse',
-                                    fontSize: '12px',
-                                    minWidth: '1120px'
-                                }}
-                            >
-                                <thead>
-                                    <tr style={{ backgroundColor: '#fafaf9', color: '#44403c' }}>
-                                        <th
-                                            style={{
-                                                textAlign: 'left',
-                                                padding: '8px',
-                                                borderBottom: '1px solid #e7e5e4'
-                                            }}
-                                        >
-                                            ID
-                                        </th>
-                                        <th
-                                            style={{
-                                                textAlign: 'left',
-                                                padding: '8px',
-                                                borderBottom: '1px solid #e7e5e4'
-                                            }}
-                                        >
-                                            Status
-                                        </th>
-                                        <th
-                                            style={{
-                                                textAlign: 'left',
-                                                padding: '8px',
-                                                borderBottom: '1px solid #e7e5e4'
-                                            }}
-                                        >
-                                            Mode
-                                        </th>
-                                        <th
-                                            style={{
-                                                textAlign: 'left',
-                                                padding: '8px',
-                                                borderBottom: '1px solid #e7e5e4'
-                                            }}
-                                        >
-                                            Workflow ID
-                                        </th>
-                                        <th
-                                            style={{
-                                                textAlign: 'left',
-                                                padding: '8px',
-                                                borderBottom: '1px solid #e7e5e4'
-                                            }}
-                                        >
-                                            Data
-                                        </th>
-                                        <th
-                                            style={{
-                                                textAlign: 'left',
-                                                padding: '8px',
-                                                borderBottom: '1px solid #e7e5e4'
-                                            }}
-                                        >
-                                            Started
-                                        </th>
-                                        <th
-                                            style={{
-                                                textAlign: 'left',
-                                                padding: '8px',
-                                                borderBottom: '1px solid #e7e5e4'
-                                            }}
-                                        >
-                                            Stopped
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {postgresExecutions.length === 0 ? (
-                                        <tr>
-                                            <td
-                                                colSpan={7}
-                                                style={{
-                                                    padding: '12px',
-                                                    color: '#78716c',
-                                                    borderBottom: '1px solid #f5f5f4'
-                                                }}
-                                            >
-                                                No rows found in execution_entity yet.
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        postgresExecutions.map((execution) => (
-                                            <tr key={execution.id}>
-                                                <td
-                                                    style={{
-                                                        padding: '8px',
-                                                        borderBottom: '1px solid #f5f5f4'
-                                                    }}
-                                                >
-                                                    {execution.id}
-                                                </td>
-                                                <td
-                                                    style={{
-                                                        padding: '8px',
-                                                        borderBottom: '1px solid #f5f5f4'
-                                                    }}
-                                                >
-                                                    {execution.status ?? '—'}
-                                                </td>
-                                                <td
-                                                    style={{
-                                                        padding: '8px',
-                                                        borderBottom: '1px solid #f5f5f4'
-                                                    }}
-                                                >
-                                                    {execution.mode ?? '—'}
-                                                </td>
-                                                <td
-                                                    style={{
-                                                        padding: '8px',
-                                                        borderBottom: '1px solid #f5f5f4'
-                                                    }}
-                                                >
-                                                    {execution.workflowId ?? '—'}
-                                                </td>
-                                                <td
-                                                    style={{
-                                                        padding: '8px',
-                                                        borderBottom: '1px solid #f5f5f4',
-                                                        maxWidth: '380px'
-                                                    }}
-                                                >
-                                                    <div
-                                                        style={{
-                                                            whiteSpace: 'nowrap',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                            fontFamily: 'JetBrains Mono, monospace'
-                                                        }}
-                                                        title={formatExecutionData(execution)}
-                                                    >
-                                                        {formatExecutionData(execution)}
-                                                    </div>
-                                                </td>
-                                                <td
-                                                    style={{
-                                                        padding: '8px',
-                                                        borderBottom: '1px solid #f5f5f4'
-                                                    }}
-                                                >
-                                                    {formatTs(execution.startedAt)}
-                                                </td>
-                                                <td
-                                                    style={{
-                                                        padding: '8px',
-                                                        borderBottom: '1px solid #f5f5f4'
-                                                    }}
-                                                >
-                                                    {formatTs(execution.stoppedAt)}
                                                 </td>
                                             </tr>
                                         ))

@@ -65,10 +65,12 @@ final class RedisControlController extends AbstractController
 
             $limit = max(1, min(100, $request->query->getInt('limit', 25)));
             $redis = $this->connect();
+            $redisJobs = $this->listBullJobs($redis, $limit);
 
             return new JsonResponse([
                 'status' => 'ok',
-                'redisJobs' => $this->listBullJobs($redis, $limit),
+                'redisJobs' => $redisJobs,
+                'redisJobStats' => $this->summarizeRedisJobs($redisJobs),
                 'postgresExecutions' => $this->listN8nExecutions($limit),
                 'generatedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
             ]);
@@ -345,7 +347,7 @@ final class RedisControlController extends AbstractController
     }
 
     /**
-     * @return list<array{id: string, state: string, name: string, attemptsMade: int, key: string, payload: ?string, timestamp: ?string, processedOn: ?string, finishedOn: ?string}>
+     * @return list<array{id: string, state: string, name: string, attemptsMade: int, key: string, payload: ?string, timestamp: ?string, processedOn: ?string, finishedOn: ?string, workflowId: ?string, executionId: ?string, restartExecutionId: ?string, bookingId: ?string, quoteId: ?string, correlationId: ?string}>
      */
     private function listBullJobs(\Redis $redis, int $limit): array
     {
@@ -381,20 +383,146 @@ final class RedisControlController extends AbstractController
                 continue;
             }
 
+            $payloadRaw = $this->nullableString($job['data'] ?? null);
+            $payloadMetadata = $this->extractBullJobMetadata($payloadRaw);
+
             $jobs[] = [
                 'id' => $jobId,
                 'state' => $this->resolveJobState($jobId, $stateIndex),
                 'name' => $this->stringOrDefault($job['name'] ?? null, 'unnamed'),
                 'attemptsMade' => $this->intOrDefault($job['attemptsMade'] ?? null, 0),
                 'key' => $key,
-                'payload' => $this->payloadPreview($job['data'] ?? null),
+                'payload' => $this->payloadPreview($payloadRaw),
                 'timestamp' => $this->millisToIso($job['timestamp'] ?? null),
                 'processedOn' => $this->millisToIso($job['processedOn'] ?? null),
                 'finishedOn' => $this->millisToIso($job['finishedOn'] ?? null),
+                'workflowId' => $payloadMetadata['workflowId'],
+                'executionId' => $payloadMetadata['executionId'],
+                'restartExecutionId' => $payloadMetadata['restartExecutionId'],
+                'bookingId' => $payloadMetadata['bookingId'],
+                'quoteId' => $payloadMetadata['quoteId'],
+                'correlationId' => $payloadMetadata['correlationId'],
             ];
         }
 
         return $jobs;
+    }
+
+    /**
+     * @param list<array{id: string, state: string, name: string, attemptsMade: int, key: string, payload: ?string, timestamp: ?string, processedOn: ?string, finishedOn: ?string, workflowId: ?string, executionId: ?string, restartExecutionId: ?string, bookingId: ?string, quoteId: ?string, correlationId: ?string}> $jobs
+     * @return array{total: int, stateCounts: array<string, int>, oldestJobAgeSeconds: ?int, oldestJobCreatedAt: ?string}
+     */
+    private function summarizeRedisJobs(array $jobs): array
+    {
+        $stateCounts = [
+            'wait' => 0,
+            'active' => 0,
+            'delayed' => 0,
+            'completed' => 0,
+            'failed' => 0,
+            'unknown' => 0,
+        ];
+
+        $oldestCreatedAt = null;
+        $oldestCreatedAtTs = null;
+
+        foreach ($jobs as $job) {
+            $state = $job['state'];
+            if (!array_key_exists($state, $stateCounts)) {
+                $stateCounts['unknown']++;
+            } else {
+                $stateCounts[$state]++;
+            }
+
+            $createdAt = $job['timestamp'];
+            if ($createdAt === null) {
+                continue;
+            }
+
+            $createdAtDate = $this->toDateTimeImmutable($createdAt);
+            if ($createdAtDate === null) {
+                continue;
+            }
+
+            $createdAtTs = $createdAtDate->getTimestamp();
+
+            if ($oldestCreatedAtTs === null || $createdAtTs < $oldestCreatedAtTs) {
+                $oldestCreatedAtTs = $createdAtTs;
+                $oldestCreatedAt = $createdAt;
+            }
+        }
+
+        $oldestAgeSeconds = null;
+        if ($oldestCreatedAtTs !== null) {
+            $delta = time() - $oldestCreatedAtTs;
+            $oldestAgeSeconds = $delta >= 0 ? $delta : 0;
+        }
+
+        return [
+            'total' => count($jobs),
+            'stateCounts' => $stateCounts,
+            'oldestJobAgeSeconds' => $oldestAgeSeconds,
+            'oldestJobCreatedAt' => $oldestCreatedAt,
+        ];
+    }
+
+    /**
+     * @return array{workflowId: ?string, executionId: ?string, restartExecutionId: ?string, bookingId: ?string, quoteId: ?string, correlationId: ?string}
+     */
+    private function extractBullJobMetadata(?string $payload): array
+    {
+        $metadata = [
+            'workflowId' => null,
+            'executionId' => null,
+            'restartExecutionId' => null,
+            'bookingId' => null,
+            'quoteId' => null,
+            'correlationId' => null,
+        ];
+
+        if ($payload === null || trim($payload) === '') {
+            return $metadata;
+        }
+
+        try {
+            $decoded = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return $metadata;
+        }
+
+        $keys = array_keys($metadata);
+        $this->collectStringIdentifiersByKeys($decoded, $metadata, $keys);
+
+        return [
+            'workflowId' => $metadata['workflowId'],
+            'executionId' => $metadata['executionId'],
+            'restartExecutionId' => $metadata['restartExecutionId'],
+            'bookingId' => $metadata['bookingId'],
+            'quoteId' => $metadata['quoteId'],
+            'correlationId' => $metadata['correlationId'],
+        ];
+    }
+
+    /**
+     * @param array<string, ?string> $output
+     * @param array<int, string> $keys
+     */
+    private function collectStringIdentifiersByKeys(mixed $value, array &$output, array $keys, int $depth = 0): void
+    {
+        if ($depth > 30 || !is_array($value)) {
+            return;
+        }
+
+        foreach ($value as $key => $child) {
+            if (is_string($key) && in_array($key, $keys, true)) {
+                $candidate = $this->scalarToString($child);
+                if ($candidate !== null && ($output[$key] ?? null) === null) {
+                    $output[$key] = $candidate;
+                }
+            }
+
+            $this->collectStringIdentifiersByKeys($child, $output, $keys, $depth + 1);
+        }
     }
 
     /**

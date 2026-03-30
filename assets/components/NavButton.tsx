@@ -8,7 +8,8 @@ export type PageType =
     | 'users'
     | 'panel'
     | 'supplier'
-    | 'executions';
+    | 'executions'
+    | 'redisJobs';
 
 export const NavButton = ({
     target,

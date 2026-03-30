@@ -7,6 +7,7 @@ import { DemoFlow } from './pages/DemoFlow';
 import { UsersManagement } from './pages/UsersManagement';
 import { DashboardPanel } from './pages/DashboardPanel';
 import { PostgresExecutionsPage } from './pages/PostgresExecutionsPage';
+import { RedisJobsPage } from './pages/RedisJobsPage';
 import { SupplierResponses } from './features/quotes/pages/SupplierResponses';
 import { Icons } from './components/Icons';
 import { NavButton, PageType } from './components/NavButton';
@@ -44,6 +45,10 @@ function resolveRoute(pathname: string): RouteState {
 
     if (pathname === '/executions') {
         return { page: 'executions', usersMode: 'list', userId: null };
+    }
+
+    if (pathname === '/redis-jobs') {
+        return { page: 'redisJobs', usersMode: 'list', userId: null };
     }
 
     if (pathname === '/supplier-responses') {
@@ -92,9 +97,11 @@ function App() {
                         ? '/panel'
                         : newPage === 'executions'
                           ? '/executions'
-                          : newPage === 'supplier'
-                            ? '/supplier-responses'
-                            : '/';
+                          : newPage === 'redisJobs'
+                            ? '/redis-jobs'
+                            : newPage === 'supplier'
+                              ? '/supplier-responses'
+                              : '/';
         navigateToPath(url);
     };
 
@@ -173,6 +180,13 @@ function App() {
                     target="executions"
                     label="Postgres Executions"
                     icon={Icons.Executions}
+                    currentPage={route.page}
+                    onNavigate={navigateTo}
+                />
+                <NavButton
+                    target="redisJobs"
+                    label="Redis Jobs"
+                    icon={Icons.RedisJobs}
                     currentPage={route.page}
                     onNavigate={navigateTo}
                 />
@@ -315,6 +329,7 @@ function App() {
                 {route.page === 'demo' && <DemoFlow />}
                 {route.page === 'panel' && <DashboardPanel />}
                 {route.page === 'executions' && <PostgresExecutionsPage />}
+                {route.page === 'redisJobs' && <RedisJobsPage />}
                 {route.page === 'supplier' && <SupplierResponses />}
                 {route.page === 'users' && (
                     <UsersManagement

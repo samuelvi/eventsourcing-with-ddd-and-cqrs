@@ -88,7 +88,7 @@ final readonly class SubmitBookingWizardHandler
 
         $derivationContext = $this->derivationRunContextFactory->create($bookingId->toRfc4122());
         $this->derivationRunTracker->open($derivationContext);
-        $this->n8nNotifier->notifyBookingReady($derivationContext);
+        $this->n8nNotifier->notifyBookingReady($derivationContext, $country->toString());
 
     }
 }

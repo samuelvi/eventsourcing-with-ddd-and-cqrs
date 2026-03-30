@@ -18,6 +18,7 @@ final readonly class CountryLocaleTimezoneResolver
         'GB' => ['locale' => 'en-GB', 'timezone' => 'Europe/London'],
         'FR' => ['locale' => 'fr-FR', 'timezone' => 'Europe/Paris'],
         'DE' => ['locale' => 'de-DE', 'timezone' => 'Europe/Berlin'],
+        'US' => ['locale' => 'en-US', 'timezone' => 'America/New_York'],
     ];
 
     private const FALLBACK_LOCALE = 'en-US';

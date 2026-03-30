@@ -16,6 +16,7 @@ const COUNTRY_OPTIONS = [
     { value: 'IT', label: 'Italia' },
     { value: 'DE', label: 'Alemania' },
     { value: 'PT', label: 'Portugal' },
+    { value: 'US', label: 'Estados Unidos' },
     { value: 'GB', label: 'Reino Unido' },
     { value: 'NL', label: 'Paises Bajos' },
     { value: 'BE', label: 'Belgica' },

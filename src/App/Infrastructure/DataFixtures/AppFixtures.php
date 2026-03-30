@@ -18,6 +18,7 @@ final class AppFixtures extends Fixture
         'IT',
         'DE',
         'PT',
+        'US',
         'GB',
         'NL',
         'BE',

@@ -398,7 +398,7 @@ final class RedisControlController extends AbstractController
     }
 
     /**
-     * @return list<array{id: int, status: ?string, mode: ?string, workflowId: ?string, startedAt: ?string, stoppedAt: ?string, data: array{bookingId: ?string, productId: ?string, supplierId: ?string, quoteId: ?string}}>
+     * @return list<array{id: int, status: ?string, healthState: string, mode: ?string, workflowId: ?string, workflowName: ?string, startedAt: ?string, stoppedAt: ?string, waitTill: ?string, data: array{bookingId: ?string, productId: ?string, supplierId: ?string, quoteId: ?string, correlationId: ?string, event: ?string, derivationRunId: ?string, lastNodeExecuted: ?string, nodesExecutedCount: ?int}}>
      */
     private function listN8nExecutions(int $limit): array
     {
@@ -409,11 +409,15 @@ SELECT
     e.status,
     e.mode,
     e."workflowId",
+    COALESCE(w.name, ed."workflowData"->>'name') AS "workflowName",
+    e.finished,
     e."startedAt",
     e."stoppedAt",
+    e."waitTill",
     ed.data AS "executionData"
 FROM execution_entity e
 LEFT JOIN execution_data ed ON ed."executionId" = e.id
+LEFT JOIN workflow_entity w ON w.id = e."workflowId"
 ORDER BY e.id DESC
 LIMIT :limit
 SQL;
@@ -428,45 +432,70 @@ SQL;
         }
 
         return array_map(
-            fn(array $row): array => [
-                'id' => (int) ($row['id'] ?? 0),
-                'status' => $this->nullableString($row['status'] ?? null),
-                'mode' => $this->nullableString($row['mode'] ?? null),
-                'workflowId' => $this->nullableString($row['workflowId'] ?? null),
-                'startedAt' => $this->normalizeDateTime($row['startedAt'] ?? null),
-                'stoppedAt' => $this->normalizeDateTime($row['stoppedAt'] ?? null),
-                'data' => $this->extractExecutionIdentifiers(
-                    is_string($row['executionData'] ?? null) ? $row['executionData'] : null
-                ),
-            ],
+            fn(array $row): array => $this->mapExecutionRow($row),
             $rows
         );
     }
 
     /**
-     * @return array{bookingId: ?string, productId: ?string, supplierId: ?string, quoteId: ?string}
+     * @param array<string, mixed> $row
+     * @return array{id: int, status: ?string, healthState: string, mode: ?string, workflowId: ?string, workflowName: ?string, startedAt: ?string, stoppedAt: ?string, waitTill: ?string, data: array{bookingId: ?string, productId: ?string, supplierId: ?string, quoteId: ?string, correlationId: ?string, event: ?string, derivationRunId: ?string, lastNodeExecuted: ?string, nodesExecutedCount: ?int}}
      */
-    private function extractExecutionIdentifiers(?string $rawData): array
+    private function mapExecutionRow(array $row): array
     {
-        $identifiers = [
+        $status = $this->nullableString($row['status'] ?? null);
+
+        return [
+            'id' => (int) ($row['id'] ?? 0),
+            'status' => $status,
+            'healthState' => $this->resolveExecutionHealthState(
+                $status,
+                $this->boolOrNull($row['finished'] ?? null),
+                $row['startedAt'] ?? null,
+                $row['waitTill'] ?? null
+            ),
+            'mode' => $this->nullableString($row['mode'] ?? null),
+            'workflowId' => $this->nullableString($row['workflowId'] ?? null),
+            'workflowName' => $this->nullableString($row['workflowName'] ?? null),
+            'startedAt' => $this->normalizeDateTime($row['startedAt'] ?? null),
+            'stoppedAt' => $this->normalizeDateTime($row['stoppedAt'] ?? null),
+            'waitTill' => $this->normalizeDateTime($row['waitTill'] ?? null),
+            'data' => $this->extractExecutionInsights(
+                is_string($row['executionData'] ?? null) ? $row['executionData'] : null
+            ),
+        ];
+    }
+
+    /**
+     * @return array{bookingId: ?string, productId: ?string, supplierId: ?string, quoteId: ?string, correlationId: ?string, event: ?string, derivationRunId: ?string, lastNodeExecuted: ?string, nodesExecutedCount: ?int}
+     */
+    private function extractExecutionInsights(?string $rawData): array
+    {
+        $insights = [
             'bookingId' => null,
             'productId' => null,
             'supplierId' => null,
             'quoteId' => null,
+            'correlationId' => null,
+            'event' => null,
+            'derivationRunId' => null,
+            'lastNodeExecuted' => null,
+            'nodesExecutedCount' => null,
         ];
 
         if ($rawData === null || trim($rawData) === '') {
-            return $identifiers;
+            return $insights;
         }
 
         $decoded = $this->decodeExecutionData($rawData);
         if ($decoded === null) {
-            return $identifiers;
+            return $insights;
         }
 
-        $this->collectIdentifiers($decoded, $identifiers);
+        $this->collectIdentifiers($decoded, $insights);
+        $this->collectExecutionRuntimeDetails($decoded, $insights);
 
-        return $identifiers;
+        return $insights;
     }
 
     private function decodeExecutionData(string $rawData): mixed
@@ -533,7 +562,7 @@ SQL;
     }
 
     /**
-     * @param array{bookingId: ?string, productId: ?string, supplierId: ?string, quoteId: ?string} $identifiers
+     * @param array{bookingId: ?string, productId: ?string, supplierId: ?string, quoteId: ?string, correlationId: ?string, event: ?string, derivationRunId: ?string, lastNodeExecuted: ?string, nodesExecutedCount: ?int} $identifiers
      */
     private function collectIdentifiers(mixed $value, array &$identifiers, int $depth = 0): void
     {
@@ -547,13 +576,44 @@ SQL;
 
         foreach ($value as $key => $child) {
             if (is_string($key) && array_key_exists($key, $identifiers)) {
-                $candidate = $this->scalarToString($child);
-                if ($candidate !== null && $identifiers[$key] === null) {
-                    $identifiers[$key] = $candidate;
+                if ($key === 'nodesExecutedCount') {
+                    $candidateInt = $this->scalarToInt($child);
+                    if ($candidateInt !== null && $identifiers[$key] === null) {
+                        $identifiers[$key] = $candidateInt;
+                    }
+                } else {
+                    $candidate = $this->scalarToString($child);
+                    if ($candidate !== null && $identifiers[$key] === null) {
+                        $identifiers[$key] = $candidate;
+                    }
                 }
             }
 
             $this->collectIdentifiers($child, $identifiers, $depth + 1);
+        }
+    }
+
+    /**
+     * @param array{bookingId: ?string, productId: ?string, supplierId: ?string, quoteId: ?string, correlationId: ?string, event: ?string, derivationRunId: ?string, lastNodeExecuted: ?string, nodesExecutedCount: ?int} $insights
+     */
+    private function collectExecutionRuntimeDetails(mixed $decoded, array &$insights): void
+    {
+        if (!is_array($decoded)) {
+            return;
+        }
+
+        $resultData = $decoded['resultData'] ?? null;
+        if (!is_array($resultData)) {
+            return;
+        }
+
+        if ($insights['lastNodeExecuted'] === null) {
+            $insights['lastNodeExecuted'] = $this->scalarToString($resultData['lastNodeExecuted'] ?? null);
+        }
+
+        $runData = $resultData['runData'] ?? null;
+        if ($insights['nodesExecutedCount'] === null && is_array($runData)) {
+            $insights['nodesExecutedCount'] = count($runData);
         }
     }
 
@@ -567,6 +627,95 @@ SQL;
 
         if (is_int($value) || is_float($value)) {
             return (string) $value;
+        }
+
+        return null;
+    }
+
+    private function scalarToInt(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_float($value)) {
+            return (int) $value;
+        }
+
+        if (is_string($value) && is_numeric($value)) {
+            return (int) $value;
+        }
+
+        return null;
+    }
+
+    private function resolveExecutionHealthState(
+        ?string $status,
+        ?bool $finished,
+        mixed $startedAt,
+        mixed $waitTill
+    ): string {
+        $normalizedStatus = strtolower(trim((string) ($status ?? '')));
+
+        if ($normalizedStatus === 'success') {
+            return 'ok_success';
+        }
+
+        if ($normalizedStatus === 'error') {
+            return 'error_failed';
+        }
+
+        if ($normalizedStatus === 'crashed') {
+            return 'error_crashed';
+        }
+
+        if ($normalizedStatus === 'canceled') {
+            return 'warn_canceled';
+        }
+
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $waitTillDate = $this->toDateTimeImmutable($waitTill);
+
+        if ($normalizedStatus === 'waiting') {
+            if ($waitTillDate === null) {
+                return 'warn_waiting_without_wait_till';
+            }
+
+            if ($waitTillDate->modify('+90 seconds') < $now) {
+                return 'warn_waiting_overdue';
+            }
+
+            return 'ok_waiting';
+        }
+
+        if ($finished === false) {
+            $startedAtDate = $this->toDateTimeImmutable($startedAt);
+            if ($startedAtDate !== null && $startedAtDate->modify('+5 minutes') < $now) {
+                return 'warn_running_long';
+            }
+
+            return 'ok_running';
+        }
+
+        return $normalizedStatus !== '' ? 'info_' . $normalizedStatus : 'info_unknown';
+    }
+
+    private function toDateTimeImmutable(mixed $value): ?\DateTimeImmutable
+    {
+        if ($value instanceof \DateTimeImmutable) {
+            return $value;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return \DateTimeImmutable::createFromInterface($value);
+        }
+
+        if (is_string($value) && trim($value) !== '') {
+            try {
+                return new \DateTimeImmutable($value);
+            } catch (\Throwable) {
+                return null;
+            }
         }
 
         return null;
@@ -693,5 +842,28 @@ SQL;
         $trimmed = trim($value);
 
         return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function boolOrNull(mixed $value): ?bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value !== 0;
+        }
+
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+            if ($normalized === 'true' || $normalized === '1' || $normalized === 't') {
+                return true;
+            }
+            if ($normalized === 'false' || $normalized === '0' || $normalized === 'f') {
+                return false;
+            }
+        }
+
+        return null;
     }
 }

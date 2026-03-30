@@ -3,8 +3,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 type PostgresExecutionRow = {
     id: number;
     status?: string | null;
+    healthState?: string | null;
     mode?: string | null;
     workflowId?: string | null;
+    workflowName?: string | null;
     startedAt?: string | null;
     stoppedAt?: string | null;
     data?: {
@@ -12,6 +14,11 @@ type PostgresExecutionRow = {
         productId?: string | null;
         supplierId?: string | null;
         quoteId?: string | null;
+        correlationId?: string | null;
+        event?: string | null;
+        derivationRunId?: string | null;
+        lastNodeExecuted?: string | null;
+        nodesExecutedCount?: number | null;
     };
 };
 
@@ -25,9 +32,12 @@ type ExecutionsPayload = {
 export function PostgresExecutionsPage() {
     const [loading, setLoading] = useState(false);
     const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+    const [executionIdFilter, setExecutionIdFilter] = useState('');
     const [bookingIdFilter, setBookingIdFilter] = useState('');
     const [quoteIdFilter, setQuoteIdFilter] = useState('');
     const [workflowIdFilter, setWorkflowIdFilter] = useState('');
+    const [workflowNameFilter, setWorkflowNameFilter] = useState('');
+    const [healthStateFilter, setHealthStateFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [modeFilter, setModeFilter] = useState('');
     const [payload, setPayload] = useState<ExecutionsPayload | null>(null);
@@ -67,11 +77,26 @@ export function PostgresExecutionsPage() {
     }, [autoRefreshEnabled, loadExecutions]);
 
     const rows = payload?.postgresExecutions ?? [];
+    const normalizedExecutionId = executionIdFilter.trim();
     const normalizedBookingId = bookingIdFilter.trim().toLowerCase();
     const normalizedQuoteId = quoteIdFilter.trim().toLowerCase();
     const normalizedWorkflowId = workflowIdFilter.trim().toLowerCase();
+    const normalizedWorkflowName = workflowNameFilter.trim().toLowerCase();
+    const normalizedHealthState = healthStateFilter.trim().toLowerCase();
     const normalizedStatus = statusFilter.trim().toLowerCase();
     const normalizedMode = modeFilter.trim().toLowerCase();
+
+    const healthStateOptions = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    rows
+                        .map((execution) => execution.healthState?.trim())
+                        .filter((value): value is string => !!value)
+                )
+            ).sort((a, b) => a.localeCompare(b)),
+        [rows]
+    );
 
     const statusOptions = useMemo(
         () =>
@@ -99,11 +124,17 @@ export function PostgresExecutionsPage() {
 
     const filteredRows = useMemo(() => {
         return rows.filter((execution) => {
+            const executionId = String(execution.id);
             const bookingId = execution.data?.bookingId?.trim().toLowerCase() ?? '';
             const quoteId = execution.data?.quoteId?.trim().toLowerCase() ?? '';
             const workflowId = execution.workflowId?.trim().toLowerCase() ?? '';
+            const workflowName = execution.workflowName?.trim().toLowerCase() ?? '';
+            const healthState = execution.healthState?.trim().toLowerCase() ?? '';
             const status = execution.status?.trim().toLowerCase() ?? '';
             const mode = execution.mode?.trim().toLowerCase() ?? '';
+
+            const matchesExecutionId =
+                normalizedExecutionId === '' || executionId === normalizedExecutionId;
 
             const matchesBookingId =
                 normalizedBookingId === '' ||
@@ -115,27 +146,66 @@ export function PostgresExecutionsPage() {
             const matchesWorkflowId =
                 normalizedWorkflowId === '' || workflowId.includes(normalizedWorkflowId);
 
+            const matchesWorkflowName =
+                normalizedWorkflowName === '' || workflowName.includes(normalizedWorkflowName);
+
+            const matchesHealthState =
+                normalizedHealthState === '' ||
+                (healthState !== '' && healthState === normalizedHealthState);
+
             const matchesStatus =
                 normalizedStatus === '' || (status !== '' && status === normalizedStatus);
 
             const matchesMode = normalizedMode === '' || (mode !== '' && mode === normalizedMode);
 
             return (
+                matchesExecutionId &&
                 matchesBookingId &&
                 matchesQuoteId &&
                 matchesWorkflowId &&
+                matchesWorkflowName &&
+                matchesHealthState &&
                 matchesStatus &&
                 matchesMode
             );
         });
     }, [
         rows,
+        normalizedExecutionId,
         normalizedBookingId,
         normalizedQuoteId,
         normalizedWorkflowId,
+        normalizedWorkflowName,
+        normalizedHealthState,
         normalizedStatus,
         normalizedMode
     ]);
+
+    const healthStateStyles: Record<string, { background: string; color: string; border: string }> =
+        {
+            ok_success: { background: '#f0fdf4', color: '#166534', border: '#86efac' },
+            ok_waiting: { background: '#eff6ff', color: '#1d4ed8', border: '#93c5fd' },
+            ok_running: { background: '#ecfeff', color: '#155e75', border: '#67e8f9' },
+            warn_waiting_overdue: { background: '#fffbeb', color: '#92400e', border: '#fcd34d' },
+            warn_waiting_without_wait_till: {
+                background: '#fff7ed',
+                color: '#9a3412',
+                border: '#fdba74'
+            },
+            warn_running_long: { background: '#fff7ed', color: '#9a3412', border: '#fdba74' },
+            warn_canceled: { background: '#fafaf9', color: '#57534e', border: '#d6d3d1' },
+            error_failed: { background: '#fef2f2', color: '#991b1b', border: '#fca5a5' },
+            error_crashed: { background: '#fee2e2', color: '#7f1d1d', border: '#f87171' },
+            info_unknown: { background: '#f5f5f4', color: '#44403c', border: '#d6d3d1' }
+        };
+
+    const getHealthStateStyle = (value?: string | null) => {
+        if (!value) {
+            return healthStateStyles.info_unknown;
+        }
+
+        return healthStateStyles[value] ?? healthStateStyles.info_unknown;
+    };
 
     const formatTs = (value?: string | null) => {
         if (!value) {
@@ -165,6 +235,21 @@ export function PostgresExecutionsPage() {
         }
         if (execution.data?.quoteId) {
             chunks.push(`quoteId=${execution.data.quoteId}`);
+        }
+        if (execution.data?.correlationId) {
+            chunks.push(`corr=${execution.data.correlationId}`);
+        }
+        if (execution.data?.event) {
+            chunks.push(`event=${execution.data.event}`);
+        }
+        if (execution.data?.derivationRunId) {
+            chunks.push(`runId=${execution.data.derivationRunId}`);
+        }
+        if (execution.data?.lastNodeExecuted) {
+            chunks.push(`lastNode=${execution.data.lastNodeExecuted}`);
+        }
+        if (typeof execution.data?.nodesExecutedCount === 'number') {
+            chunks.push(`nodes=${execution.data.nodesExecutedCount}`);
         }
 
         return chunks.join(' | ');
@@ -208,6 +293,19 @@ export function PostgresExecutionsPage() {
                 >
                     <input
                         type="text"
+                        placeholder="executionId (exact match)"
+                        value={executionIdFilter}
+                        onChange={(event) => setExecutionIdFilter(event.target.value)}
+                        style={{
+                            padding: '10px 12px',
+                            border: '1px solid #e7e5e4',
+                            borderRadius: '10px',
+                            fontSize: '13px',
+                            color: '#292524'
+                        }}
+                    />
+                    <input
+                        type="text"
                         placeholder="bookingId (exact match)"
                         value={bookingIdFilter}
                         onChange={(event) => setBookingIdFilter(event.target.value)}
@@ -245,6 +343,38 @@ export function PostgresExecutionsPage() {
                             color: '#292524'
                         }}
                     />
+                    <input
+                        type="text"
+                        placeholder="workflowName (contains)"
+                        value={workflowNameFilter}
+                        onChange={(event) => setWorkflowNameFilter(event.target.value)}
+                        style={{
+                            padding: '10px 12px',
+                            border: '1px solid #e7e5e4',
+                            borderRadius: '10px',
+                            fontSize: '13px',
+                            color: '#292524'
+                        }}
+                    />
+                    <select
+                        value={healthStateFilter}
+                        onChange={(event) => setHealthStateFilter(event.target.value)}
+                        style={{
+                            padding: '10px 12px',
+                            border: '1px solid #e7e5e4',
+                            borderRadius: '10px',
+                            fontSize: '13px',
+                            color: '#292524',
+                            backgroundColor: '#fff'
+                        }}
+                    >
+                        <option value="">Health: all</option>
+                        {healthStateOptions.map((healthState) => (
+                            <option key={healthState} value={healthState}>
+                                {healthState}
+                            </option>
+                        ))}
+                    </select>
                     <select
                         value={statusFilter}
                         onChange={(event) => setStatusFilter(event.target.value)}
@@ -286,9 +416,12 @@ export function PostgresExecutionsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <button
                             onClick={() => {
+                                setExecutionIdFilter('');
                                 setBookingIdFilter('');
                                 setQuoteIdFilter('');
                                 setWorkflowIdFilter('');
+                                setWorkflowNameFilter('');
+                                setHealthStateFilter('');
                                 setStatusFilter('');
                                 setModeFilter('');
                             }}
@@ -368,7 +501,7 @@ export function PostgresExecutionsPage() {
                             width: '100%',
                             borderCollapse: 'collapse',
                             fontSize: '12px',
-                            minWidth: '1120px'
+                            minWidth: '1280px'
                         }}
                     >
                         <thead>
@@ -398,6 +531,15 @@ export function PostgresExecutionsPage() {
                                         borderBottom: '1px solid #e7e5e4'
                                     }}
                                 >
+                                    Health
+                                </th>
+                                <th
+                                    style={{
+                                        textAlign: 'left',
+                                        padding: '8px',
+                                        borderBottom: '1px solid #e7e5e4'
+                                    }}
+                                >
                                     Mode
                                 </th>
                                 <th
@@ -408,6 +550,15 @@ export function PostgresExecutionsPage() {
                                     }}
                                 >
                                     Workflow ID
+                                </th>
+                                <th
+                                    style={{
+                                        textAlign: 'left',
+                                        padding: '8px',
+                                        borderBottom: '1px solid #e7e5e4'
+                                    }}
+                                >
+                                    Workflow Name
                                 </th>
                                 <th
                                     style={{
@@ -442,7 +593,7 @@ export function PostgresExecutionsPage() {
                             {filteredRows.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={7}
+                                        colSpan={9}
                                         style={{
                                             padding: '12px',
                                             color: '#78716c',
@@ -479,6 +630,31 @@ export function PostgresExecutionsPage() {
                                                 borderBottom: '1px solid #f5f5f4'
                                             }}
                                         >
+                                            <span
+                                                style={{
+                                                    display: 'inline-block',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '999px',
+                                                    border: `1px solid ${getHealthStateStyle(execution.healthState).border}`,
+                                                    backgroundColor: getHealthStateStyle(
+                                                        execution.healthState
+                                                    ).background,
+                                                    color: getHealthStateStyle(
+                                                        execution.healthState
+                                                    ).color,
+                                                    fontWeight: 700,
+                                                    fontSize: '11px'
+                                                }}
+                                            >
+                                                {execution.healthState ?? 'info_unknown'}
+                                            </span>
+                                        </td>
+                                        <td
+                                            style={{
+                                                padding: '8px',
+                                                borderBottom: '1px solid #f5f5f4'
+                                            }}
+                                        >
                                             {execution.mode ?? '—'}
                                         </td>
                                         <td
@@ -493,14 +669,34 @@ export function PostgresExecutionsPage() {
                                             style={{
                                                 padding: '8px',
                                                 borderBottom: '1px solid #f5f5f4',
-                                                maxWidth: '380px'
+                                                maxWidth: '260px'
                                             }}
                                         >
                                             <div
                                                 style={{
                                                     whiteSpace: 'nowrap',
                                                     overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
+                                                    textOverflow: 'ellipsis'
+                                                }}
+                                                title={execution.workflowName ?? '—'}
+                                            >
+                                                {execution.workflowName ?? '—'}
+                                            </div>
+                                        </td>
+                                        <td
+                                            style={{
+                                                padding: '8px',
+                                                borderBottom: '1px solid #f5f5f4',
+                                                maxWidth: '520px',
+                                                verticalAlign: 'top'
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    whiteSpace: 'normal',
+                                                    overflowWrap: 'anywhere',
+                                                    wordBreak: 'break-word',
+                                                    lineHeight: '1.45',
                                                     fontFamily: 'JetBrains Mono, monospace'
                                                 }}
                                                 title={formatExecutionData(execution)}

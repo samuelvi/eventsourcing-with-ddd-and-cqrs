@@ -25,7 +25,11 @@ type ExecutionsPayload = {
 export function PostgresExecutionsPage() {
     const [loading, setLoading] = useState(false);
     const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [bookingIdFilter, setBookingIdFilter] = useState('');
+    const [quoteIdFilter, setQuoteIdFilter] = useState('');
+    const [workflowIdFilter, setWorkflowIdFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [modeFilter, setModeFilter] = useState('');
     const [payload, setPayload] = useState<ExecutionsPayload | null>(null);
 
     const loadExecutions = useCallback(async () => {
@@ -63,32 +67,75 @@ export function PostgresExecutionsPage() {
     }, [autoRefreshEnabled, loadExecutions]);
 
     const rows = payload?.postgresExecutions ?? [];
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const normalizedBookingId = bookingIdFilter.trim().toLowerCase();
+    const normalizedQuoteId = quoteIdFilter.trim().toLowerCase();
+    const normalizedWorkflowId = workflowIdFilter.trim().toLowerCase();
+    const normalizedStatus = statusFilter.trim().toLowerCase();
+    const normalizedMode = modeFilter.trim().toLowerCase();
+
+    const statusOptions = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    rows
+                        .map((execution) => execution.status?.trim())
+                        .filter((value): value is string => !!value)
+                )
+            ).sort((a, b) => a.localeCompare(b)),
+        [rows]
+    );
+
+    const modeOptions = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    rows
+                        .map((execution) => execution.mode?.trim())
+                        .filter((value): value is string => !!value)
+                )
+            ).sort((a, b) => a.localeCompare(b)),
+        [rows]
+    );
 
     const filteredRows = useMemo(() => {
-        if (normalizedSearch === '') {
-            return rows;
-        }
-
         return rows.filter((execution) => {
-            const fields = [
-                execution.data?.bookingId,
-                execution.data?.quoteId,
-                execution.data?.productId,
-                execution.data?.supplierId,
-                execution.workflowId,
-                execution.status,
-                execution.mode,
-                String(execution.id)
-            ];
+            const bookingId = execution.data?.bookingId?.trim().toLowerCase() ?? '';
+            const quoteId = execution.data?.quoteId?.trim().toLowerCase() ?? '';
+            const workflowId = execution.workflowId?.trim().toLowerCase() ?? '';
+            const status = execution.status?.trim().toLowerCase() ?? '';
+            const mode = execution.mode?.trim().toLowerCase() ?? '';
 
-            return fields
-                .filter(
-                    (value): value is string => typeof value === 'string' && value.trim() !== ''
-                )
-                .some((value) => value.toLowerCase().includes(normalizedSearch));
+            const matchesBookingId =
+                normalizedBookingId === '' ||
+                (bookingId !== '' && bookingId === normalizedBookingId);
+
+            const matchesQuoteId =
+                normalizedQuoteId === '' || (quoteId !== '' && quoteId === normalizedQuoteId);
+
+            const matchesWorkflowId =
+                normalizedWorkflowId === '' || workflowId.includes(normalizedWorkflowId);
+
+            const matchesStatus =
+                normalizedStatus === '' || (status !== '' && status === normalizedStatus);
+
+            const matchesMode = normalizedMode === '' || (mode !== '' && mode === normalizedMode);
+
+            return (
+                matchesBookingId &&
+                matchesQuoteId &&
+                matchesWorkflowId &&
+                matchesStatus &&
+                matchesMode
+            );
         });
-    }, [normalizedSearch, rows]);
+    }, [
+        rows,
+        normalizedBookingId,
+        normalizedQuoteId,
+        normalizedWorkflowId,
+        normalizedStatus,
+        normalizedMode
+    ]);
 
     const formatTs = (value?: string | null) => {
         if (!value) {
@@ -153,22 +200,18 @@ export function PostgresExecutionsPage() {
             >
                 <div
                     style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '12px',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, minmax(220px, 1fr))',
+                        gap: '10px',
                         marginBottom: '14px'
                     }}
                 >
                     <input
                         type="text"
-                        placeholder="Filtrar por bookingId, quoteId, workflowId..."
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder="bookingId (exact match)"
+                        value={bookingIdFilter}
+                        onChange={(event) => setBookingIdFilter(event.target.value)}
                         style={{
-                            minWidth: '320px',
-                            flex: 1,
                             padding: '10px 12px',
                             border: '1px solid #e7e5e4',
                             borderRadius: '10px',
@@ -176,7 +219,91 @@ export function PostgresExecutionsPage() {
                             color: '#292524'
                         }}
                     />
+                    <input
+                        type="text"
+                        placeholder="quoteId (exact match)"
+                        value={quoteIdFilter}
+                        onChange={(event) => setQuoteIdFilter(event.target.value)}
+                        style={{
+                            padding: '10px 12px',
+                            border: '1px solid #e7e5e4',
+                            borderRadius: '10px',
+                            fontSize: '13px',
+                            color: '#292524'
+                        }}
+                    />
+                    <input
+                        type="text"
+                        placeholder="workflowId (contains)"
+                        value={workflowIdFilter}
+                        onChange={(event) => setWorkflowIdFilter(event.target.value)}
+                        style={{
+                            padding: '10px 12px',
+                            border: '1px solid #e7e5e4',
+                            borderRadius: '10px',
+                            fontSize: '13px',
+                            color: '#292524'
+                        }}
+                    />
+                    <select
+                        value={statusFilter}
+                        onChange={(event) => setStatusFilter(event.target.value)}
+                        style={{
+                            padding: '10px 12px',
+                            border: '1px solid #e7e5e4',
+                            borderRadius: '10px',
+                            fontSize: '13px',
+                            color: '#292524',
+                            backgroundColor: '#fff'
+                        }}
+                    >
+                        <option value="">Status: all</option>
+                        {statusOptions.map((status) => (
+                            <option key={status} value={status}>
+                                {status}
+                            </option>
+                        ))}
+                    </select>
+                    <select
+                        value={modeFilter}
+                        onChange={(event) => setModeFilter(event.target.value)}
+                        style={{
+                            padding: '10px 12px',
+                            border: '1px solid #e7e5e4',
+                            borderRadius: '10px',
+                            fontSize: '13px',
+                            color: '#292524',
+                            backgroundColor: '#fff'
+                        }}
+                    >
+                        <option value="">Mode: all</option>
+                        {modeOptions.map((mode) => (
+                            <option key={mode} value={mode}>
+                                {mode}
+                            </option>
+                        ))}
+                    </select>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            onClick={() => {
+                                setBookingIdFilter('');
+                                setQuoteIdFilter('');
+                                setWorkflowIdFilter('');
+                                setStatusFilter('');
+                                setModeFilter('');
+                            }}
+                            style={{
+                                padding: '10px 14px',
+                                border: '1px solid #e7e5e4',
+                                borderRadius: '10px',
+                                backgroundColor: '#fafaf9',
+                                color: '#44403c',
+                                cursor: 'pointer',
+                                fontWeight: 700
+                            }}
+                        >
+                            Clear filters
+                        </button>
                         <button
                             onClick={() => setAutoRefreshEnabled((current) => !current)}
                             style={{
@@ -207,6 +334,16 @@ export function PostgresExecutionsPage() {
                             {loading ? 'Refreshing...' : 'Refresh'}
                         </button>
                     </div>
+                </div>
+
+                <div
+                    style={{
+                        marginBottom: '12px',
+                        color: '#78716c',
+                        fontSize: '12px'
+                    }}
+                >
+                    Showing {filteredRows.length} of {rows.length} rows
                 </div>
 
                 {payload?.message && (
